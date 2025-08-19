@@ -6,3 +6,4 @@ torch>=2.0.0
 pypdf>=3.15.0
 python-docx>=0.8.11
 PyYAML>=6.0
+pdf2docx>=0.5.8
