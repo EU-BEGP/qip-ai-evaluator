@@ -36,3 +36,4 @@ llm_settings:
 
 debug_mode: false
 scans_path: "evaluation/scans.json"
+criteria_path: "evaluation/FinalCriteria.docx"

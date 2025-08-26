@@ -64,6 +64,7 @@ class CriteriaExtractor:
                 continue
 
             criterion = {
+                "index": cells[0],
                 "name": cells[1],
                 "description": cells[2],
                 "review_question": cells[3],
@@ -75,6 +76,7 @@ class CriteriaExtractor:
                     "1": cells[8],
                 }
             }
+
             if criterion["name"]:
                 results.append(criterion)
         return results
