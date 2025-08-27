@@ -189,6 +189,49 @@ class ReportManager:
         story.append(PageBreak())
         return story
     
+    def build_detailed_analysis(self, styles):
+        story = []
+        story.append(Paragraph("2. Detailed Analysis", styles['ReportSection']))
+
+        # Add EU Classification Legend
+        story.append(Paragraph("EU Classification System", styles['ReportSubSection']))
+        legend_data = [
+            ['Classification', 'Score Range', 'Description'],
+            ['No Issues', '5.0', 'Meets all requirements perfectly'],
+            ['Minor Shortcoming', '4.5 - 4.9', 'Small improvements needed'],
+            ['Shortcoming', '4.0 - 4.4', 'Notable improvements needed'],
+            ['Minor Weakness', '3.0 - 3.9', 'Significant improvements needed'],
+            ['Weakness', '< 3.0', 'Major improvements required']
+        ]
+        
+        legend_table = Table(legend_data, colWidths=[120, 80, 300])
+        legend_styles = [
+            (colors.HexColor('#E8F5E9'), colors.HexColor('#2E7D32')),
+            (colors.HexColor('#FFF3E0'), colors.HexColor('#E65100')),
+            (colors.HexColor('#FFE0B2'), colors.HexColor('#D84315')),
+            (colors.HexColor('#FFEBEE'), colors.HexColor('#C62828')),
+            (colors.HexColor('#FFCDD2'), colors.HexColor('#B71C1C'))
+        ]
+        
+        legend_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5984')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+            ('PADDING', (0, 0), (-1, -1), 6),
+        ]))
+        
+        for i, (bg_color, text_color) in enumerate(legend_styles, 1):
+            legend_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, i), (0, i), bg_color),
+                ('TEXTCOLOR', (0, i), (0, i), text_color),
+            ]))
+        
+        story.append(legend_table)
+        story.append(Spacer(1, 20))
+        return story
+    
     def add_page_number(self, canvas, doc):
         """Add page numbers to the PDF."""
         page_num = canvas.getPageNumber()
@@ -213,8 +256,7 @@ class ReportManager:
         story = []
         story.extend(self.build_first_page(styles))
         story.extend(self.build_executive_summary(styles))
-        #story.extend(build_executive_summary(evaluation, self.styles))
-        #story.extend(build_detailed_analysis(evaluation, self.styles))
+        story.extend(self.build_detailed_analysis(styles))
         #story.extend(build_recommendations(evaluation, self.styles))
         #story.extend(build_supporting_evidence(evaluation, self.styles))
 
