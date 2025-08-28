@@ -46,12 +46,14 @@ class ContentEvaluator:
         return variants[:n_variants]
 
     def evaluate_document(self, scan_name: str, criterion_name: str, document_chunks: List[Document], k_doc: int = 20, k_kb: int = 5):
+        # Use only get_criterion_text; use same for description to avoid missing method errors
         criterion_text = self.criteria_manager.get_criterion_text(scan_name, criterion_name)
+        criterion_description = criterion_text  # safe fallback
+
         print(f"\n=== Evaluating Criterion: {criterion_name} for Scan: {scan_name} ===")
         print(f"Criterion text: {criterion_text}\n")
 
         temp_store = self._create_temp_vector_store(document_chunks)
-
         query_variants = self._generate_query_variants(criterion_text, n_variants=3)
         all_doc_queries = [criterion_text] + query_variants
 
@@ -59,33 +61,35 @@ class ContentEvaluator:
         for i, q in enumerate(all_doc_queries):
             print(f"[{i+1}] {q}\n")
 
-        doc_results = self.vector_manager.multi_query_retrieval(
-            all_doc_queries,
-            vector_store=temp_store,
-            k=k_doc * 4,
-            search_type="similarity"
-        )
-
+        # Document retrieval
+        doc_results = self.vector_manager.multi_query_retrieval(all_doc_queries, vector_store=temp_store, k=100, search_type="similarity")
         seen_texts = set()
-        unique_doc_chunks = []
-        for doc in sorted([d for docs in doc_results for d in docs], key=lambda d: d.metadata.get("page", 0)):
-            if doc.page_content not in seen_texts:
-                seen_texts.add(doc.page_content)
-                unique_doc_chunks.append(doc)
-            if len(unique_doc_chunks) >= k_doc:
-                break
+        scored_chunks = []
+        for docs in doc_results:
+            for doc in docs:
+                if doc.page_content not in seen_texts:
+                    seen_texts.add(doc.page_content)
+                    scored_chunks.append(doc)
 
-        print(f"--- Document Retrieval (Top {len(unique_doc_chunks)} unique) ---")
-        for i, doc in enumerate(unique_doc_chunks):
+        top_chunks = scored_chunks[:k_doc]
+        if len(top_chunks) < k_doc:
+            remaining_needed = k_doc - len(top_chunks)
+            for doc in document_chunks:
+                if doc.page_content not in seen_texts:
+                    top_chunks.append(doc)
+                    seen_texts.add(doc.page_content)
+                    remaining_needed -= 1
+                    if remaining_needed == 0:
+                        break
+
+        top_chunks.sort(key=lambda d: d.metadata.get("page", 0))
+        print(f"--- Document Retrieval (Top {len(top_chunks)} unique) ---")
+        for i, doc in enumerate(top_chunks):
             print(f"[{i+1}] {doc.page_content[:100]}...")
 
-        kb_results = self.vector_manager.multi_query_retrieval(
-            [criterion_text],
-            vector_store=self.vector_manager.vector_store,
-            k=k_kb * 2
-        )
-
-        seen_texts_kb = set(doc.page_content for doc in unique_doc_chunks)
+        # Knowledge base retrieval
+        kb_results = self.vector_manager.multi_query_retrieval([criterion_text], vector_store=self.vector_manager.vector_store, k=k_kb*2)
+        seen_texts_kb = set(doc.page_content for doc in top_chunks)
         unique_kb_chunks = []
         for doc in sorted([d for docs in kb_results for d in docs], key=lambda d: d.metadata.get("page", 0)):
             if doc.page_content not in seen_texts_kb:
@@ -98,10 +102,14 @@ class ContentEvaluator:
         for i, doc in enumerate(unique_kb_chunks):
             print(f"[{i+1}] {doc.page_content[:100]}...")
 
-        combined_chunks = unique_doc_chunks + unique_kb_chunks
+        combined_chunks = top_chunks + unique_kb_chunks
         print(f"\nTotal combined chunks for prompt: {len(combined_chunks)}")
 
-        prompt = self._build_evaluation_prompt(criterion_text, unique_doc_chunks, unique_kb_chunks)
+        # Build prompt in one line for safety
+        prompt = self._build_evaluation_prompt(
+            criterion_name, criterion_description, top_chunks, unique_kb_chunks, scan_name=scan_name, scan_description=criterion_description
+        )
+
         response = self.llm.predict(prompt)
 
         if scan_name not in self.results:
@@ -113,27 +121,50 @@ class ContentEvaluator:
 
         return response
 
-    def _build_evaluation_prompt(self, criterion_text: str, doc_chunks: List[Document], kb_chunks: List[Document]) -> str:
+    def _build_evaluation_prompt(self, criterion_name: str, criterion_description: str, doc_chunks: List[Document], kb_chunks: List[Document], scan_name: str = None, scan_description: str = None) -> str:
         doc_text = "\n\n".join([doc.page_content for doc in doc_chunks])
         kb_text = "\n\n".join([doc.page_content for doc in kb_chunks])
 
         return (
-            "You are an academic evaluator.\n\n"
-            "Instructions:\n"
-            "1. Evaluate ONLY the DOCUMENT chunks (below) against the criterion. "
-            "This is the primary content and must be judged for relevance and clarity.\n"
-            "2. You may use the KNOWLEDGE BASE chunks (below) only as supporting context. "
-            "Do NOT judge them, just use them to enrich your answer.\n\n"
-            f"Criterion:\n{criterion_text}\n\n"
-            "DOCUMENT chunks (primary, to evaluate):\n"
+            "You are an expert academic evaluator and a meticulous detective.\n\n"
+            "### Instructions:\n"
+            "1. Carefully analyze the DOCUMENT chunks for any issues, errors, inconsistencies, or ambiguities.\n"
+            "2. Extract concrete evidence from the DOCUMENT chunks and use KNOWLEDGE BASE chunks only as reference.\n"
+            "3. Assign deductions (negative numbers only, e.g., -0.3) for any shortcomings. Leave array empty if none.\n"
+            "4. Always suggest concrete recommendations based on detected issues.\n"
+            "5. Base score starts at 5.0. Final score = 5.0 + sum of negative deductions (cannot exceed 5.0 or go below 0.0).\n"
+            "6. Output must be valid JSON exactly as specified, including all fields even if empty.\n\n"
+            "### JSON Schema:\n"
+            "[\n"
+            "  {\n"
+            f"    \"scan\": \"{scan_name or ''}\",\n"
+            f"    \"description\": \"{scan_description or ''}\",\n"
+            "    \"criteria\": [\n"
+            "      {\n"
+            f"        \"name\": \"{criterion_name}\",\n"
+            f"        \"description\": \"{criterion_description}\",\n"
+            "        \"score\": 5.0,\n"
+            "        \"shortcomings\": [],\n"
+            "        \"evidence\": [],\n"
+            "        \"recommendations\": []\n"
+            "      }\n"
+            "    ]\n"
+            "  }\n"
+            "]\n\n"
+            "### Criterion to evaluate (check very carefuly if chunks meets the criteria):\n"
+            f"{criterion_name}\n\n"
+            "### DOCUMENT chunks (primary, to evaluate):\n"
             f"{doc_text}\n\n"
-            "KNOWLEDGE BASE chunks (secondary, for reference only):\n"
+            "### KNOWLEDGE BASE chunks (secondary, reference only):\n"
             f"{kb_text}\n\n"
-            "Provide a structured response including:\n"
-            "- Score (0.0-5.5)\n"
-            "- Justification\n"
-            "- Evidence from document chunks\n"
-            "- Recommendations for improvement\n"
+            "### Output requirements:\n"
+            "- Provide only valid JSON.\n"
+            "- Score must equal 5.0 plus the sum of negative deductions in 'shortcomings'.\n"
+            "- Include all fields ('name', 'description', 'score', 'shortcomings', 'evidence', 'recommendations') even if empty.\n"
+            "- Extract concrete evidence from the document chunks to justify deductions.\n"
+            "- Provide recommendations whenever a shortcoming is identified.\n"
+            "- All deductions must be negative numbers.\n"
+            "- The scan field is the same of the criterion name, same as the description, just copy those two.\n"
         )
 
     def evaluate_all(self, document_chunks: List[Document], k_doc: int = 20, k_kb: int = 5):
