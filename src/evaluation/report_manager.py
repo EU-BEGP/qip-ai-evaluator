@@ -2,8 +2,9 @@ import json
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.lib.pagesizes import letter
+from reportlab.lib.pagesizes import letter, landscape
 from io import BytesIO
+from typing import List
 
 class ReportManager:
     def __init__(self, evaluation_data_path: str):
@@ -53,10 +54,55 @@ class ReportManager:
         #with open("output.json", "w", encoding="utf-8") as file:
         #    json.dump(self.evaluation_data, file, indent=2, ensure_ascii=False)
 
-####################################################################################
+    def set_table_style(self, table: Table) -> None:
+        """Apply consistent table styling with support for long content."""
+        table.setStyle(TableStyle([
+            # Header formatting
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5984')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            
+            # Body formatting
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#CCCCCC')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8F8F8')]),
+            ('PADDING', (0, 0), (-1, -1), 6),
+            
+            # Text formatting
+            ('WORDWRAP', (0, 0), (-1, -1), 1), 
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEADING', (0, 0), (-1, -1), 12),
+        ]))
+        
+        # Enable table splitting across pages
+        table._splitLongWords = 1
+        table.repeatRows = 1  # Repeat header row on each page
+        table.keepWithNext = False  # Allow splitting
 
-    def get_custom_styles(self):
-        """Return a stylesheet with custom styles for the evaluation report"""
+    def get_eu_class_style(self, eu_class: str, styles) -> ParagraphStyle:
+        """Get styled paragraph for EU Classification."""
+        colors_map = {
+            'No Issues': ('#E8F5E9', '#2E7D32'),
+            'Minor Shortcoming': ('#FFF3E0', '#E65100'),
+            'Shortcoming': ('#FFE0B2', '#D84315'),
+            'Minor Weakness': ('#FFEBEE', '#C62828'),
+            'Weakness': ('#FFCDD2', '#B71C1C')
+        }
+        bg_color, text_color = colors_map.get(eu_class, ('#FFFFFF', '#000000'))
+        
+        return ParagraphStyle(
+            f'EU_{eu_class}',
+            parent=styles['TableCell'],
+            textColor=colors.HexColor(text_color),
+            backColor=colors.HexColor(bg_color),
+            alignment=1
+        )
+
+    def get_custom_styles(self) -> dict:
+        """Return a stylesheet with custom styles for the evaluation report."""
         styles = getSampleStyleSheet()
 
         custom_styles = {
@@ -65,8 +111,8 @@ class ReportManager:
                 parent=styles["Heading1"],
                 fontSize=24,
                 spaceAfter=30,
-                alignment=1,  # Center
-                textColor=colors.HexColor("#1B365D")  # Dark blue
+                alignment=1,
+                textColor=colors.HexColor("#1B365D")
             ),
             "ReportSection": ParagraphStyle(
                 name="ReportSection",
@@ -74,7 +120,7 @@ class ReportManager:
                 fontSize=16,
                 spaceAfter=20,
                 spaceBefore=20,
-                textColor=colors.HexColor("#2E5984"),  # Professional blue
+                textColor=colors.HexColor("#2E5984"),
                 borderColor=colors.HexColor("#2E5984"),
                 borderWidth=1,
                 borderPadding=10
@@ -85,7 +131,7 @@ class ReportManager:
                 fontSize=14,
                 spaceAfter=12,
                 spaceBefore=12,
-                textColor=colors.HexColor("#444444"),  # Dark gray
+                textColor=colors.HexColor("#444444"),
                 borderColor=colors.HexColor("#CCCCCC"),
                 borderWidth=0.5,
                 borderPadding=5
@@ -96,7 +142,7 @@ class ReportManager:
                 fontSize=10,
                 leading=14,
                 spaceAfter=8,
-                textColor=colors.HexColor("#333333")  # Softer black
+                textColor=colors.HexColor("#333333")
             ),
             "TableHeader": ParagraphStyle(
                 name="TableHeader",
@@ -104,14 +150,14 @@ class ReportManager:
                 fontSize=10,
                 leading=12,
                 textColor=colors.white,
-                alignment=1  # Center
+                alignment=1
             ),
             "TableCell": ParagraphStyle(
                 name="TableCell",
                 parent=styles["Normal"],
                 fontSize=9,
                 leading=12,
-                wordWrap="CJK"  # Allow wrapping
+                wordWrap="CJK"
             )
         }
 
@@ -119,26 +165,45 @@ class ReportManager:
             styles.add(style)
 
         return styles
+    
+    def create_criteria_table(self, criteria_data: List[List], styles: dict) -> Table:
+        """Create a table with proper formatting for criteria data"""
+        # Calculate optimal column widths based on content
+        total_width = 720  # Total available width
+        col_widths = [
+            total_width * 0.10,  # Criterion (10%)
+            total_width * 0.21,  # Description (21%)
+            total_width * 0.06,  # Score (8%)
+            total_width * 0.13,  # EU Classification (13%)
+            total_width * 0.25,  # Shortcomings (24%)
+            total_width * 0.25   # Recommendations (24%)
+        ]
+        
+        table = Table(criteria_data, colWidths=col_widths, repeatRows=1)
+        self.set_table_style(table)
+        return table
 
-    def build_first_page(self, styles):
+    def build_first_page(self, styles) -> List:
+        """Build the first page with report title and table of contents."""
         story = []
 
-        #Title Report
+        # Title Report
         story.append(Paragraph(f"Module Evaluation Report", styles['ReportTitle']))
         story.append(Spacer(1, 30))
 
-        #Table of Contents
+        # Table of Contents
         story.append(Paragraph("Table of Contents", styles['ReportSection']))
+
         toc_data = [
             ["1. Executive Summary"],
             ["2. Detailed Analysis"],
-            ["3. Recommendations"],
-            ["4. Supporting Evidence"]
+            ["3. Supporting Evidence"]
         ]
-        toc_table = Table(toc_data, colWidths=[400, 50])
+
+        toc_table = Table(toc_data, colWidths=[400])
         toc_table.setStyle(TableStyle([
             ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-            ('ALIGN', (-1, 0), (-1, -1), 'LEFT'),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
             ('FONTSIZE', (0, 0), (-1, -1), 11),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
@@ -148,7 +213,8 @@ class ReportManager:
 
         return story
     
-    def build_executive_summary(self, styles):
+    def build_executive_summary(self, styles) -> List:
+        """Build the executive summary section."""
         story = []
         percentage = (self.total_score / self.max_score * 100) if self.max_score > 0 else 0
 
@@ -173,7 +239,7 @@ class ReportManager:
                     f"{scan_percentage:.1f}%"
                 ])
             
-            chart_table = Table(data, colWidths=[200, 70, 70, 80])
+            chart_table = Table(data, colWidths=[210, 80, 80, 90])
             chart_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5984')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -189,11 +255,12 @@ class ReportManager:
         story.append(PageBreak())
         return story
     
-    def build_detailed_analysis(self, styles):
+    def build_detailed_analysis(self, styles) -> List:
+        """Build the detailed analysis section with criteria tables."""
         story = []
         story.append(Paragraph("2. Detailed Analysis", styles['ReportSection']))
 
-        # Add EU Classification Legend
+        # EU Classification Table
         story.append(Paragraph("EU Classification System", styles['ReportSubSection']))
         legend_data = [
             ['Classification', 'Score Range', 'Description'],
@@ -230,21 +297,130 @@ class ReportManager:
         
         story.append(legend_table)
         story.append(Spacer(1, 20))
+
+        # Scan Analysis
+        for scan in self.evaluation_data:
+            story.append(Paragraph(f"Analysis: {scan['scan']}", styles['ReportSubSection']))
+            story.append(Paragraph(
+                f"Description: {scan.get('description') or 'No available...'}",
+                styles['ReportBody']
+            ))
+            story.append(Paragraph(
+                f"Score: {scan['score_scan']}/{scan['max_score_scan']} "
+                f"({(scan['score_scan']/scan['max_score_scan']*100):.1f}%)",
+                styles['ReportBody']
+            ))
+            
+            # Criteria Table
+            if scan.get('criteria'):
+                criteria_data = [['Criterion', 'Description', 'Score', 'EU Classification', 'Shortcomings', 'Recommendations']]
+                for criterion in scan['criteria']:
+                    score = criterion.get('score', 0)
+                    max_score = criterion.get('max_score', 5)
+                    eu_class = criterion.get('eu_classification', 5)
+                    
+                    criterion_text = Paragraph(
+                        criterion.get('name', ''),
+                        ParagraphStyle(
+                            'CriterionStyle',
+                            parent=styles['TableCell'],
+                            wordWrap='CJK',
+                            leading=12
+                        )
+                    )
+                    
+                    description_text = Paragraph(
+                        criterion.get('description', ''),
+                        ParagraphStyle(
+                            'JustificationStyle',
+                            parent=styles['TableCell'],
+                            wordWrap='CJK',
+                            leading=12
+                        )
+                    )
+                    
+                    shortcomings = criterion.get("shortcomings", [])
+                    shortcomings_text_value = "<br/>".join([f"• {item}" for item in shortcomings]) if shortcomings else ""
+
+                    shortcoming_text = Paragraph(
+                        shortcomings_text_value,
+                        ParagraphStyle(
+                            'ShortcomingStyle',
+                            parent=styles['TableCell'],
+                            wordWrap='CJK',
+                            leading=12
+                        )
+                    )
+
+                    recommendations = criterion.get("recommendations", [])
+                    recommendations_text_value = "<br/>".join([f"• {item}" for item in recommendations]) if recommendations else ""
+
+                    recommendations_text = Paragraph(
+                        recommendations_text_value,
+                        ParagraphStyle(
+                            'RecommendationsStyle',
+                            parent=styles['TableCell'],
+                            wordWrap='CJK',
+                            leading=12
+                        )
+                    )
+
+                    criteria_data.append([
+                        criterion_text,
+                        description_text,
+                        f"{score:.1f}/{max_score:.1f}",
+                        Paragraph(eu_class, self.get_eu_class_style(eu_class, styles)),
+                        shortcoming_text,
+                        recommendations_text
+                    ])
+                
+                criteria_table = self.create_criteria_table(criteria_data, styles)
+                story.append(criteria_table)
+                story.append(Spacer(1, 20))
+            
+            story.append(PageBreak())
+
         return story
     
-    def add_page_number(self, canvas, doc):
+    def build_supporting_evidence(self, styles) -> List:
+        """Build the supporting evidence section."""
+        story = []
+        story.append(Paragraph("4. Supporting Evidence", styles['ReportSection']))
+
+        for scan in self.evaluation_data:
+            story.append(Paragraph(f"Evidence for {scan['scan']}", styles['ReportSubSection']))
+            
+            if scan.get('criteria'):
+                for criterion in scan['criteria']:
+                    if criterion.get('evidence'):
+                        story.append(Paragraph(
+                            f"{criterion.get('name', '')} "
+                            f"(Score: {criterion.get('score', 0)}/{criterion.get('max_score', 5)})",
+                            styles['ReportSubSection']
+                        ))
+    
+                        # Evidence points
+                        for ev in criterion['evidence']:
+                            story.append(Paragraph(f"• {ev}", styles['ReportBody']))
+                    
+                    story.append(Spacer(1, 10))
+            story.append(Spacer(1, 20))
+
+        return story
+    
+    def add_page_number(self, canvas, doc) -> None:
         """Add page numbers to the PDF."""
         page_num = canvas.getPageNumber()
         text = f"Page {page_num}"
         canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(540, 25, text)
+        canvas.drawRightString(740, 25, text)
     
-    def generate_pdf_report(self, output_path: str):
+    def generate_pdf_report(self, output_path: str) -> None:
         """Generate a PDF report from the evaluation data."""
         buffer = BytesIO()
         doc = SimpleDocTemplate(
             buffer,
-            pagesize=letter,
+            pagesize=landscape(letter),
             rightMargin=50,
             leftMargin=50,
             topMargin=50,
@@ -257,8 +433,7 @@ class ReportManager:
         story.extend(self.build_first_page(styles))
         story.extend(self.build_executive_summary(styles))
         story.extend(self.build_detailed_analysis(styles))
-        #story.extend(build_recommendations(evaluation, self.styles))
-        #story.extend(build_supporting_evidence(evaluation, self.styles))
+        story.extend(self.build_supporting_evidence(styles))
 
         doc.build(story, onFirstPage=self.add_page_number, onLaterPages=self.add_page_number)
         buffer.seek(0)
@@ -267,7 +442,7 @@ class ReportManager:
             file.write(buffer.getvalue())
     
 # Example usage           
-
+"""
 if __name__ == "__main__":
     input_file = "evaluation.json"
     evaluation_report_path = "evaluation_report.pdf"
@@ -275,3 +450,4 @@ if __name__ == "__main__":
     report_manager = ReportManager(input_file)
     report_manager.fill_aditional_data()
     report_manager.generate_pdf_report(evaluation_report_path)
+"""
