@@ -77,13 +77,9 @@ class VectorStoreManager:
             raise ValueError("Vector store not loaded or built")
         return store.as_retriever(search_type=search_type, **kwargs)
 
-    def multi_query_retrieval(self, queries: List[str], vector_store: Optional[Chroma] = None, k: int = 5) -> List[List[Document]]:
-        """Retrieve relevant documents for multiple queries."""
-        retriever = self.create_retriever(vector_store=vector_store, search_type="mmr", k=k)
-        results = []
-        for q in queries:
-            retrieved_docs = retriever.get_relevant_documents(q)
-            results.append(retrieved_docs)
+    def multi_query_retrieval(self, queries: List[str], vector_store: Optional[Chroma] = None, k: int = 5, search_type: str = "mmr") -> List[List[Document]]:
+        retriever = self.create_retriever(vector_store=vector_store, search_type=search_type, k=k)
+        results = [retriever.get_relevant_documents(q) for q in queries]
         return results
 
 # ===== Interactive mode =====
