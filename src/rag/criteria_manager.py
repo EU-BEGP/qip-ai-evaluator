@@ -17,9 +17,7 @@ class CriteriaManager:
             self.scans = json.load(f)
 
     def get_criterion_text(self, scan_name: str, criterion_name: str) -> str:
-        """
-        Search for a scan and criterion in scans.json and return formatted info as text.
-        """
+        """Devuelve texto formateado completo con métricos y pregunta de revisión"""
         for scan in self.scans:
             if scan.get("scan", "").strip().lower() == scan_name.strip().lower():
                 for c in scan.get("criteria", []):
@@ -35,3 +33,13 @@ class CriteriaManager:
                         return "\n".join(lines)
                 return f"Criterion '{criterion_name}' not found in scan '{scan_name}'."
         return f"Scan '{scan_name}' not found."
+
+    def get_criterion_description(self, scan_name: str, criterion_name: str) -> str:
+        """Devuelve únicamente la descripción del criterio"""
+        for scan in self.scans:
+            if scan.get("scan", "").strip().lower() == scan_name.strip().lower():
+                for c in scan.get("criteria", []):
+                    if c.get("name", "").strip().lower() == criterion_name.strip().lower():
+                        return c.get("description", "")
+                raise ValueError(f"Criterion '{criterion_name}' not found in scan '{scan_name}'.")
+        raise ValueError(f"Scan '{scan_name}' not found.")
