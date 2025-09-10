@@ -78,36 +78,24 @@ class ContentEvaluator:
         doc_text = "\n\n".join(doc.page_content for doc in doc_chunks)
         kb_text = "\n\n".join(doc.page_content for doc in kb_chunks)
         return (
-            "You are an expert academic evaluator.\n"
-            "Evaluate the DOCUMENT against the criterion, STRICTLY following the structured JSON format below and according to the rubric.\n"
-            "DO NOT include reasoning outside the JSON.\n\n"
-            "### Instructions:\n"
-            "- Maximum score: 5.0\n"
-            "- Deduct points for each shortcoming with negative values (e.g., -0.5)\n"
-            "- Evidence MUST NEVER be empty.\n"
-            "- Recommendations MUST ALWAYS be included, even if there are no shortcomings.\n"
-            "- Return ONLY a valid JSON object with THIS SCHEMA:\n\n"
-            "{\n"
-            "  \"shortcomings\": [\n"
-            "    {\"<description for shorcoming>\": -0.5}\n"
-            "  ],\n"
-            "  \"evidence\": [\n"
-            "    \"<explanatory text justifying the score>\"\n"
-            "  ],\n"
-            "  \"recommendations\": [\n"
-            "    \"<fix recommendation, even if no shortcomings>\"\n"
-            "  ]\n"
-            "}\n\n"
-            "### Criterion:\n"
-            f"{criterion_text}\n\n"
-            "### DOCUMENT:\n"
-            f"{doc_text}\n\n"
-            "### KNOWLEDGE BASE (reference only):\n"
-            f"{kb_text}\n"
+            f"You are an expert academic evaluator.\n"
+            f"Evaluate the DOCUMENT against the criterion STRICTLY following this structured format and according to the rubric.\n"
+            f"DO NOT include reasoning outside the structured format.\n\n"
+            f"### Instructions:\n"
+            f"- Maximum score: 5.0\n"
+            f"- Deduct points for each shortcoming with negative values (e.g., -0.5), each shortcoming must be justified in evidence and have suggested fix in recommendation\n"
+            f"- ALWAYS fill with text the Evidence Section\n"
+            f"- ONLY return the following sections:\n"
+            f"Evidence:\n- <Always include AT LEAST 1 evidence, NEVER EMPTY>\n"
+            f"Shortcomings:\n- <description>: -deduction\n"
+            f"Recommendations:\n- <fix recommendation>\n\n"
+            f"### Criterion:\n{criterion_text}\n\n"
+            f"### DOCUMENT:\n{doc_text}\n\n"
+            f"### KNOWLEDGE BASE (reference only):\n{kb_text}\n\n"
         )
 
     def evaluate_document(self, scan_name: str, criterion_name: str, document_chunks: List[Document],
-                          k_doc: int = 15, k_kb: int = 5):
+                          k_doc: int = 10, k_kb: int = 5):
         criterion_description = self.criteria_manager.get_criterion_description(scan_name, criterion_name)
         criterion_text = self.criteria_manager.get_criterion_text(scan_name, criterion_name)
 
@@ -179,7 +167,7 @@ class ContentEvaluator:
                 recommendations_match = re.search(r"Recommendations:\n([\s\S]*)", llm_response)
 
                 shortcomings = [s.strip("- ").strip() for s in shortcomings_match.group(1).split("\n- ")] if shortcomings_match else []
-                evidence = evidence_match.group(1).strip() if evidence_match else ""
+                evidence = [e.strip("- ").strip() for e in evidence_match.group(1).split("\n- ")] if evidence_match else []
                 recommendations = [r.strip("- ").strip() for r in recommendations_match.group(1).split("\n- ")] if recommendations_match else []
 
                 crit_dict = {
