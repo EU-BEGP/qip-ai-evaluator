@@ -2,9 +2,10 @@ import json
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.pagesizes import legal, landscape
 from io import BytesIO
 from typing import List
+from reportlab.platypus import LongTable
 
 class ReportManager:
     def __init__(self, evaluation_data_path: str):
@@ -33,9 +34,11 @@ class ReportManager:
         total_max_score = 0.0
         total_score = 0.0
         for scan in self.evaluation_data:
+            criterion_quantity_scan = 0
             max_score_scan = 0.0
             score_scan = 0.0
-            for criterion in scan.get("criteria", []):  
+            for criterion in scan.get("criteria", []):
+                criterion_quantity_scan += 1
                 score = criterion.get("score")
                 if score is not None:
                     criterion["eu_classification"] = self.get_eu_classification(score)
@@ -45,14 +48,16 @@ class ReportManager:
             
             scan["max_score_scan"] = max_score_scan
             scan["score_scan"] = score_scan
+            scan["criterion_quantity_scan"] = criterion_quantity_scan
+            scan["average_score_scan"] = round(score_scan / criterion_quantity_scan, 1) if criterion_quantity_scan > 0 else 0.0
             total_max_score += max_score_scan
             total_score += score_scan
 
         self.max_score = total_max_score
         self.total_score = total_score
         
-        #with open("output.json", "w", encoding="utf-8") as file:
-        #    json.dump(self.evaluation_data, file, indent=2, ensure_ascii=False)
+        ##with open("output.json", "w", encoding="utf-8") as file:
+        ##    json.dump(self.evaluation_data, file, indent=2, ensure_ascii=False)
 
     def set_table_style(self, table: Table) -> None:
         """Apply consistent table styling with support for long content."""
@@ -169,17 +174,17 @@ class ReportManager:
     def create_criteria_table(self, criteria_data: List[List], styles: dict) -> Table:
         """Create a table with proper formatting for criteria data"""
         # Calculate optimal column widths based on content
-        total_width = 720  # Total available width
+        total_width = 580  # Total available width
         col_widths = [
             total_width * 0.10,  # Criterion (10%)
-            total_width * 0.21,  # Description (21%)
-            total_width * 0.06,  # Score (8%)
-            total_width * 0.13,  # EU Classification (13%)
-            total_width * 0.25,  # Shortcomings (24%)
-            total_width * 0.25   # Recommendations (24%)
+            total_width * 0.17,  # Description (17%)
+            total_width * 0.07,  # Score (7%)
+            total_width * 0.16,  # EU Classification (16%)
+            total_width * 0.25,  # Shortcomings (25%)
+            total_width * 0.25   # Recommendations (25%)
         ]
         
-        table = Table(criteria_data, colWidths=col_widths, repeatRows=1)
+        table = LongTable(criteria_data, colWidths=col_widths, repeatRows=1)
         self.set_table_style(table)
         return table
 
@@ -229,17 +234,30 @@ class ReportManager:
         story.append(Paragraph("Performance Overview", styles['ReportSubSection']))
 
         if self.evaluation_data:
-            data = [['Scan', 'Score', 'Maximum', 'Percentage']]
+            data = [['Scan', 'Criteria count' , 'Score', 'Maximum Score', 'Average Score', 'Percentage']]
             for scan in self.evaluation_data:
                 scan_percentage = (scan['score_scan']/scan['max_score_scan']*100)
                 data.append([
                     scan['scan'],
+                    scan['criterion_quantity_scan'],
                     str(scan['score_scan']),
                     str(scan['max_score_scan']),
+                    f"{scan['average_score_scan']}/5",
                     f"{scan_percentage:.1f}%"
                 ])
             
-            chart_table = Table(data, colWidths=[210, 80, 80, 90])
+            max_table_width = 540 
+            col_widths = [
+                max_table_width * 0.25,  # Scan
+                max_table_width * 0.15,  # Criteria count
+                max_table_width * 0.15,  # Score
+                max_table_width * 0.15,  # Average Score
+                max_table_width * 0.15,  # Maximum Score
+                max_table_width * 0.15   # Percentage
+            ]
+
+            chart_table = Table(data, colWidths=col_widths)
+
             chart_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5984')),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -306,8 +324,10 @@ class ReportManager:
                 styles['ReportBody']
             ))
             story.append(Paragraph(
+                f"Criteria count: {scan['criterion_quantity_scan']}<br/>"
                 f"Score: {scan['score_scan']}/{scan['max_score_scan']} "
-                f"({(scan['score_scan']/scan['max_score_scan']*100):.1f}%)",
+                f"({(scan['score_scan']/scan['max_score_scan']*100):.1f}%)<br/>"
+                f"Average score: {scan['average_score_scan']}/5",
                 styles['ReportBody']
             ))
             
@@ -375,6 +395,7 @@ class ReportManager:
                     ])
                 
                 criteria_table = self.create_criteria_table(criteria_data, styles)
+                criteria_table.splitByRow = True
                 story.append(criteria_table)
                 story.append(Spacer(1, 20))
             
@@ -413,14 +434,14 @@ class ReportManager:
         page_num = canvas.getPageNumber()
         text = f"Page {page_num}"
         canvas.setFont("Helvetica", 9)
-        canvas.drawRightString(740, 25, text)
+        canvas.drawRightString(560, 25, text)
     
     def generate_pdf_report(self, output_path: str) -> None:
         """Generate a PDF report from the evaluation data."""
         buffer = BytesIO()
         doc = SimpleDocTemplate(
             buffer,
-            pagesize=landscape(letter),
+            pagesize=legal,
             rightMargin=50,
             leftMargin=50,
             topMargin=50,
