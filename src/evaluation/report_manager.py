@@ -2,63 +2,70 @@ import json
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
-from reportlab.lib.pagesizes import legal, landscape
+from reportlab.lib.pagesizes import legal
+from reportlab.platypus.tableofcontents import TableOfContents
 from io import BytesIO
 from typing import List
 from reportlab.platypus import LongTable
+import re
+from evaluation_utils import EvaluationUtils 
+
+class HyperlinkedTOC(TableOfContents):
+    """TOC that renders each entry as a clickable link using the key provided."""
+    def wrap(self, availWidth, availHeight):
+        # Builds the paragraphs of each entry using the key (wait for tuple (level,text,page,key))
+        self._entryData = []
+        for entry in getattr(self, "_entries", []):
+            if len(entry) == 4:
+                level, text, pageNum, key = entry
+                link_html = f'<link href="#{key}">{text}</link>'
+                para = Paragraph(f'{link_html}{" " * 4} {pageNum}', self.levelStyles[level])
+            else:
+                level, text, pageNum = entry
+                para = Paragraph(f'{text}{" " * 4} {pageNum}', self.levelStyles[level])
+            self._entryData.append(para)
+        return TableOfContents.wrap(self, availWidth, availHeight)
+
+class MyDocTemplate(SimpleDocTemplate):
+    """Custom SimpleDocTemplate that registers headings for the TOC and creates bookmarks."""
+    def afterFlowable(self, flowable):
+        # Only Paragraphs with a named style are considered
+        from reportlab.platypus import Paragraph as _Paragraph
+        if not isinstance(flowable, _Paragraph):
+            return
+        try:
+            style_name = flowable.style.name
+        except Exception:
+            return
+
+        text = flowable.getPlainText()
+
+        if style_name == 'Section':
+            level = 0
+        elif style_name == 'SubSection':
+            level = 1
+        else:
+            return
+
+        key = re.sub(r'\W+', '_', text)
+
+        try:
+            self.canv.bookmarkPage(key)
+            self.canv.addOutlineEntry(text, key, level=level, closed=False)
+        except Exception:
+            pass
+
+        try:
+            self.notify('TOCEntry', (level, text, self.page, key))
+        except Exception:
+            pass
 
 class ReportManager:
     def __init__(self, evaluation_data_path: str):
         with open(evaluation_data_path, 'r', encoding='utf-8') as file:
             self.evaluation_data = json.load(file)
-        self.max_score = 0.0
-        self.total_score = 0.0
-
-    def get_eu_classification(self, score: float) -> str:
-        """Classify based on the score."""
-        if score == 5.0:
-            return "No Issues"
-        elif 4.5 <= score < 5.0:
-            return "Minor Shortcoming"
-        elif 4.0 <= score < 4.5:
-            return "Shortcoming"
-        elif 3.0 <= score < 4.0:
-            return "Minor Weakness"
-        elif score < 3.0:
-            return "Weakness"
-        else:
-            return "Out of valid range"
+        self.max_score, self.total_score = EvaluationUtils().fill_aditional_data(self.evaluation_data)
         
-    def fill_aditional_data(self) -> None:
-        """Fill the EU classifications, total scores and maximum scores for each evaluation unit."""
-        total_max_score = 0.0
-        total_score = 0.0
-        for scan in self.evaluation_data:
-            criterion_quantity_scan = 0
-            max_score_scan = 0.0
-            score_scan = 0.0
-            for criterion in scan.get("criteria", []):
-                criterion_quantity_scan += 1
-                score = criterion.get("score")
-                if score is not None:
-                    criterion["eu_classification"] = self.get_eu_classification(score)
-                    criterion["max_score"] = 5.0
-                    max_score_scan += 5.0
-                    score_scan += score
-            
-            scan["max_score_scan"] = max_score_scan
-            scan["score_scan"] = score_scan
-            scan["criterion_quantity_scan"] = criterion_quantity_scan
-            scan["average_score_scan"] = round(score_scan / criterion_quantity_scan, 1) if criterion_quantity_scan > 0 else 0.0
-            total_max_score += max_score_scan
-            total_score += score_scan
-
-        self.max_score = total_max_score
-        self.total_score = total_score
-        
-        ##with open("output.json", "w", encoding="utf-8") as file:
-        ##    json.dump(self.evaluation_data, file, indent=2, ensure_ascii=False)
-
     def set_table_style(self, table: Table) -> None:
         """Apply consistent table styling with support for long content."""
         table.setStyle(TableStyle([
@@ -169,6 +176,19 @@ class ReportManager:
         for style_name, style in custom_styles.items():
             styles.add(style)
 
+        subsection = ParagraphStyle(
+            name="SubSection",
+            parent=styles["ReportSubSection"]
+        )
+
+        section = ParagraphStyle(
+            name="Section",
+            parent=styles["ReportSection"]
+        )
+
+        styles.add(subsection)
+        styles.add(section)
+
         return styles
     
     def create_criteria_table(self, criteria_data: List[List], styles: dict) -> Table:
@@ -198,22 +218,13 @@ class ReportManager:
 
         # Table of Contents
         story.append(Paragraph("Table of Contents", styles['ReportSection']))
-
-        toc_data = [
-            ["1. Executive Summary"],
-            ["2. Detailed Analysis"],
-            ["3. Supporting Evidence"]
+        toc = HyperlinkedTOC()
+        toc.levelStyles = [
+            ParagraphStyle('TOCLevel1', fontSize=11, leftIndent=20, firstLineIndent=-20, spaceBefore=6, leading=14),
+            ParagraphStyle('TOCLevel2', fontSize=10, leftIndent=40, firstLineIndent=-20, spaceBefore=2, leading=12),
         ]
-
-        toc_table = Table(toc_data, colWidths=[400])
-        toc_table.setStyle(TableStyle([
-            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 0), (-1, -1), 11),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
-        ]))
-        story.append(toc_table)
+        story.append(Spacer(1, 6))
+        story.append(toc)
         story.append(PageBreak())
 
         return story
@@ -228,10 +239,10 @@ class ReportManager:
         The document achieved an overall score of {percentage:.1f}%.
         """
 
-        story.append(Paragraph("1. Executive Summary", styles['ReportSection']))
+        story.append(Paragraph("1. Executive Summary", styles['Section']))
         story.append(Paragraph(summary_text, styles['ReportBody']))
 
-        story.append(Paragraph("Performance Overview", styles['ReportSubSection']))
+        story.append(Paragraph("Performance Overview", styles['SubSection']))
 
         if self.evaluation_data:
             data = [['Scan', 'Criteria count' , 'Score', 'Maximum Score', 'Average Score', 'Percentage']]
@@ -276,10 +287,10 @@ class ReportManager:
     def build_detailed_analysis(self, styles) -> List:
         """Build the detailed analysis section with criteria tables."""
         story = []
-        story.append(Paragraph("2. Detailed Analysis", styles['ReportSection']))
+        story.append(Paragraph("2. Detailed Analysis", styles['Section']))
 
         # EU Classification Table
-        story.append(Paragraph("EU Classification System", styles['ReportSubSection']))
+        story.append(Paragraph("EU Classification System", styles['SubSection']))
         legend_data = [
             ['Classification', 'Score Range', 'Description'],
             ['No Issues', '5.0', 'Meets all requirements perfectly'],
@@ -318,7 +329,7 @@ class ReportManager:
 
         # Scan Analysis
         for scan in self.evaluation_data:
-            story.append(Paragraph(f"Analysis: {scan['scan']}", styles['ReportSubSection']))
+            story.append(Paragraph(f"Analysis: {scan['scan']}", styles['SubSection']))
             story.append(Paragraph(
                 f"Description: {scan.get('description') or 'No available...'}",
                 styles['ReportBody']
@@ -406,10 +417,10 @@ class ReportManager:
     def build_supporting_evidence(self, styles) -> List:
         """Build the supporting evidence section."""
         story = []
-        story.append(Paragraph("4. Supporting Evidence", styles['ReportSection']))
+        story.append(Paragraph("3. Supporting Evidence", styles['Section']))
 
         for scan in self.evaluation_data:
-            story.append(Paragraph(f"Evidence for {scan['scan']}", styles['ReportSubSection']))
+            story.append(Paragraph(f"Evidence for {scan['scan']}", styles['SubSection']))
             
             if scan.get('criteria'):
                 for criterion in scan['criteria']:
@@ -439,7 +450,7 @@ class ReportManager:
     def generate_pdf_report(self, output_path: str) -> None:
         """Generate a PDF report from the evaluation data."""
         buffer = BytesIO()
-        doc = SimpleDocTemplate(
+        doc = MyDocTemplate(
             buffer,
             pagesize=legal,
             rightMargin=50,
@@ -456,7 +467,7 @@ class ReportManager:
         story.extend(self.build_detailed_analysis(styles))
         story.extend(self.build_supporting_evidence(styles))
 
-        doc.build(story, onFirstPage=self.add_page_number, onLaterPages=self.add_page_number)
+        doc.multiBuild(story, onFirstPage=self.add_page_number, onLaterPages=self.add_page_number)
         buffer.seek(0)
         
         with open(output_path, "wb") as file:
@@ -469,6 +480,5 @@ if __name__ == "__main__":
     evaluation_report_path = "evaluation_report.pdf"
 
     report_manager = ReportManager(input_file)
-    report_manager.fill_aditional_data()
     report_manager.generate_pdf_report(evaluation_report_path)
 """
