@@ -1,4 +1,6 @@
 import re
+import time
+import asyncio
 from pathlib import Path
 import yaml
 from typing import List, Dict
@@ -11,7 +13,7 @@ from .criteria_manager import CriteriaManager
 
 
 class ContentEvaluator:
-    """Evaluates documents against academic criteria using LLMs."""
+    """Evaluates documents against academic criteria using LLMs, preserving original text formatting."""
 
     def __init__(self):
         self.cfg = self._load_config()
@@ -37,7 +39,7 @@ class ContentEvaluator:
         return self.vector_manager.build_vector_store(docs, persist=False)
 
     def _retrieve_top_document_chunks(self, query: str, temp_store: Chroma,
-                                    document_chunks: List[Document], k_doc: int) -> List[Document]:
+                                      document_chunks: List[Document], k_doc: int) -> List[Document]:
         doc_results = self.vector_manager.multi_query_retrieval(
             [query], vector_store=temp_store, k=100, search_type="similarity"
         )
@@ -50,7 +52,6 @@ class ContentEvaluator:
                 doc.metadata.setdefault("chunk_index", len(scored_chunks) + 1)
                 scored_chunks.append(doc)
 
-        # Fill if not enough chunks
         for doc in document_chunks:
             if len(scored_chunks) >= k_doc:
                 break
@@ -74,67 +75,128 @@ class ContentEvaluator:
 
         return unique_kb_chunks
 
-    def _build_evaluation_prompt(self, criterion_text: str, doc_chunks: List[Document], kb_chunks: List[Document]) -> str:
-        doc_text = "\n\n".join(doc.page_content for doc in doc_chunks)
-        kb_text = "\n\n".join(doc.page_content for doc in kb_chunks)
-        return (
-            f"You are an expert academic evaluator.\n"
-            f"Evaluate the DOCUMENT against the criterion STRICTLY following this structured format and according to the rubric.\n"
-            f"DO NOT include reasoning outside the structured format.\n\n"
-            f"### Instructions:\n"
-            f"- Maximum score: 5.0\n"
-            f"- Deduct points for each shortcoming with negative values (e.g., -0.5), each shortcoming must be justified in evidence and have suggested fix in recommendation\n"
-            f"- ALWAYS fill with text the Evidence Section\n"
-            f"- ONLY return the following sections:\n"
-            f"Evidence:\n- <Always include AT LEAST 1 evidence, NEVER EMPTY>\n"
-            f"Shortcomings:\n- <description>: -deduction\n"
-            f"Recommendations:\n- <fix recommendation>\n\n"
-            f"### Criterion:\n{criterion_text}\n\n"
-            f"### DOCUMENT:\n{doc_text}\n\n"
-            f"### KNOWLEDGE BASE (reference only):\n{kb_text}\n\n"
+    def _build_multi_criteria_prompt(self, criteria_batch: List[Dict], all_chunks: Dict[str, Dict]) -> str:
+        sections = []
+        for c in criteria_batch:
+            crit_text = c["text"]
+            doc_chunks = all_chunks[c["key"]]["doc"]
+            kb_chunks = all_chunks[c["key"]]["kb"]
+            doc_text = "\n\n".join(d.page_content for d in doc_chunks)
+            kb_text = "\n\n".join(d.page_content for d in kb_chunks)
+            sections.append(
+                f"### Criterion: {crit_text}\n\n"
+                f"### DOCUMENT:\n{doc_text}\n\n"
+                f"### KNOWLEDGE BASE:\n{kb_text}\n"
+            )
+
+        prompt = (
+            "You are an expert academic evaluator.\n"
+            "Evaluate EACH criterion independently. Use the rubric strictly.\n"
+            "Keep results for each criterion separate.\n\n"
+            "### Instructions:\n"
+            "- The final score must always be between 0.0 and 5.0\n"
+            "- Start from 5.0 and subtract partial points for shortcomings\n"
+            "- Do not use negative numbers in the final score\n"
+            "- Each shortcoming must end with a numeric deduction only (e.g., -2.0, -1.5)\n"
+            "- Each recommendation must match a shortcoming\n"
+            "- Format each criterion exactly as:\n"
+            "Name: <Criterion Name>\n"
+            "Shortcomings: <description>: -<numeric deduction>; ...\n"
+            "Recommendations: <recommendation1>; <recommendation2>\n"
         )
+        return prompt + "\n\n".join(sections)
 
-    def evaluate_document(self, scan_name: str, criterion_name: str, document_chunks: List[Document],
-                          k_doc: int = 10, k_kb: int = 5):
-        criterion_description = self.criteria_manager.get_criterion_description(scan_name, criterion_name)
-        criterion_text = self.criteria_manager.get_criterion_text(scan_name, criterion_name)
+    def _stream_llm_response(self, prompt: str) -> str:
+        start_time = time.time()
+        response_text, token_count = "", 0
+        for chunk in self.llm.stream(prompt):
+            content = chunk if isinstance(chunk, str) else chunk.get("text", str(chunk))
+            print(content, end="", flush=True)
+            response_text += content
+            token_count += len(content.split())
+        elapsed = time.time() - start_time
+        print(f"\n--- LLM finished in {elapsed:.2f}s | Tokens: {token_count} ---\n")
+        return response_text
 
+    async def _evaluate_batch_async(self, scan_name: str, criteria_batch: List[Dict],
+                                    document_chunks: List[Document], k_doc: int, k_kb: int):
         temp_store = self._create_temp_vector_store(document_chunks)
-        top_chunks = self._retrieve_top_document_chunks(criterion_text, temp_store, document_chunks, k_doc)
-        kb_chunks = self._retrieve_knowledge_base_chunks(criterion_text, top_chunks, k_kb)
-        combined_chunks = top_chunks + kb_chunks
+        retrievals = {}
+        for c in criteria_batch:
+            crit_text = c["text"]
+            doc_chunks = self._retrieve_top_document_chunks(crit_text, temp_store, document_chunks, k_doc)
+            kb_chunks = self._retrieve_knowledge_base_chunks(crit_text, doc_chunks, k_kb)
+            retrievals[c["key"]] = {"doc": doc_chunks, "kb": kb_chunks}
 
-        prompt = self._build_evaluation_prompt(criterion_text, top_chunks, kb_chunks)
-        response = self.llm.invoke(prompt)
-        score = self.extract_score(response)
+        prompt = self._build_multi_criteria_prompt(criteria_batch, retrievals)
+        response = self._stream_llm_response(prompt)
 
-        self.results.setdefault(scan_name, {})[criterion_name] = {
-            "description": criterion_description,
-            "llm_response": response,
-            "retrieved_chunks": [doc.page_content for doc in combined_chunks],
-            "score": score
-        }
-        return response
+        for c in criteria_batch:
+            crit_name = c["name"]
+            description = c["description"]
 
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5):
+            crit_resp_match = re.search(
+                rf"Name:\s*{re.escape(crit_name)}([\s\S]*?)(?=Name:|$)", response
+            )
+            crit_resp = crit_resp_match.group(1).strip() if crit_resp_match else response
+
+            # Extraer shortcomings con número real
+            shortcomings_match = re.search(r"Shortcomings:\s*(.+?)\n(?:Recommendations:|$)", crit_resp, re.DOTALL)
+            shortcomings = []
+            total_deduction = 0.0
+            if shortcomings_match:
+                lines = shortcomings_match.group(1).split(";")
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    num_match = re.search(r"-(\d+(?:\.\d+)?)", line)
+                    deduction = float(num_match.group(1)) if num_match else 0.0
+                    total_deduction += deduction
+                    # Mantener texto + número real
+                    shortcomings.append(re.sub(r"-\d+(?:\.\d+)?", f"-{deduction}", line))
+
+            # Extraer recommendations
+            recommendations_match = re.search(r"Recommendations:\s*(.+?)\n(?:Score:|$)", crit_resp, re.DOTALL)
+            recommendations = [r.strip() for r in recommendations_match.group(1).split(";") if r.strip()] if recommendations_match else []
+
+            # Calcular score
+            score = max(0.0, 5.0 - total_deduction)
+
+            self.results.setdefault(scan_name, {})[crit_name] = {
+                "description": description,
+                "llm_response": crit_resp,
+                "retrieved_chunks": [d.page_content for d in retrievals[c["key"]]["doc"] + retrievals[c["key"]]["kb"]],
+                "score": score,
+                "shortcomings": shortcomings,
+                "recommendations": recommendations,
+                "eu_classification": self.eu_classification(score),
+                "max_score": 5.0
+            }
+
+    def evaluate_all_parallel(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, n_criteria: int = 3):
+        tasks = []
         for scan in self.criteria_manager.scans:
             scan_name = scan.get("scan")
-            for criterion in scan.get("criteria", []):
-                criterion_name = criterion.get("name")
-                self.evaluate_document(scan_name, criterion_name, document_chunks, k_doc=k_doc, k_kb=k_kb)
-        return self.results
+            criteria = scan.get("criteria", [])
+            for i in range(0, len(criteria), n_criteria):
+                batch = criteria[i:i+n_criteria]
+                criteria_batch = [
+                    {
+                        "key": f"{scan_name}:{c['name']}",
+                        "name": c["name"],
+                        "text": self.criteria_manager.get_criterion_text(scan_name, c["name"]),
+                        "description": self.criteria_manager.get_criterion_description(scan_name, c["name"])
+                    }
+                    for c in batch
+                ]
+                tasks.append(self._evaluate_batch_async(scan_name, criteria_batch, document_chunks, k_doc, k_kb))
 
-    def extract_score(self, llm_text: str, max_score: float = 5.0) -> float:
-        deductions_match = re.search(r"Shortcomings:\n([\s\S]*?)\n\nEvidence:", llm_text)
-        total_deduction = 0.0
-        if deductions_match:
-            lines = deductions_match.group(1).strip().split("\n- ")
-            for line in lines:
-                match = re.search(r"(-\d*\.?\d+)", line)
-                if match:
-                    total_deduction += float(match.group(1))
-        score = max_score + total_deduction
-        return max(0.0, min(score, max_score))
+        async def run_all():
+            await asyncio.gather(*tasks)
+
+        asyncio.run(run_all())
+        return self.results
 
     def eu_classification(self, score: float) -> str:
         if score >= 4.5: return "Excellent"
@@ -148,71 +210,29 @@ class ContentEvaluator:
         for scan in self.criteria_manager.scans:
             scan_name = scan.get("scan")
             scan_desc = scan.get("description", "")
-            scan_dict = {
-                "scan": scan_name,
-                "description": scan_desc,
-                "criteria": []
-            }
+            # Primer chunk como título
+            first_chunk_text = ""
+            for crit_name in self.results.get(scan_name, {}):
+                chunks = self.results[scan_name][crit_name].get("retrieved_chunks", [])
+                if chunks:
+                    first_chunk_text = chunks[0]
+                    break
+
+            scan_dict = {"title": first_chunk_text, "scan": scan_name, "description": scan_desc, "criteria": []}
 
             for criterion in scan.get("criteria", []):
                 crit_name = criterion.get("name")
                 crit_results = self.results.get(scan_name, {}).get(crit_name, {})
-
-                llm_response = crit_results.get("llm_response", "")
-                score = crit_results.get("score", self.extract_score(llm_response))
-                
-                # Extraer secciones del LLM response
-                shortcomings_match = re.search(r"Shortcomings:\n([\s\S]*?)\n\nEvidence:", llm_response)
-                evidence_match = re.search(r"Evidence:\n([\s\S]*?)\n\nRecommendations:", llm_response)
-                recommendations_match = re.search(r"Recommendations:\n([\s\S]*)", llm_response)
-
-                shortcomings = [s.strip("- ").strip() for s in shortcomings_match.group(1).split("\n- ")] if shortcomings_match else []
-                evidence = [e.strip("- ").strip() for e in evidence_match.group(1).split("\n- ")] if evidence_match else []
-                recommendations = [r.strip("- ").strip() for r in recommendations_match.group(1).split("\n- ")] if recommendations_match else []
-
                 crit_dict = {
                     "name": crit_name,
                     "description": crit_results.get("description", ""),
-                    "score": score,
-                    "eu_classification": self.eu_classification(score),
-                    "shortcomings": shortcomings,
-                    "evidence": evidence,
-                    "recommendations": recommendations
+                    "score": crit_results.get("score", 0.0),
+                    "eu_classification": crit_results.get("eu_classification", "Unknown"),
+                    "shortcomings": crit_results.get("shortcomings", []),
+                    "recommendations": crit_results.get("recommendations", []),
+                    "max_score": crit_results.get("max_score", 5.0)
                 }
                 scan_dict["criteria"].append(crit_dict)
 
             output.append(scan_dict)
         return output
-
-if __name__ == "__main__":
-    evaluator = ContentEvaluator()
-    print("Loading knowledge base vector store...")
-    evaluator.vector_manager.load_vector_store()
-    print("Knowledge base loaded.")
-
-    doc_path = input("Enter document file path to evaluate: ").strip()
-    docs = evaluator.vector_manager.load_documents([doc_path])
-
-    for i, doc in enumerate(docs):
-        doc.metadata["chunk_index"] = i + 1
-
-    evaluator.current_document_chunks = docs
-    print(f"Loaded {len(docs)} chunks for evaluation (temporary vector store)")
-
-    # --- Evaluate ALL scans and criteria ---
-    print("\nEvaluating all scans and criteria...")
-    evaluator.evaluate_all(evaluator.current_document_chunks)
-
-    # --- Generate JSON output ---
-    print("\nGenerating JSON output...")
-    final_json = evaluator.generate_json_output()
-    
-    # Print JSON
-    import json
-    print(json.dumps(final_json, indent=2))
-
-    # Optionally, save JSON to a file
-    output_file = "evaluation_results.json"
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(final_json, f, indent=2)
-    print(f"\nJSON results saved to {output_file}")
