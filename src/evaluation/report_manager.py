@@ -64,7 +64,7 @@ class ReportManager:
     def __init__(self, evaluation_data_path: str):
         with open(evaluation_data_path, 'r', encoding='utf-8') as file:
             self.evaluation_data = json.load(file)
-        self.max_score, self.total_score = EvaluationUtils().fill_aditional_data(self.evaluation_data)
+        EvaluationUtils().fill_aditional_data(self.evaluation_data)
         
     def set_table_style(self, table: Table) -> None:
         """Apply consistent table styling with support for long content."""
@@ -122,6 +122,7 @@ class ReportManager:
                 name="ReportTitle",
                 parent=styles["Heading1"],
                 fontSize=24,
+                leading=30,
                 spaceAfter=30,
                 alignment=1,
                 textColor=colors.HexColor("#1B365D")
@@ -213,7 +214,8 @@ class ReportManager:
         story = []
 
         # Title Report
-        story.append(Paragraph(f"Module Evaluation Report", styles['ReportTitle']))
+        story.append(Paragraph(f"Module Evaluation Report:", styles['ReportTitle']))
+        story.append(Paragraph(f"{self.evaluation_data['title']}", styles['ReportTitle']))
         story.append(Spacer(1, 30))
 
         # Table of Contents
@@ -232,7 +234,7 @@ class ReportManager:
     def build_executive_summary(self, styles) -> List:
         """Build the executive summary section."""
         story = []
-        percentage = (self.total_score / self.max_score * 100) if self.max_score > 0 else 0
+        percentage = (self.evaluation_data["total_score"] / self.evaluation_data["total_max_score"] * 100) if self.evaluation_data["total_max_score"] > 0 else 0
 
         summary_text = f"""
         This comprehensive evaluation report analyzes the unit outline across multiple dimensions.
@@ -244,9 +246,9 @@ class ReportManager:
 
         story.append(Paragraph("Performance Overview", styles['SubSection']))
 
-        if self.evaluation_data:
+        if self.evaluation_data["content"]:
             data = [['Scan', 'Criteria count' , 'Score', 'Maximum Score', 'Average Score', 'Percentage']]
-            for scan in self.evaluation_data:
+            for scan in self.evaluation_data["content"]:
                 scan_percentage = (scan['score_scan']/scan['max_score_scan']*100)
                 data.append([
                     scan['scan'],
@@ -328,7 +330,7 @@ class ReportManager:
         story.append(Spacer(1, 20))
 
         # Scan Analysis
-        for scan in self.evaluation_data:
+        for scan in self.evaluation_data["content"]:
             story.append(Paragraph(f"Analysis: {scan['scan']}", styles['SubSection']))
             story.append(Paragraph(
                 f"Description: {scan.get('description') or 'No available...'}",
@@ -419,7 +421,7 @@ class ReportManager:
         story = []
         story.append(Paragraph("3. Supporting Evidence", styles['Section']))
 
-        for scan in self.evaluation_data:
+        for scan in self.evaluation_data["content"]:
             story.append(Paragraph(f"Evidence for {scan['scan']}", styles['SubSection']))
             
             if scan.get('criteria'):
