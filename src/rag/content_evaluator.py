@@ -21,6 +21,7 @@ class ContentEvaluator:
         self.criteria_manager = CriteriaManager(Path(__file__).parents[1] / "config" / "config.yaml")
         self.llm = self._init_llm()
         self.results: Dict[str, Dict[str, Dict]] = {}
+        self.document_chunks: List[Document] = []  # store document chunks globally
 
     # Load YAML configuration
     def _load_config(self) -> Dict:
@@ -41,9 +42,8 @@ class ContentEvaluator:
     def _create_temp_vector_store(self, docs: List[Document]) -> Chroma:
         return self.vector_manager.build_vector_store(docs, persist=False)
 
-    # Retrieve top document chunks relevant to a query
     def _retrieve_top_document_chunks(self, query: str, temp_store: Chroma,
-                                      document_chunks: List[Document], k_doc: int) -> List[Document]:
+                                    document_chunks: List[Document], k_doc: int) -> List[Document]:
         doc_results = self.vector_manager.multi_query_retrieval(
             [query], vector_store=temp_store, k=100, search_type="similarity"
         )
@@ -56,6 +56,7 @@ class ContentEvaluator:
                 doc.metadata.setdefault("chunk_index", len(scored_chunks) + 1)
                 scored_chunks.append(doc)
 
+        # Fill if not enough chunks
         for doc in document_chunks:
             if len(scored_chunks) >= k_doc:
                 break
@@ -65,18 +66,12 @@ class ContentEvaluator:
 
         return sorted(scored_chunks[:k_doc], key=lambda d: d.metadata["chunk_index"])
 
-    # Retrieve top knowledge base chunks relevant to a query
     def _retrieve_knowledge_base_chunks(self, query: str, top_chunks: List[Document], k_kb: int) -> List[Document]:
-        kb_results = self.vector_manager.multi_query_retrieval(
-            [query], vector_store=self.vector_manager.vector_store, k=k_kb * 2
-        )
+        kb_results = self.vector_manager.multi_query_retrieval([query], vector_store=self.vector_manager.vector_store, k=k_kb*2)
         seen_texts = set(doc.page_content for doc in top_chunks)
         unique_kb_chunks = []
 
-        for doc in sorted(
-            [d for docs in kb_results for d in docs],
-            key=lambda d: d.metadata.get("chunk_index", 0)
-        ):
+        for doc in sorted([d for docs in kb_results for d in docs], key=lambda d: d.metadata.get("chunk_index", 0)):
             if doc.page_content not in seen_texts:
                 seen_texts.add(doc.page_content)
                 unique_kb_chunks.append(doc)
@@ -85,7 +80,7 @@ class ContentEvaluator:
 
         return unique_kb_chunks
 
-    # Build prompt for a single criterion
+    # Build evaluation prompt for a single criterion
     def _build_single_prompt(self, criterion: Dict, chunks: Dict[str, Dict]) -> str:
         doc_text = "\n\n".join(d.page_content for d in chunks["doc"])
         kb_text = "\n\n".join(d.page_content for d in chunks["kb"])
@@ -97,8 +92,9 @@ class ContentEvaluator:
             "1. Carefully read the criterion and the DOCUMENT provided.\n"
             "2. Analyze and search for sections in the DOCUMENT related to the criterion.\n"
             "3. Start from 5.0 and subtract partial points for shortcomings. "
-            "Each shortcoming must end with a numeric deduction only, e.g., -2.0, -1.5 (always use format -x.y, no extra text)\n"
-            "4. Create a RECOMMENDATION for each SHORTCOMING. Only if there are shortcomings, recommendations can be made.\n"
+            "Each shortcoming must end with a numeric deduction only, e.g., -x.y\n"
+            "The sum of deductions for each criterion must not exceed 5.0.\n"
+            "4. Create a RECOMMENDATION for each SHORTCOMING.\n"
             "5. DO NOT OVERTHINK, ANSWER PRECISE AND QUICKLY.\n"
             "6. ONLY return the following format:\n"
             "Name: <Criterion Name>\n"
@@ -109,7 +105,7 @@ class ContentEvaluator:
             f"### KNOWLEDGE BASE:\n{kb_text}\n"
         )
 
-    # Build prompt for multiple criteria
+    # Build evaluation prompt for multiple criteria
     def _build_multi_prompt(self, criteria_batch: List[Dict], all_chunks: Dict[str, Dict]) -> str:
         sections = []
         for c in criteria_batch:
@@ -127,18 +123,19 @@ class ContentEvaluator:
             "### Instructions:\n"
             "1. Carefully read each criterion and the DOCUMENT provided.\n"
             "2. Analyze and search for relevant sections in the DOCUMENT.\n"
-            "3. Start from 5.0 and subtract partial points for shortcomings, the deductions can not bigger than 5.0. "
-            "Each shortcoming must end with a numeric deduction only, e.g., -2.0, -1.5\n"
-            "4. Create a RECOMMENDATION for each SHORTCOMING. Only if there are shortcomings, recommendations can be made.\n"
+            "3. Start from 5.0 and subtract partial points for shortcomings. "
+            "Each shortcoming must end with a numeric deduction only, e.g., -x.y\n"
+            "The sum of deductions for each criterion must not exceed 5.0.\n"
+            "4. Create a RECOMMENDATION for each SHORTCOMING.\n"
             "5. DO NOT OVERTHINK, ANSWER PRECISE AND QUICKLY.\n"
-            "6. For EACH criterion, return ONLY the following format:\n"
+            "6. ONLY return the following format:\n"
             "Name: <Criterion Name>\n"
             "Shortcomings: <shortcoming1> -deduction; ...\n"
             "Recommendations: <recommendation1>; ...\n\n"
             + "\n\n".join(sections)
         )
 
-    # Stream LLM response and print in real-time
+    # Stream LLM response in real-time
     def _stream_llm_response(self, prompt: str) -> str:
         start_time = time.time()
         response_text, token_count = "", 0
@@ -151,9 +148,10 @@ class ContentEvaluator:
         print(f"\n--- LLM finished in {elapsed:.2f}s | Tokens: {token_count} ---\n")
         return response_text
 
-    # Run evaluation against all scans and criteria
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 10,
+    # Run evaluation for all scans and criteria
+    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 30,
                      k_kb: int = 5, n_criteria: int = 3):
+        self.document_chunks = document_chunks  # keep a reference for title extraction
         for scan in self.criteria_manager.scans:
             scan_name = scan.get("scan")
             criteria = scan.get("criteria", [])
@@ -173,6 +171,8 @@ class ContentEvaluator:
                 retrievals = {}
                 for c in criteria_batch:
                     crit_text = c["text"]
+                    print(f"\n=== Evaluating Criterion: {c['name']} ===")
+                    print(f"Criterion Text: {crit_text}\n")
                     doc_chunks = self._retrieve_top_document_chunks(
                         crit_text, temp_store, document_chunks, k_doc
                     )
@@ -188,7 +188,6 @@ class ContentEvaluator:
                 print(prompt)
                 print("--- LLM Response ---")
                 response = self._stream_llm_response(prompt)
-                print(response)
 
                 for c in criteria_batch:
                     crit_name = c["name"]
@@ -243,19 +242,13 @@ class ContentEvaluator:
 
         return self.results
 
-    # Generate JSON output
+    # Generate evaluation JSON output
     def generate_json_output(self) -> Dict:
-        main_title = "Document Evaluation"
-        for scan in self.criteria_manager.scans:
-            scan_name = scan.get("scan")
-            for crit_name in self.results.get(scan_name, {}):
-                chunks = self.results[scan_name][crit_name].get("retrieved_chunks", [])
-                if chunks:
-                    # Take only the first line as title to avoid extra content
-                    main_title = chunks[0].split("\n")[0]
-                    break
-            if main_title != "Document Evaluation":
-                break
+        # Title is always extracted from the first document chunk's first line
+        if self.document_chunks:
+            main_title = self.document_chunks[0].page_content.split("\n")[0]
+        else:
+            main_title = "Document Evaluation"
 
         content_list = []
         for scan in self.criteria_manager.scans:
