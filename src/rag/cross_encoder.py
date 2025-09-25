@@ -63,34 +63,37 @@ class CrossEncoderRAG:
         self.documents = documents
 
     def rank_chunks(self, query: str, top_k: int = 10, batch_size: int = 64) -> List[Tuple[Document, str, float]]:
-        """Rank document chunks using Cross-Encoder."""
+        """Rank document chunks using Cross-Encoder and return top_k ordered by chunk_index."""
         if not self.documents:
             raise ValueError("No document chunks loaded. Use load_and_split_files or set_documents.")
 
+        # Compute relevance scores
         cross_input = [(query, doc.page_content) for doc in self.documents]
         scores = []
-
         for i in range(0, len(cross_input), batch_size):
             batch = cross_input[i:i + batch_size]
             scores.extend(self.cross_encoder.predict(batch))
 
-        ranked = sorted(
-            [(doc, doc.page_content, score) for doc, score in zip(self.documents, scores)],
-            key=lambda x: x[2],
-            reverse=True
-        )
+        # Attach scores
+        scored_docs = [(doc, doc.page_content, score) for doc, score in zip(self.documents, scores)]
 
-        seen = set()
-        final_docs = []
-        for doc, text, score in ranked:
+        # Sort by score descending
+        ranked_by_score = sorted(scored_docs, key=lambda x: x[2], reverse=True)
+
+        # Keep only top_k unique chunk_index
+        seen_indices = set()
+        top_docs = []
+        for doc, text, score in ranked_by_score:
             idx = doc.metadata.get("chunk_index")
-            if idx not in seen:
-                final_docs.append((doc, text, score))
-                seen.add(idx)
-            if len(final_docs) >= top_k:
+            if idx not in seen_indices:
+                top_docs.append((doc, text, score))
+                seen_indices.add(idx)
+            if len(top_docs) >= top_k:
                 break
 
-        return final_docs
+        # Finally, sort top_docs by chunk_index to maintain document order
+        top_docs_sorted = sorted(top_docs, key=lambda x: x[0].metadata["chunk_index"])
+        return top_docs_sorted
 
 
 # EXAMPLE
@@ -114,6 +117,6 @@ if __name__ == "__main__":
         print(f"\n=== Top {top_k} results ===")
         for i, (doc, text, score) in enumerate(results, 1):
             idx = doc.metadata.get("chunk_index")
-            print(f"\n--- Rank {i} | Score: {score:.4f} | chunk_index: {idx} ---")
+            print(f"Score: {score:.4f} | chunk_index: {idx} ---")
             print(text[:500] + ("..." if len(text) > 500 else ""))
             print("-" * 80)
