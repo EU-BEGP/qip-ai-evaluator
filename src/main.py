@@ -62,7 +62,7 @@ def evaluate_document_content(vector_manager):
     evaluator.vector_manager = vector_manager
     evaluator.vector_manager.vector_store  # ensure the store is loaded
 
-    # Load document and create temporary vector store
+    # Load document
     doc_path = input("Enter document file path to evaluate: ").strip()
     docs = evaluator.vector_manager.load_documents([doc_path])
     for i, doc in enumerate(docs):
@@ -71,15 +71,11 @@ def evaluate_document_content(vector_manager):
     evaluator.current_document_chunks = docs
     print(f"Loaded {len(docs)} chunks for evaluation.")
 
-    # Build temporary vector store for this document
-    temp_store = evaluator._create_temp_vector_store(docs)
-
-    # Ask user for batch size
-    n_criteria = int(input("Enter number of criteria to evaluate per batch (default 3): ") or 3)
-
-    # Evaluate all scans and criteria sequentially
-    print(f"\nEvaluating all scans and criteria in batches of {n_criteria}...")
-    evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5, n_criteria=n_criteria)
+    # Initialize CrossEncoderRAG for document retrieval
+    evaluator.set_documents_for_rag(docs)
+    
+    print("\nEvaluating all scans and criteria one at a time...")
+    evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5)
 
     # Generate JSON output
     print("\nGenerating JSON output...")

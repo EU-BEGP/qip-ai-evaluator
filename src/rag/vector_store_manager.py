@@ -4,7 +4,6 @@ from typing import List, Dict, Optional
 from langchain.schema import Document
 from langchain_community.vectorstores import Chroma
 
-# Import your internal modules
 from document_processing.document_loader import DocumentLoaderFactory
 from document_processing.text_splitter import DocumentSplitter
 from document_processing.embeddings_manager import EmbeddingsManager
