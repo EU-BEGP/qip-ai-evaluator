@@ -1,4 +1,3 @@
-import re
 import time
 from pathlib import Path
 import yaml
@@ -42,7 +41,7 @@ class ContentEvaluator:
         self.results: Dict[str, Dict[str, Dict]] = {}
         self.document_chunks: List[Document] = []
         self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
-        self.client = Client()  # Ollama client for evaluations
+        self.client = Client()
 
     def _load_config(self) -> Dict:
         """Load YAML configuration for LLM and processing."""
@@ -84,19 +83,13 @@ class ContentEvaluator:
         doc_text = "\n\n".join(d.page_content for d in doc_chunks)
         kb_text = "\n\n".join(d.page_content for d in kb_chunks)
 
-        # Debug: print chunks exactly as they are
-        print(f"--- DEBUG: Top {len(doc_chunks)} document chunks for criterion '{criterion['name']}' ---")
-        for i, d in enumerate(doc_chunks):
-            print(f"Chunk {i+1}: chunk_index={d.metadata.get('chunk_index','N/A')}, first 200 chars:\n{d.page_content[:200]}\n")
-        print(f"Total document length: {len(doc_text)} chars, total knowledge base length: {len(kb_text)} chars\n")
-
         prompt = (
             "You are an EXPERT AND CONFIDENT academic evaluator.\n"
             "Evaluate the DOCUMENT against the criterion STRICTLY and ONLY using the RUBRIC.\n"
             "Rely on the KNOWLEDGE BASE for additional context if needed.\n"
-            "DO NOT BE TOO HARSH, DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON.\n"
+            "DO NOT BE TOO HARSH, DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON AND DO NOT TAKE STRONG DEDUCTIONS.\n"
             "### Instructions:\n"
-            "1. Carefully read the criterion and the DOCUMENT provided.\n"
+            "1. Carefully read the CRITERION and the DOCUMENT provided. Search the DOCUMENT for the relevant section for the CRITERION.\n"
             "2. You may consult the KNOWLEDGE BASE for additional context, but primary evaluation should focus on DOCUMENT.\n"
             "3. Start from 5.0 and subtract partial points for shortcomings.\n"
             "4. For EACH Shortcoming:\n"
@@ -109,7 +102,7 @@ class ContentEvaluator:
             '  "Name": "<Criterion Name>",\n'
             '  "Shortcomings": ["<shortcoming1>", "<shortcoming2>", ...],\n'
             '  "Recommendations": ["<recommendation1>", "<recommendation2>", ...],\n'
-            '  "Deductions": [-x.y, -a.b, ...],\n'
+            '  "Deductions": [-x.y, -x.y, ...],\n'
             '  "Description": "<summary of the analysis>"\n'
             "}\n\n"
             f"### Criterion: {json.dumps(criterion, indent=2)}\n\n"
@@ -129,7 +122,7 @@ class ContentEvaluator:
             model="qwen3:4b",
             messages=[{"role": "user", "content": prompt}],
             format=CriterionEvaluation.model_json_schema(),
-            options={"temperature": 0},
+            options={"temperature": 0.0},
             think=False,
             stream=False
         )
@@ -137,15 +130,18 @@ class ContentEvaluator:
         elapsed = time.time() - start_time
         full_content = response.message.content
 
+        print(f"---- LLM Response for {criterion['name']} (Elapsed: {elapsed:.2f}s) ----")
+        print(full_content)
+
         try:
             eval_obj = CriterionEvaluation.model_validate_json(full_content)
             return {"evaluation": eval_obj, "elapsed": elapsed}
         except ValidationError as e:
-            print(f"❌ Validation error for {criterion['name']}: {e}")
+            print(f"Validation error for {criterion['name']}: {e}")
             print("Raw response:", full_content)
             return None
 
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 5, k_kb: int = 2):
+    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 2):
         """Evaluate all criteria using CrossEncoderRAG for docs and vector store for KB."""
         self.document_chunks = document_chunks
         benchmark_results = []
@@ -162,22 +158,28 @@ class ContentEvaluator:
                     "description": self.criteria_manager.get_criterion_description(scan_name, c["name"])
                 }
 
+                search_query = f"{crit['name']}: {crit['description']}"
+
                 # Retrieve top document chunks (CrossEncoderRAG) without touching original chunks
-                doc_chunks = self._retrieve_top_document_chunks(crit["text"], k_doc)
+                doc_chunks = self._retrieve_top_document_chunks(search_query, k_doc)
 
                 # Retrieve KB chunks (vector store only)
-                kb_chunks = self._retrieve_knowledge_base_chunks(crit["text"], doc_chunks, k_kb)
+                kb_chunks = self._retrieve_knowledge_base_chunks(search_query, doc_chunks, k_kb)
 
                 # Evaluate criterion
                 res = self._evaluate_criterion(crit, doc_chunks, kb_chunks)
                 if res:
                     eval_obj: CriterionEvaluation = res["evaluation"]
+                    shortcomings_with_deductions = [
+                        f"{s} {d:.1f}" for s, d in zip(eval_obj.Shortcomings, eval_obj.Deductions)
+                    ]
+
                     self.results.setdefault(scan_name, {})[crit["name"]] = {
                         "description": eval_obj.Description,
                         "llm_response": eval_obj.model_dump_json(indent=2),
                         "retrieved_chunks": [d.page_content for d in doc_chunks + kb_chunks],
-                        "score": max(0.0, 5.0 - sum(eval_obj.Deductions)),
-                        "shortcomings": eval_obj.Shortcomings,
+                        "score": max(0.0, 5.0 + sum(eval_obj.Deductions)),
+                        "shortcomings": shortcomings_with_deductions,
                         "recommendations": eval_obj.Recommendations,
                         "max_score": 5.0,
                         "elapsed": res["elapsed"]
