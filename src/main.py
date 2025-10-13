@@ -1,7 +1,6 @@
-import sys
-import os
 from pathlib import Path
 import json
+import yaml
 
 # Import project modules
 from rag.vector_store_manager import VectorStoreManager
@@ -33,7 +32,14 @@ def load_or_extract_criteria():
     """Step 2: Load criteria from JSON or extract from PDF/DOCX."""
     print("\n=== Step 2: Load or Extract Criteria ===")
     input_file = input("Enter criteria file path (.pdf, .docx or .json): ").strip()
-    output_file = Path(__file__).parents[1] / "scans.json"
+    # Resolve output path from config.scans_path to stay consistent with the evaluator
+    cfg_path = Path(__file__).parent / "config" / "config.yaml"
+    with open(cfg_path, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    scans_rel = (cfg.get("scans_path") or "KB/scans.json")
+    # Anchor scans path to the config directory for consistency with the evaluator
+    output_file = (cfg_path.parent / scans_rel).resolve()
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
     if input_file.lower().endswith(".json"):
         # Simply copy/load the JSON

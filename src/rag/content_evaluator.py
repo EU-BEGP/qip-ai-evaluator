@@ -42,6 +42,24 @@ class ContentEvaluator:
         self.document_chunks: List[Document] = []
         self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
         self.client = Client()
+        
+        # Session memory
+        self.session_messages = []
+
+        # LLM settings from config
+        llm_settings = (self.cfg.get("llm_settings") or {}) if isinstance(self.cfg, dict) else {}
+        proc = (llm_settings.get("processing_llm") or {})
+        self.llm_model = proc.get("model")
+        self.llm_temperature = proc.get("temperature")
+        # Context size used by Ollama via options.num_ctx
+        self.llm_num_ctx = proc.get("context_size")
+
+        # Memory config
+        mem_cfg = (self.cfg.get("memory") or {}) if isinstance(self.cfg, dict) else {}
+        self.memory_enabled = bool(mem_cfg.get("enabled", True))
+        self.memory_mode = mem_cfg.get("mode", "llm_digest")  # "llm_digest" | "head_tail"
+        self.memory_head_chars = int(mem_cfg.get("head_chars", 4000))
+        self.memory_tail_chars = int(mem_cfg.get("tail_chars", 1500))
 
     def _load_config(self) -> Dict:
         """Load YAML configuration for LLM and processing."""
@@ -50,14 +68,88 @@ class ContentEvaluator:
             return yaml.safe_load(f)
 
     def set_documents_for_rag(self, documents: List[Document]):
-        """Set documents in memory for CrossEncoderRAG reranking."""
+        """Set documents for CrossEncoderRAG and initialize anchored session memory for this document."""
         self.document_chunks = documents
         self.rag.set_documents(documents)
+
+        # Build anchored memory snapshot once per document (global view)
+        if self.memory_enabled and self.document_chunks:
+            if (self.memory_mode or "").lower() == "llm_digest":
+                snapshot = self._build_document_digest_llm()
+            else:
+                snapshot = self._build_document_memory()
+            self.session_messages = [
+                {"role": "system", "content": "You are a precise academic evaluator. Treat the following snapshot as persistent memory for this document."},
+                {"role": "user", "content": snapshot},
+            ]
+        else:
+            self.session_messages = []
+
+    def _build_document_memory(self) -> str:
+        """Create a compact snapshot (head + optional tail) of the document for persistent memory."""
+        # Title: first non-empty line from the first chunk (generic, criterion-agnostic)
+        title = ""
+        first_text = self.document_chunks[0].page_content if self.document_chunks else ""
+        for line in first_text.splitlines():
+            if line.strip():
+                title = line.strip()
+                break
+
+        full_text = "\n\n".join(d.page_content for d in self.document_chunks)
+        head = full_text[: self.memory_head_chars]
+        tail = ""
+        if self.memory_tail_chars > 0 and len(full_text) > self.memory_head_chars:
+            tail = full_text[-self.memory_tail_chars:]
+
+        parts = [
+            "DOCUMENT SNAPSHOT (persistent)",
+            f"Title: {title or '(unknown)'}",
+            "--BEGIN HEAD--",
+            head,
+            "--END HEAD--",
+        ]
+        if tail:
+            parts += ["--BEGIN TAIL--", tail, "--END TAIL--"]
+        return "\n".join(parts)
+
+    def _build_document_digest_llm(self) -> str:
+        """Create a compact, LLM-generated digest (metadata + outline + key facts) for persistent memory."""
+        full_text = "\n\n".join(d.page_content for d in self.document_chunks)
+
+        digest_model = self.llm_model
+        digest_num_ctx = self.llm_num_ctx
+        digest_temp = self.llm_temperature
+
+        prompt = (
+            "You will create a compact digest of a single academic module (medium length).\n"
+            "Return a concise but comprehensive snapshot under ~1000 tokens with the following sections:\n"
+            "- Metadata: Title (if present), Keywords (if present), Abstract (or a 3-5 sentence substitute).\n"
+            "- Outline: ordered list of major sections/headings.\n"
+            "- Key Facts: 10-15 bullets covering main learning goals, scope, methods, and assessments.\n"
+            "Keep it factual and neutral. Do not invent content.\n\n"
+            "DOCUMENT CONTENT:\n" + full_text
+        )
+
+        options: Dict = {}
+        if isinstance(digest_temp, (int, float)):
+            options["temperature"] = float(digest_temp)
+        if isinstance(digest_num_ctx, int):
+            options["num_ctx"] = digest_num_ctx
+
+        resp = self.client.chat(
+            model=digest_model,
+            messages=[
+                {"role": "system", "content": "You are a precise academic summarizer."},
+                {"role": "user", "content": prompt},
+            ],
+            options=options,
+            stream=False,
+        )
+        return resp.message.content.strip()
 
     def _retrieve_top_document_chunks(self, query: str, k_doc: int) -> List[Document]:
         """Retrieve top-K document chunks using CrossEncoderRAG ranking without modifying them."""
         ranked = self.rag.rank_chunks(query, top_k=k_doc)
-        # Only return the original Document objects, do NOT touch metadata
         return [doc for doc, _, _ in ranked]
 
     def _retrieve_knowledge_base_chunks(self, query: str, top_chunks: List[Document], k_kb: int) -> List[Document]:
@@ -85,9 +177,9 @@ class ContentEvaluator:
 
         prompt = (
             "You are an EXPERT AND CONFIDENT academic evaluator.\n"
+            "DO NOT BE TOO HARSH, DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON AND DO NOT TAKE STRONG DEDUCTIONS.\n"
             "Evaluate the DOCUMENT against the criterion STRICTLY and ONLY using the RUBRIC.\n"
             "Rely on the KNOWLEDGE BASE for additional context if needed.\n"
-            "DO NOT BE TOO HARSH, DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON AND DO NOT TAKE STRONG DEDUCTIONS.\n"
             "### Instructions:\n"
             "1. Carefully read the CRITERION and the DOCUMENT provided. Search the DOCUMENT for the relevant section for the CRITERION.\n"
             "2. You may consult the KNOWLEDGE BASE for additional context, but primary evaluation should focus on DOCUMENT.\n"
@@ -118,11 +210,21 @@ class ContentEvaluator:
         prompt = self._build_prompt(criterion, doc_chunks, kb_chunks)
         start_time = time.time()
 
+        # Compose messages: anchored memory (if any) + per-criterion prompt
+        messages = (self.session_messages or []) + [{"role": "user", "content": prompt}]
+
+        # Build options only with configured values
+        eval_options: Dict = {}
+        if isinstance(self.llm_temperature, (int, float)):
+            eval_options["temperature"] = float(self.llm_temperature)
+        if isinstance(self.llm_num_ctx, int):
+            eval_options["num_ctx"] = self.llm_num_ctx
+
         response = self.client.chat(
-            model="qwen3:4b",
-            messages=[{"role": "user", "content": prompt}],
+            model=self.llm_model,
+            messages=messages,
             format=CriterionEvaluation.model_json_schema(),
-            options={"temperature": 0.0},
+            options=eval_options,
             think=False,
             stream=False
         )
@@ -141,7 +243,7 @@ class ContentEvaluator:
             print("Raw response:", full_content)
             return None
 
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 2):
+    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 7, k_kb: int = 4):
         """Evaluate all criteria using CrossEncoderRAG for docs and vector store for KB."""
         self.document_chunks = document_chunks
         benchmark_results = []
