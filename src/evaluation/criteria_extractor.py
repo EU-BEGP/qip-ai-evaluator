@@ -76,6 +76,7 @@ class CriteriaExtractor:
                     "1": cells[8],
                 }
             }
+
             if criterion["name"]:
                 results.append(criterion)
         return results

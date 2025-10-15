@@ -36,7 +36,9 @@ llm_settings:
     context_size: 8192
 
 debug_mode: false
+
 scans_path: "KB/scans.json"
+criteria_path: "evaluation/FinalCriteria.docx"
 
 memory:
   enabled: true
