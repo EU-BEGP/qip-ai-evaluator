@@ -13,13 +13,22 @@ class VectorStoreManager:
     """Manage vector stores: KB and temporary ones for evaluation."""
 
     def __init__(self, kb_path: Optional[Path] = None):
-        # Load config
-        config_path = Path(__file__).parents[1] / "config" / "config.yaml"
-        with open(config_path, "r") as f:
-            self.cfg = yaml.safe_load(f)
+        # Load config anchored to project root (src/)
+        project_root = Path(__file__).resolve().parents[1]
+        config_path = project_root / "config" / "config.yaml"
+        with open(config_path, "r", encoding="utf-8") as f:
+            self.cfg = yaml.safe_load(f) or {}
 
-        # KB path
-        self.vs_path = kb_path or Path(self.cfg["vector_store"]["path"])
+        # KB path: prefer explicit kb_path, otherwise resolve configured path
+        if kb_path:
+            self.vs_path = Path(kb_path).resolve()
+        else:
+            configured = Path(self.cfg.get("vector_store", {}).get("path", "data/vector_store"))
+            # if configured path is relative, resolve it against project_root
+            if not configured.is_absolute():
+                self.vs_path = (project_root / configured).resolve()
+            else:
+                self.vs_path = configured.resolve()
 
         # Embeddings & splitter
         self.embeddings = EmbeddingsManager().get_langchain_embeddings()

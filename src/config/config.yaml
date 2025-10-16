@@ -37,8 +37,10 @@ llm_settings:
 
 debug_mode: false
 
-scans_path: "KB/scans.json"
-criteria_path: "evaluation/FinalCriteria.docx"
+evaluation:
+  scans_path: "data/scans/scans.json"
+  evaluation_json_path: "data/evaluation/evaluation_results.json"
+  evaluation_report_path: "data/evaluation/evaluation_report.pdf"
 
 memory:
   enabled: true

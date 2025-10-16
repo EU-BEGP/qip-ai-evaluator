@@ -1,112 +1,147 @@
 from pathlib import Path
 import json
 import yaml
+import logging
 
-# Import project modules
 from rag.vector_store_manager import VectorStoreManager
 from evaluation.criteria_extractor import CriteriaExtractor
 from rag.content_evaluator import ContentEvaluator
+from evaluation.report_manager import ReportManager
 
 
-def build_knowledge_base():
+# -------------------- CONFIG UTILITIES --------------------
+
+def load_config():
+    cfg_path = Path(__file__).parent / "config" / "config.yaml"
+    if not cfg_path.exists():
+        logging.warning("Config file not found, using defaults.")
+        return {}
+    with open(cfg_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def resolve_project_path(path_str, default):
+    """Resolve a path relative to project root if not absolute."""
+    project_root = Path(__file__).parent
+    path = Path(path_str or default)
+    return (project_root / path).resolve() if not path.is_absolute() else path.resolve()
+
+
+# -------------------- MAIN PROCESS STEPS --------------------
+
+def build_knowledge_base(kb_paths):
     """Step 1: Build and load the persistent Knowledge Base vector store."""
     print("\n=== Step 1: Build Knowledge Base Vector Store ===")
-    kb_files = input("Enter KB document file paths (comma separated): ").strip()
-    kb_file_paths = [p.strip() for p in kb_files.split(",") if p.strip()]
-
+    logging.info("Building Knowledge Base Vector Store...")
     manager = VectorStoreManager()
-    docs = manager.load_documents(kb_file_paths)
-    print(f"Loaded {len(docs)} chunks for KB.")
 
-    # Build persistent vector store
+    docs = manager.load_documents(kb_paths)
+    logging.info(f"Loaded {len(docs)} document chunks.")
+
     manager.build_vector_store(docs)
-    print("Knowledge base vector store built and persisted.")
-
-    # Load the KB store into memory
     manager.load_vector_store()
-    print("Knowledge base vector store loaded into memory.")
+    logging.info("Knowledge base vector store ready.")
     return manager
 
 
-def load_or_extract_criteria():
+def load_or_extract_criteria(input_file):
     """Step 2: Load criteria from JSON or extract from PDF/DOCX."""
     print("\n=== Step 2: Load or Extract Criteria ===")
-    input_file = input("Enter criteria file path (.pdf, .docx or .json): ").strip()
-    # Resolve output path from config.scans_path to stay consistent with the evaluator
-    cfg_path = Path(__file__).parent / "config" / "config.yaml"
-    with open(cfg_path, "r", encoding="utf-8") as f:
-        cfg = yaml.safe_load(f)
-    scans_rel = (cfg.get("scans_path") or "KB/scans.json")
-    # Anchor scans path to the config directory for consistency with the evaluator
-    output_file = (cfg_path.parent / scans_rel).resolve()
-    output_file.parent.mkdir(parents=True, exist_ok=True)
+    logging.info("Loading or extracting evaluation criteria...")
+    cfg = load_config()
+    scans_path = resolve_project_path(
+        cfg.get("evaluation", {}).get("scans_path"),
+        "KB/scans.json"
+    )
+    scans_path.parent.mkdir(parents=True, exist_ok=True)
 
     if input_file.lower().endswith(".json"):
-        # Simply copy/load the JSON
         with open(input_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-        with open(output_file, "w", encoding="utf-8") as f:
+        with open(scans_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
-        print(f"Criteria JSON loaded and saved to {output_file}")
+        logging.info(f"Criteria JSON loaded and saved to {scans_path}")
     elif input_file.lower().endswith((".pdf", ".docx")):
-        # Use extractor
-        extractor = CriteriaExtractor(input_file, str(output_file))
+        extractor = CriteriaExtractor(input_file, str(scans_path))
         extractor.process_file()
-        print(f"Criteria extracted from {input_file} and saved to {output_file}")
+        logging.info(f"Criteria extracted from {input_file}")
     else:
-        raise ValueError("Unsupported file type. Please provide a .pdf, .docx or .json file.")
+        raise ValueError("Unsupported file type: must be .pdf, .docx or .json")
 
-    return output_file
+    return scans_path
 
 
-def evaluate_document_content(vector_manager):
+def evaluate_document_content(vector_manager, doc_path):
     """Step 3: Evaluate a document against all criteria using the ContentEvaluator."""
     print("\n=== Step 3: Evaluate Document Content ===")
+    logging.info("Evaluating document content...")
     evaluator = ContentEvaluator()
-
-    # Assign KB vector store to evaluator
     evaluator.vector_manager = vector_manager
-    evaluator.vector_manager.vector_store  # ensure the store is loaded
 
-    # Load document
-    doc_path = input("Enter document file path to evaluate: ").strip()
-    docs = evaluator.vector_manager.load_documents([doc_path])
+    docs = vector_manager.load_documents([doc_path])
     for i, doc in enumerate(docs):
         doc.metadata["chunk_index"] = i + 1
 
     evaluator.current_document_chunks = docs
-    print(f"Loaded {len(docs)} chunks for evaluation.")
-
-    # Initialize CrossEncoderRAG for document retrieval
     evaluator.set_documents_for_rag(docs)
-    
-    print("\nEvaluating all scans and criteria one at a time...")
+
     evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5)
+    result_json = evaluator.generate_json_output()
 
-    # Generate JSON output
-    print("\nGenerating JSON output...")
-    final_json = evaluator.generate_json_output()
-    output_file = Path(__file__).parents[1] / "evaluation_results.json"
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(final_json, f, indent=2)
-    print(f"Evaluation results saved to {output_file}")
+    cfg = load_config()
+    output_path = resolve_project_path(
+        cfg.get("evaluation", {}).get("evaluation_json_path"),
+        "data/evaluation/evaluation_results.json"
+    )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(result_json, f, indent=2)
+    logging.info(f"Evaluation results saved to {output_path}")
+    return output_path
 
+
+def generate_pdf_report():
+    """Step 4: Generate PDF report from evaluation JSON using ReportManager."""
+    print("\n=== Step 4: Generate PDF report ===")
+    logging.info("Generating PDF report...")
+    cfg = load_config()
+    eval_json_path = resolve_project_path(
+        cfg.get("evaluation", {}).get("evaluation_json_path"),
+        "data/evaluation/evaluation_results.json"
+    )
+    eval_report_path = resolve_project_path(
+        cfg.get("evaluation", {}).get("evaluation_report_path"),
+        "data/evaluation/evaluation_report.pdf"
+    )
+    eval_report_path.parent.mkdir(parents=True, exist_ok=True)
+
+    report_manager = ReportManager(str(eval_json_path))
+    report_manager.generate_pdf_report(str(eval_report_path))
+    logging.info(f"PDF report generated at {eval_report_path}")
+
+
+# -------------------- MAIN EXECUTION --------------------
 
 def main():
-    """Main workflow: build KB, load/extract criteria, evaluate document, and generate output."""
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     print("=== Unit Evaluator EEDA: Main Workflow ===")
-    print("This script will guide you through the full process.\n")
 
     # Step 1: Build KB
-    vector_manager = build_knowledge_base()
+    kb_input = input("Enter KB document file paths (comma separated): ").strip()
+    kb_paths = [p.strip() for p in kb_input.split(",") if p.strip()]
+    vector_manager = build_knowledge_base(kb_paths)
 
     # Step 2: Load or Extract criteria
-    load_or_extract_criteria()
+    criteria_file = input("Enter criteria file path (.pdf, .docx, or .json): ").strip()
+    load_or_extract_criteria(criteria_file)
 
     # Step 3: Evaluate document
-    evaluate_document_content(vector_manager)
+    doc_to_eval = input("Enter document file path to evaluate: ").strip()
+    evaluate_document_content(vector_manager, doc_to_eval)
 
-    print("\n=== All steps completed! ===")
+    # Step 4: Generate PDF report
+    generate_pdf_report()
+    print("\n=== All steps completed successfully! ===")
 
 
 if __name__ == "__main__":

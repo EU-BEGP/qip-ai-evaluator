@@ -137,13 +137,3 @@ class CriteriaExtractor:
         except Exception as e:
             print(f"Error processing file: {e}")
             raise
-
-# Example usage           
-"""
-if __name__ == "__main__":
-    input_file = "FinalCriteria.docx"
-    output_file = "scans.json"
-
-    criteria_extractor = CriteriaExtractor(input_file, output_file)
-    criteria_extractor.process_file()
-"""

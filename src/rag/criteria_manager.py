@@ -4,15 +4,28 @@ import yaml
 
 class CriteriaManager:
     def __init__(self, config_path: str):
+        # Resolve config and make scans_path relative to project root (src/)
         config_path = Path(config_path).resolve()
         with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-        scans_path = config.get("scans_path")
-        if not scans_path:
-            raise KeyError("scans_path must be defined in config.yaml")
-        scans_path = Path(scans_path).resolve()
+            config = yaml.safe_load(f) or {}
+
+        # support both evaluation.scans_path and top-level scans_path
+        scans_rel = None
+        if isinstance(config, dict):
+            scans_rel = config.get("evaluation", {}).get("scans_path")
+
+        if not scans_rel:
+            raise KeyError("scans_path must be defined in config.yaml (either evaluation.scans_path or scans_path)")
+
+        scans_path = Path(scans_rel)
+        # if relative, resolve against project root (src/)
+        if not scans_path.is_absolute():
+            project_root = Path(__file__).resolve().parents[1]
+            scans_path = (project_root / scans_path).resolve()
+
         if not scans_path.exists():
-            raise FileNotFoundError(f"scans.json not found at {scans_path}")
+            raise FileNotFoundError(f"scans.json not found at {scans_path} (resolved from '{scans_rel}')")
+
         with open(scans_path, "r", encoding="utf-8") as f:
             self.scans = json.load(f)
 

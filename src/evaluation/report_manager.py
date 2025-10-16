@@ -8,7 +8,7 @@ from io import BytesIO
 from typing import List
 from reportlab.platypus import LongTable
 import re
-from evaluation_utils import EvaluationUtils 
+from evaluation.evaluation_utils import EvaluationUtils
 
 class HyperlinkedTOC(TableOfContents):
     """TOC that renders each entry as a clickable link using the key provided."""
@@ -416,32 +416,6 @@ class ReportManager:
 
         return story
     
-    def build_supporting_evidence(self, styles) -> List:
-        """Build the supporting evidence section."""
-        story = []
-        story.append(Paragraph("3. Supporting Evidence", styles['Section']))
-
-        for scan in self.evaluation_data["content"]:
-            story.append(Paragraph(f"Evidence for {scan['scan']}", styles['SubSection']))
-            
-            if scan.get('criteria'):
-                for criterion in scan['criteria']:
-                    if criterion.get('evidence'):
-                        story.append(Paragraph(
-                            f"{criterion.get('name', '')} "
-                            f"(Score: {criterion.get('score', 0)}/{criterion.get('max_score', 5)})",
-                            styles['ReportSubSection']
-                        ))
-    
-                        # Evidence points
-                        for ev in criterion['evidence']:
-                            story.append(Paragraph(f"• {ev}", styles['ReportBody']))
-                    
-                    story.append(Spacer(1, 10))
-            story.append(Spacer(1, 20))
-
-        return story
-    
     def add_page_number(self, canvas, doc) -> None:
         """Add page numbers to the PDF."""
         page_num = canvas.getPageNumber()
@@ -467,20 +441,9 @@ class ReportManager:
         story.extend(self.build_first_page(styles))
         story.extend(self.build_executive_summary(styles))
         story.extend(self.build_detailed_analysis(styles))
-        story.extend(self.build_supporting_evidence(styles))
 
         doc.multiBuild(story, onFirstPage=self.add_page_number, onLaterPages=self.add_page_number)
         buffer.seek(0)
         
         with open(output_path, "wb") as file:
             file.write(buffer.getvalue())
-    
-# Example usage           
-"""
-if __name__ == "__main__":
-    input_file = "evaluation.json"
-    evaluation_report_path = "evaluation_report.pdf"
-
-    report_manager = ReportManager(input_file)
-    report_manager.generate_pdf_report(evaluation_report_path)
-"""
