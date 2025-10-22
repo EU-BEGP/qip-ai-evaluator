@@ -123,9 +123,9 @@ class ContentEvaluator:
         prompt = (
             "You will create a compact digest of a single academic module (medium length).\n"
             "Return a concise but comprehensive snapshot under ~1000 tokens with the following sections:\n"
-            "- Metadata: Title (if present), Keywords (if present), Abstract (or a 3-5 sentence substitute).\n"
+            "- Metadata: Title (if present), Keywords (if present), Abstract (or a 3-5 sentence substitute), Intended Learning Outcomes (Knowledge, Skills and Autonomy and Responsibility).\n"
             "- Outline: ordered list of major sections/headings.\n"
-            "- Key Facts: 10-15 bullets covering main learning goals, scope, methods, and assessments.\n"
+            "- Important Information from the Module: 10-15 bullets covering main learning goals, scope, methods, and assessments.\n"
             "Keep it factual and neutral. Do not invent content.\n\n"
             "DOCUMENT CONTENT:\n" + full_text
         )

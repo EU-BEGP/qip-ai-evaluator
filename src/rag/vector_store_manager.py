@@ -35,7 +35,7 @@ class VectorStoreManager:
         self.splitter = DocumentSplitter()
 
         # Stores
-        self.vector_store: Optional[Chroma] = None  # puede ser KB o temporal
+        self.vector_store: Optional[Chroma] = None
 
     def load_documents(self, file_paths: List[str]) -> List[Document]:
         """Load and split documents."""
