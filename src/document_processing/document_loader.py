@@ -10,9 +10,13 @@ class DocumentLoader(ABC):
         pass
 
 class DocumentLoaderFactory:
-    """Returns loader based on file extension"""
+    """Returns loader based on file extension or special identifiers"""
     @staticmethod
     def create_loader(file_path: str) -> DocumentLoader:
+        if "." not in file_path and file_path.isalnum():
+            from .processors.learnify_processor import LearnifyProcessor
+            return LearnifyProcessor()
+        
         ext = Path(file_path).suffix.lower()
         if ext == ".pdf":
             from .processors.pdf_processor import PDFProcessor
@@ -24,4 +28,4 @@ class DocumentLoaderFactory:
             from .processors.docx_processor import DocxProcessor
             return DocxProcessor()
         else:
-            raise ValueError(f"Unsupported file type: {ext}")
+            raise ValueError(f"Unsupported file type: {ext}. Use course key (e.g., 'OYJPG') for Learnify API.")

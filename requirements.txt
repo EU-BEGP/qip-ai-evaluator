@@ -10,3 +10,7 @@ pdf2docx>=0.5.8
 chromadb>=0.4.4
 ollama>=0.1.0
 numpy<2.0.0
+reportlab
+requests>=2.25.0
+beautifulsoup4>=4.9.0
+urllib3>=1.26.0
