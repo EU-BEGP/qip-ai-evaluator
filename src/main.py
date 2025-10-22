@@ -71,14 +71,27 @@ def load_or_extract_criteria(input_file):
     return scans_path
 
 
-def evaluate_document_content(vector_manager, doc_path):
-    """Step 3: Evaluate a document against all criteria using the ContentEvaluator."""
-    print("\n=== Step 3: Evaluate Document Content ===")
-    logging.info("Evaluating document content...")
+def evaluate_content(vector_manager, content_source):
     evaluator = ContentEvaluator()
     evaluator.vector_manager = vector_manager
 
-    docs = vector_manager.load_documents([doc_path])
+    # Load documents - this now supports both files and Learnify course keys
+    docs = vector_manager.load_documents([content_source])
+    
+    # If it's a Learnify course key, save markdown
+    if "." not in content_source and content_source.isalnum():
+        cfg = load_config()
+        markdown_dir = resolve_project_path(
+            cfg.get("evaluation", {}).get("learnify_markdown_path"),
+            "data"
+        )
+        markdown_dir.mkdir(parents=True, exist_ok=True)
+        
+        markdown_content = "\n\n".join([doc.page_content for doc in docs])
+        markdown_path = markdown_dir / f"learnify_module_{content_source}.md"
+        with open(markdown_path, "w", encoding="utf-8") as f:
+            f.write(markdown_content)
+                
     for i, doc in enumerate(docs):
         doc.metadata["chunk_index"] = i + 1
 
@@ -135,9 +148,9 @@ def main():
     criteria_file = input("Enter criteria file path (.pdf, .docx, or .json): ").strip()
     load_or_extract_criteria(criteria_file)
 
-    # Step 3: Evaluate document
-    doc_to_eval = input("Enter document file path to evaluate: ").strip()
-    evaluate_document_content(vector_manager, doc_to_eval)
+    # Step 3: Evaluate content
+    course_key = input("Enter Learnify course key (e.g., OYJPG): ").strip()
+    evaluate_content(vector_manager, course_key)
 
     # Step 4: Generate PDF report
     generate_pdf_report()

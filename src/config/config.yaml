@@ -1,6 +1,6 @@
 document_processing:
   text_splitter:
-    chunk_size: 200
+    chunk_size: 400
     chunk_overlap: 0
     max_chunks: null
     separators:
@@ -21,14 +21,7 @@ document_processing:
 vector_store:
   path: "data/vector_store"
 
-llm_settings:
-  chat_llm:
-    model: "qwen3:4b"
-    temperature: 0.7
-    context_size: 8192
-    threads: 8
-    timeout: 120
-    
+llm_settings:    
   processing_llm:
     model: "qwen3:4b"
     temperature: 0.0
@@ -41,6 +34,7 @@ evaluation:
   scans_path: "data/scans/scans.json"
   evaluation_json_path: "data/evaluation/evaluation_results.json"
   evaluation_report_path: "data/evaluation/evaluation_report.pdf"
+  learnify_markdown_path: "data/learnify_modules"
 
 memory:
   enabled: true
