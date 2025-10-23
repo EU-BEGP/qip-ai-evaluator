@@ -30,6 +30,9 @@ llm_settings:
 
 debug_mode: false
 
+database:
+  path: "db/evaluation_history.db"
+
 evaluation:
   scans_path: "data/scans/scans.json"
   evaluation_json_path: "data/evaluation/evaluation_results.json"
