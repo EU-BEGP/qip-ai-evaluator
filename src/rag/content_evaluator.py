@@ -33,7 +33,7 @@ class CriterionEvaluation(BaseModel):
 class ContentEvaluator:
     """Evaluates documents against academic criteria using LLMs with structured JSON output."""
 
-    def __init__(self, cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"):
+    def __init__(self, cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2", database_manager=None):
         """Initialize evaluator: load config, vector manager, criteria manager, LLM, and CrossEncoderRAG."""
         self.cfg = self._load_config()
         self.vector_manager = VectorStoreManager()
@@ -42,6 +42,7 @@ class ContentEvaluator:
         self.document_chunks: List[Document] = []
         self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
         self.client = Client()
+        self.database_manager = database_manager
         
         # Session memory
         self.session_messages = []
@@ -170,10 +171,24 @@ class ContentEvaluator:
                 break
         return unique_kb_chunks
 
-    def _build_prompt(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document]) -> str:
-        """Build evaluation prompt with DOCUMENT and KNOWLEDGE BASE sections."""
+    def _build_prompt(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None) -> str:
+        """Build evaluation prompt with DOCUMENT, KNOWLEDGE BASE, and previous evaluation sections."""
         doc_text = "\n\n".join(d.page_content for d in doc_chunks)
         kb_text = "\n\n".join(d.page_content for d in kb_chunks)
+
+        previous_eval_section = ""
+        if self.database_manager and course_key and scan_name and criterion_name:
+            history = self.database_manager.get_criterion_history(course_key, scan_name, criterion_name, limit=1)
+            if history and len(history) > 0:
+                prev = history[0]
+                previous_eval_section = (
+                    f"### PREVIOUS EVALUATION TO '{criterion_name}' IN THE MODULE (most recent):\n"
+                    f"Date: {prev['evaluation_date']}\n"
+                    f"Description: {prev['description']}\n"
+                    f"Score: {prev['score']}\n"
+                    f"Shortcomings: {prev['shortcomings']}\n"
+                    f"Recommendations: {prev['recommendations']}\n\n"
+                )
 
         prompt = (
             "You are an EXPERT AND CONFIDENT academic evaluator.\n"
@@ -200,14 +215,15 @@ class ContentEvaluator:
             f"### Criterion: {json.dumps(criterion, indent=2)}\n\n"
             f"### DOCUMENT:\n{doc_text}\n\n"
             f"### KNOWLEDGE BASE:\n{kb_text}\n\n"
+            f"{previous_eval_section}"
         )
-        print("---- Prompt to LLM ----")
+        print("-------------------- Prompt to LLM --------------------")
         print(prompt)
         return prompt
 
-    def _evaluate_criterion(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document]):
-        """Run evaluation for a single criterion against DOCUMENT and KNOWLEDGE BASE separately."""
-        prompt = self._build_prompt(criterion, doc_chunks, kb_chunks)
+    def _evaluate_criterion(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None):
+        """Run evaluation for a single criterion against DOCUMENT and KNOWLEDGE BASE separately, with previous evaluation if available."""
+        prompt = self._build_prompt(criterion, doc_chunks, kb_chunks, course_key, scan_name, criterion_name)
         start_time = time.time()
 
         # Compose messages: anchored memory (if any) + per-criterion prompt
@@ -243,8 +259,8 @@ class ContentEvaluator:
             print("Raw response:", full_content)
             return None
 
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 7, k_kb: int = 4):
-        """Evaluate all criteria using CrossEncoderRAG for docs and vector store for KB."""
+    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 7, k_kb: int = 4, course_key: str = None):
+        """Evaluate all criteria using CrossEncoderRAG for docs and vector store for KB. Save results to DB at the end."""
         self.document_chunks = document_chunks
         benchmark_results = []
 
@@ -268,8 +284,8 @@ class ContentEvaluator:
                 # Retrieve KB chunks (vector store only)
                 kb_chunks = self._retrieve_knowledge_base_chunks(search_query, doc_chunks, k_kb)
 
-                # Evaluate criterion
-                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks)
+                # Evaluate criterion, passing course_key, scan_name, criterion_name
+                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, scan_name, crit["name"])
                 if res:
                     eval_obj: CriterionEvaluation = res["evaluation"]
                     shortcomings_with_deductions = [
@@ -287,6 +303,12 @@ class ContentEvaluator:
                         "elapsed": res["elapsed"]
                     }
                     benchmark_results.append((crit["name"], res["elapsed"], sum(eval_obj.Deductions)))
+
+        # Save result to the DB
+        if self.database_manager and course_key:
+            results_json = self.generate_json_output()
+            self.database_manager.save_evaluation(course_key, results_json)
+
         return self.results
 
     def generate_json_output(self) -> Dict:

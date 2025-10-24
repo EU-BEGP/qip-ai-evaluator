@@ -6,6 +6,7 @@ import logging
 from rag.vector_store_manager import VectorStoreManager
 from evaluation.criteria_extractor import CriteriaExtractor
 from rag.content_evaluator import ContentEvaluator
+from database.database_manager import DatabaseManager
 from evaluation.report_manager import ReportManager
 
 
@@ -71,13 +72,14 @@ def load_or_extract_criteria(input_file):
     return scans_path
 
 
-def evaluate_content(vector_manager, content_source):
-    evaluator = ContentEvaluator()
+def evaluate_content(vector_manager, content_source, course_key):
+    db_manager = DatabaseManager()
+    evaluator = ContentEvaluator(database_manager=db_manager)
     evaluator.vector_manager = vector_manager
 
     # Load documents - this now supports both files and Learnify course keys
     docs = vector_manager.load_documents([content_source])
-    
+
     # If it's a Learnify course key, save markdown
     if "." not in content_source and content_source.isalnum():
         cfg = load_config()
@@ -86,19 +88,19 @@ def evaluate_content(vector_manager, content_source):
             "data"
         )
         markdown_dir.mkdir(parents=True, exist_ok=True)
-        
+
         markdown_content = "\n\n".join([doc.page_content for doc in docs])
         markdown_path = markdown_dir / f"learnify_module_{content_source}.md"
         with open(markdown_path, "w", encoding="utf-8") as f:
             f.write(markdown_content)
-                
+
     for i, doc in enumerate(docs):
         doc.metadata["chunk_index"] = i + 1
 
     evaluator.current_document_chunks = docs
     evaluator.set_documents_for_rag(docs)
 
-    evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5)
+    evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5, course_key=course_key)
     result_json = evaluator.generate_json_output()
 
     cfg = load_config()
@@ -150,7 +152,7 @@ def main():
 
     # Step 3: Evaluate content
     course_key = input("Enter Learnify course key (e.g., OYJPG): ").strip()
-    evaluate_content(vector_manager, course_key)
+    evaluate_content(vector_manager, course_key, course_key)
 
     # Step 4: Generate PDF report
     generate_pdf_report()
