@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime
 import yaml
-from models import Base, Module, Evaluation, create_database_engine, create_session_factory
+from .models import Base, Module, Evaluation, create_database_engine, create_session_factory
 
 class DatabaseManager:
     
