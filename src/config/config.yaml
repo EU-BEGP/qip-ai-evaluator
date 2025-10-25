@@ -39,6 +39,10 @@ evaluation:
   evaluation_report_path: "data/evaluation/evaluation_report.pdf"
   learnify_markdown_path: "data/learnify_modules"
 
+csv_evaluation:
+  input_excel: "Structured Criteria.xlsx"
+  output_csv: "Criteria.csv"
+
 memory:
   enabled: true
   head_chars: 4000
