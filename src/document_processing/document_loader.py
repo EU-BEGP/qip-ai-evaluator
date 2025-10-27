@@ -17,15 +17,6 @@ class DocumentLoaderFactory:
             from .processors.learnify_processor import LearnifyProcessor
             return LearnifyProcessor()
         
-        ext = Path(file_path).suffix.lower()
-        if ext == ".pdf":
-            from .processors.pdf_processor import PDFProcessor
-            return PDFProcessor()
-        elif ext == ".txt":
-            from .processors.text_processor import TextProcessor
-            return TextProcessor()
-        elif ext == ".docx":
-            from .processors.docx_processor import DocxProcessor
-            return DocxProcessor()
-        else:
-            raise ValueError(f"Unsupported file type: {ext}. Use course key (e.g., 'OYJPG') for Learnify API.")
+        # For any file type, DoclingProcessor is used
+        from .processors.docling_processor import DoclingProcessor
+        return DoclingProcessor()
