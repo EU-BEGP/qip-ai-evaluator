@@ -7,7 +7,6 @@ import pickle
 from document_processing.text_splitter import DocumentSplitter
 from document_processing.document_loader import DocumentLoaderFactory
 
-
 class CrossEncoderRAG:
     """Cross-Encoder retrieval for pre-split document chunks."""
 
@@ -62,20 +61,21 @@ class CrossEncoderRAG:
         """Set pre-split documents manually (memory-only)."""
         self.documents = documents
 
-    def rank_chunks(self, query: str, top_k: int = 10, batch_size: int = 64) -> List[Tuple[Document, str, float]]:
+    def rank_chunks(self, query: str, documents: Optional[List[Document]] = None, top_k: int = 10, batch_size: int = 64) -> List[Tuple[Document, str, float]]:
         """Rank document chunks using Cross-Encoder and return top_k ordered by chunk_index."""
-        if not self.documents:
-            raise ValueError("No document chunks loaded. Use load_and_split_files or set_documents.")
+        docs_to_rank = documents or self.documents
+        if not docs_to_rank:
+            raise ValueError("No document chunks provided or loaded.")
 
         # Compute relevance scores
-        cross_input = [(query, doc.page_content) for doc in self.documents]
+        cross_input = [(query, doc.page_content) for doc in docs_to_rank]
         scores = []
         for i in range(0, len(cross_input), batch_size):
             batch = cross_input[i:i + batch_size]
             scores.extend(self.cross_encoder.predict(batch))
 
         # Attach scores
-        scored_docs = [(doc, doc.page_content, score) for doc, score in zip(self.documents, scores)]
+        scored_docs = [(doc, doc.page_content, score) for doc, score in zip(docs_to_rank, scores)]
 
         # Sort by score descending
         ranked_by_score = sorted(scored_docs, key=lambda x: x[2], reverse=True)
@@ -91,32 +91,5 @@ class CrossEncoderRAG:
             if len(top_docs) >= top_k:
                 break
 
-        # Finally, sort top_docs by chunk_index to maintain document order
-        top_docs_sorted = sorted(top_docs, key=lambda x: x[0].metadata["chunk_index"])
-        return top_docs_sorted
-
-
-# EXAMPLE
-if __name__ == "__main__":
-    rag = CrossEncoderRAG(use_memory_only=True)
-
-    file_paths = ["rag/Test.pdf"]
-    print(f"Loading and splitting {len(file_paths)} document(s) into memory...")
-    rag.load_and_split_files(file_paths)
-    print(f"Loaded {len(rag.documents)} chunks into memory.")
-
-    print("\nEnter 'exit' to quit.")
-    while True:
-        query = input("\nEnter search query: ").strip()
-        if query.lower() == "exit":
-            break
-
-        top_k = 10
-        results = rag.rank_chunks(query, top_k=top_k)
-
-        print(f"\n=== Top {top_k} results ===")
-        for i, (doc, text, score) in enumerate(results, 1):
-            idx = doc.metadata.get("chunk_index")
-            print(f"Score: {score:.4f} | chunk_index: {idx} ---")
-            print(text[:500] + ("..." if len(text) > 500 else ""))
-            print("-" * 80)
+        # Sort top_docs by chunk_index to maintain document order
+        return sorted(top_docs, key=lambda x: x[0].metadata["chunk_index"])

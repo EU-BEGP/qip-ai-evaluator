@@ -4,7 +4,7 @@ import shutil
 import yaml
 import logging
 
-from rag.vector_store_manager import VectorStoreManager
+from retrievers.vector_store_manager import VectorStoreManager
 #from evaluation.criteria_extractor import CriteriaExtractor
 from evaluation.csv_criteria_extractor import CSVCriteriaExtractor
 from rag.content_evaluator import ContentEvaluator

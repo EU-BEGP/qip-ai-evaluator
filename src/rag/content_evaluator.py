@@ -7,9 +7,9 @@ from pydantic import BaseModel, Field, ValidationError, model_validator
 import json
 from ollama import Client
 
-from .vector_store_manager import VectorStoreManager
+from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
-from .cross_encoder import CrossEncoderRAG
+from retrievers.cross_encoder import CrossEncoderRAG
 
 # ---- Pydantic Model ----
 class CriterionEvaluation(BaseModel):
@@ -154,22 +154,27 @@ class ContentEvaluator:
         return [doc for doc, _, _ in ranked]
 
     def _retrieve_knowledge_base_chunks(self, query: str, top_chunks: List[Document], k_kb: int) -> List[Document]:
-        """Retrieve knowledge base chunks using vector store only (no CrossEncoder)."""
-        kb_results = self.vector_manager.multi_query_retrieval(
-            [query],
-            vector_store=self.vector_manager.vector_store,
-            k=k_kb * 2
-        )
+        """
+        Retrieve knowledge base chunks using vector store, then rerank them with CrossEncoderRAG.
+        Ensures no duplicates with document chunks.
+        """
+        # Step 1: Retrieve raw KB candidates (vector similarity only)
+        kb_candidates = self.vector_manager.retrieve(query, k=k_kb * 4)
+        if not kb_candidates:
+            return []
+
+        # Step 2: Filter out chunks already in the document set
         seen_texts = set(doc.page_content for doc in top_chunks)
-        unique_kb_chunks = []
-        for doc in sorted([d for docs in kb_results for d in docs],
-                          key=lambda d: d.metadata.get("chunk_index", 0)):
-            if doc.page_content not in seen_texts:
-                seen_texts.add(doc.page_content)
-                unique_kb_chunks.append(doc)
-            if len(unique_kb_chunks) >= k_kb:
-                break
-        return unique_kb_chunks
+        unique_kb_candidates = [doc for doc in kb_candidates if doc.page_content not in seen_texts]
+
+        if not unique_kb_candidates:
+            return []
+
+        # Step 3: Rerank retrieved chunks using the cross-encoder
+        reranked = self.rag.rank_chunks(query, documents=unique_kb_candidates, top_k=k_kb)
+
+        # Step 4: Return the top reranked chunks only (discard scores)
+        return [doc for doc, _, _ in reranked]
 
     def _build_prompt(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None) -> str:
         """Build evaluation prompt with DOCUMENT, KNOWLEDGE BASE, and previous evaluation sections."""
