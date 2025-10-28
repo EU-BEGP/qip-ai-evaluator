@@ -42,7 +42,7 @@ class CSVCriteriaExtractor:
 
         return data
 
-    def convert(self) -> None:
+    def process_file(self) -> None:
         """Read all sheets from an Excel file, combine them, and export as CSV."""
         sheets = pd.read_excel(self.input_file, sheet_name=None, header=None)
 
@@ -52,10 +52,3 @@ class CSVCriteriaExtractor:
 
         # Export to CSV
         combined.to_csv(self.output_file, index=False, encoding="utf-8-sig")
-        print(f"File '{self.output_file}' generated successfully.")
-
-"""
-if __name__ == "__main__":
-    converter = CSVCriteriaExtractor("Structured Criteria.xlsx", "Criteria.csv")
-    converter.convert()
-"""
