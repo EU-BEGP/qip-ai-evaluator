@@ -8,6 +8,7 @@ from docx.oxml.table import CT_Tbl
 from docx.text.paragraph import Paragraph
 from typing import Dict, List, Optional
 import os
+from evaluation.xlsx_criteria_extractor import XLSXCriteriaExtractor
 
 class CriteriaExtractor:
     def __init__(self, input_path: str, output_path: str):
@@ -131,6 +132,9 @@ class CriteriaExtractor:
             elif self.input_path.lower().endswith('.docx'):
                 self.scans = self.extract_scans_from_docx(self.input_path)
                 self.save_scans_to_json(self.scans, self.output_path)
+            elif self.input_path.lower().endswith('.xlsx'):
+                extractor = XLSXCriteriaExtractor(self.input_path, self.output_path)
+                extractor.process_file()
             else:
                 raise ValueError("Unsupported file format. Please provide a PDF or DOCX file.")
 
