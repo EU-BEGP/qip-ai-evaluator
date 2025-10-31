@@ -39,6 +39,19 @@ class LearnifyProcessor(DocumentLoader):
             for k, v in obj.items():
                 if k == "question" and isinstance(v, str):
                     last_question = self.clean_html(v)
+
+                elif k == "answers" and isinstance(v, list):
+                    # Handle structured answers with correctness info
+                    for ans in v:
+                        if isinstance(ans, dict) and "value" in ans:
+                            val = self.clean_html(ans["value"])
+                            if ans.get("correct", False):
+                                val += " (Correct)"
+                            if last_question:
+                                if not sections or "question" not in sections[-1] or sections[-1]["question"] != last_question:
+                                    sections.append({"question": last_question, "answers": []})
+                                sections[-1]["answers"].append(val)
+
                 elif k in ("value",) and isinstance(v, str):
                     val = self.clean_html(v)
                     # If we're inside a question context, append as an answer
@@ -49,13 +62,16 @@ class LearnifyProcessor(DocumentLoader):
                     # Else treat as subtitle
                     else:
                         last_value = val
+
                 elif k == "body" and isinstance(v, str):
                     text = self.clean_html(v)
                     sections.append({"subtitle": last_value, "text": text})
                     last_value = None
                     last_question = None
+
                 elif isinstance(v, (dict, list)):
                     last_value, last_question = self.extract_texts_recursively(v, sections, last_value, last_question)
+
         elif isinstance(obj, list):
             for item in obj:
                 last_value, last_question = self.extract_texts_recursively(item, sections, last_value, last_question)
@@ -67,8 +83,15 @@ class LearnifyProcessor(DocumentLoader):
         title = contents.get("title", {}).get("en", "")
         scenarios = contents.get("scenario", [])
         sections = []
+        video_links = []
+
         for scenario in scenarios:
             en = scenario.get("en", {})
+
+            # Detect video blocks
+            if en.get("type") == "video" and en.get("path"):
+                video_links.append(en["path"])
+
             self.extract_texts_recursively(en, sections)
 
         # Clean final output
@@ -83,6 +106,7 @@ class LearnifyProcessor(DocumentLoader):
         return {
             "id": contents.get("id"),
             "title": self.clean_text_block(title),
+            "videos": video_links,
             "sections": [s for s in sections if any(s.values())]
         }
 
@@ -119,6 +143,17 @@ class LearnifyProcessor(DocumentLoader):
             root_data = response.json()
             pages = root_data.get("pages", [])
             cleaned = self.get_clean_content(pages)
+            root_title = root_data.get("title")
+            if isinstance(root_title, dict):
+                root_title = root_title.get("en") or next(iter(root_title.values()), "")
+            if isinstance(root_title, str) and root_title.strip():
+                cleaned.insert(0, {
+                    "id": root_data.get("id"),
+                    "title": self.clean_text_block(root_title),
+                    "videos": [],
+                    "sections": []
+                })
+
             logging.info(f"Extracted {len(cleaned)} content pages (pageType=9)")
             return cleaned
         else:
@@ -137,6 +172,11 @@ class LearnifyProcessor(DocumentLoader):
             # Add title
             if page.get("title"):
                 content_parts.append(f"# {page['title']}")
+
+            # Add videos
+            if page.get("videos"):
+                for vid in page["videos"]:
+                    content_parts.append(f"Video: {vid}")
             
             # Process sections
             for sec in page.get("sections", []):
