@@ -38,7 +38,6 @@ evaluation:
   evaluation_json_path: "data/evaluation/evaluation_results.json"
   evaluation_report_path: "data/evaluation/evaluation_report.pdf"
   learnify_markdown_path: "data/learnify_modules"
-  scans_csv_path: "data/scans/scans.csv"
   
 memory:
   enabled: true
