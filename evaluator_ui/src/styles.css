@@ -1,1 +1,100 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+@import 'ngx-toastr/toastr';
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.card {
+    background-color: white;
+}
+
+.column {
+  float: left;
+  width: 50%;
+}
+
+.cols-3 {
+  float: left;
+  width: 33%;
+}
+
+.cols-4 {
+  float: left;
+  width: 25%;
+}
+
+.cols-5 {
+  float: left;
+  width: 20%;
+}
+
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.toast-container .ngx-toastr {
+  box-shadow: 0 0 12px #3b3b3b !important;
+}
+
+.container {
+  padding: 70px;
+}
+
+/* ---------------- Form styles ---------------- */
+form {
+  padding: 30px;
+}
+
+.input-field {
+  width: 100%;
+  margin-bottom: 10px;
+
+}
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
+
+.access-button {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.center {
+  margin: 0 auto;
+  display: block;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.title {
+  text-align: center;
+  font-weight: bold;
+  font-size: 22px !important;
+  padding-top: 30px;
+}
+
+.mat-mdc-form-field-error-wrapper {
+  padding: 0px !important;
+}

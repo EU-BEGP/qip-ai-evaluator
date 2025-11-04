@@ -1,0 +1,15 @@
+.main-container {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  background-color: #5262BC;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.card {
+  width: 40%;
+  max-height: 80vh; 
+  overflow-y: auto; 
+}

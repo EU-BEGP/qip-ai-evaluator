@@ -1,0 +1,9 @@
+{
+  "version": "1.8.0",
+  "api": {
+    "baseUrl": "https://eubbc-digital.upb.edu/booking/api/",
+    "users": {
+      "login": "users/token/"
+    }
+  }
+}
