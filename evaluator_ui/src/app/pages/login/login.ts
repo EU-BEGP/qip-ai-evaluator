@@ -5,7 +5,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card'; 
-import { MatCardTitle } from '@angular/material/card';
 import { Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -19,7 +18,6 @@ import { ToastrService } from 'ngx-toastr';
     CommonModule,
     ReactiveFormsModule,
     MatCardModule,
-    MatCardTitle,
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,

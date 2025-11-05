@@ -1,0 +1,13 @@
+.main-container {
+  width: 100%;
+  min-height: 100%;
+  height: auto;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.search {
+  width: 60%;
+}

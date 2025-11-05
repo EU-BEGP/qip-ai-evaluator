@@ -1,1 +1,19 @@
-<p>evaluation works!</p>
+<div class="main-container">
+  <div class="search mt-2">
+    <h2 class="title">Evaluation</h2>
+
+    <form class="p-2">
+      <mat-form-field class="input-field mb-2">
+        <mat-label>Learnify Code</mat-label>
+        <input matInput [formControl]="codeControl" placeholder="OYJPG" />
+        <mat-icon matSuffix>code</mat-icon>
+
+        <mat-error *ngIf="codeControl.hasError('required') && codeControl.touched">
+          The code field cannot be empty.
+        </mat-error>
+      </mat-form-field>
+
+      <button class="access-button mb-4 mt-2" type="button" mat-raised-button color="primary" (click)="evaluate()"> Evaluate </button>
+    </form>
+  </div>
+</div>
