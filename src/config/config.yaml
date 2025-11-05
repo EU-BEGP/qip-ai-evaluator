@@ -43,3 +43,7 @@ memory:
   enabled: true
   head_chars: 4000
   tail_chars: 1500 
+
+knowledge:
+  kb_dir: "KB"
+  criteria_file: "criteria_files/criteria.json"
