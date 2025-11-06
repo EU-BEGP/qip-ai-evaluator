@@ -6,6 +6,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { EvaluationService } from '../../services/evaluation-service';
 
 @Component({
   selector: 'app-evaluation',
@@ -17,21 +19,40 @@ import { MatCardModule } from '@angular/material/card';
     MatInputModule,
     MatIconModule,
     MatButtonModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',
   standalone: true
 })
 export class EvaluationComponent {
+  data: any = null;
+  isLoading = false;
   codeControl = new FormControl('', Validators.required);
+
+  constructor (
+    private evaluationService: EvaluationService,
+  ) {}
 
   evaluate(): void {
     if (this.codeControl.invalid) {
-      console.warn('El campo no puede estar vacío.');
       this.codeControl.markAsTouched();
       return;
     }
 
-    console.log('Learnify Code:', this.codeControl.value);
+    this.data = null;
+    this.isLoading = true;
+    const courseKey = this.codeControl.value!;
+
+    this.evaluationService.evaluate(courseKey).subscribe({
+      next: (response) => {
+        this.data = response.body;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Evaluation error:', error);
+        this.isLoading = false;
+      }
+    });
   }
 }

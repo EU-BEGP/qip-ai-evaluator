@@ -15,5 +15,54 @@
 
       <button class="access-button mb-4 mt-2" type="button" mat-raised-button color="primary" (click)="evaluate()"> Evaluate </button>
     </form>
+
+    <div *ngIf="isLoading" class="spinner-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Evaluating, please wait...</p>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="data !== null && !isLoading" class="m-5">
+  <h3 class="text-center">{{ data.title }}</h3>
+
+  <div *ngFor="let item of data.content" class="scan-item">
+    <h5>{{ item.scan }}</h5>
+    <p>{{ item.description }}</p>
+    <table class="table table-striped evaluation-table">
+      <colgroup>
+        <col style="width:12%" />
+        <col style="width:30%" />
+        <col style="width:6%" />
+        <col style="width:28%" />
+        <col style="width:28%" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Criterion</th>
+          <th>Description</th>
+          <th class="text-center">Score</th>
+          <th>Shortcomings</th>
+          <th>Recommendations</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let criterion of item.criteria">
+          <td>{{ criterion.name }}</td>
+          <td>{{ criterion.description }}</td>
+          <td class="text-center">{{ criterion.score }}</td>
+          <td>
+            <ul class="ps-3 mb-0">
+              <li *ngFor="let shortcoming of criterion.shortcomings">{{ shortcoming }}</li>
+            </ul>
+          </td>
+          <td>
+            <ul class="ps-3 mb-0">
+              <li *ngFor="let recommendation of criterion.recommendations">{{ recommendation }}</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </div>
