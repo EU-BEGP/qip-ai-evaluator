@@ -3,7 +3,6 @@ from pathlib import Path
 import yaml
 from typing import List, Dict
 from langchain.schema import Document
-from pydantic import BaseModel, Field, ValidationError, model_validator
 import json
 from model_wrapper import get_llm_wrapper
 
@@ -11,10 +10,12 @@ from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
 from retrievers.cross_encoder import CrossEncoderRAG
 
+from evaluator.models import Module, Evaluation
+
 class ContentEvaluator:
     """Evaluates documents against academic criteria using LLMs with structured JSON output."""
 
-    def __init__(self, cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2", database_manager=None):
+    def __init__(self, cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"):
         """Initialize evaluator: load config, vector manager, criteria manager, LLM, and CrossEncoderRAG."""
         self.cfg = self._load_config()
         self.vector_manager = VectorStoreManager()
@@ -22,7 +23,6 @@ class ContentEvaluator:
         self.results: Dict[str, Dict[str, Dict]] = {}
         self.document_chunks: List[Document] = []
         self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
-        self.database_manager = database_manager
         
         # Model wrapper setup
         self.document_snapshot = ""
@@ -157,9 +157,9 @@ class ContentEvaluator:
         kb_text = "\n\n".join(d.page_content for d in kb_chunks)
 
         previous_eval_section = ""
-        if self.database_manager and course_key and scan_name and criterion_name:
-            history = self.database_manager.get_criterion_history(course_key, scan_name, criterion_name, limit=1)
-            if history and len(history) > 0:
+        if Evaluation and course_key and scan_name and criterion_name:
+            history = Evaluation.get_criterion_history(course_key, scan_name, criterion_name, limit=1)
+            if history:
                 prev = history[0]
                 previous_eval_section = (
                     f"### PREVIOUS EVALUATION TO '{criterion_name}' IN THE MODULE (most recent):\n"
@@ -264,10 +264,29 @@ class ContentEvaluator:
                     }
                     benchmark_results.append((crit["name"], res["elapsed"], sum(eval_obj.Deductions)))
 
-        # Save result to the DB
-        if self.database_manager and course_key:
+        if Evaluation and course_key:
             results_json = self.generate_json_output()
-            self.database_manager.save_evaluation(course_key, results_json)
+            
+            try:
+                # 1. Get or create the module (mimics 'save_module')
+                module_obj, _ = Module.objects.get_or_create(course_key=course_key)
+                
+                # 2. Delete old evaluations (mimics 'save_evaluation' logic)
+                old_evaluation_ids = Evaluation.objects.filter(
+                    module=module_obj
+                ).order_by('-evaluation_date').values_list('id', flat=True)[2:]
+                
+                if old_evaluation_ids:
+                    Evaluation.objects.filter(id__in=list(old_evaluation_ids)).delete()
+
+                # 3. Create new evaluation
+                new_evaluation = Evaluation(module=module_obj)
+                new_evaluation.set_results_dict(results_json)
+                new_evaluation.save()
+                
+                print(f"[INFO] Successfully saved new evaluation {new_evaluation.id} for module {course_key}")
+            except Exception as e:
+                print(f"[ERROR] Failed to save evaluation to Django DB: {e}")
 
         return self.results
 

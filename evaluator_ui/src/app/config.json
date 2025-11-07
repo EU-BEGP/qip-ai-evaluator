@@ -7,7 +7,9 @@
       "login": "users/token/"
     },
     "evaluation": {
-      "evaluate": "evaluate/"
+      "evaluate": "evaluate/",
+      "list": "module/{course_key}/evaluations/",
+      "detail": "evaluation/{id}/"
     }
   }
 }

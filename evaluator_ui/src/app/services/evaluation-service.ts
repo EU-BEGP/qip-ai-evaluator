@@ -33,4 +33,28 @@ export class EvaluationService {
       })
     );
   }
+
+  getEvaluationList(courseKey: string): Observable<any[]> {
+    let URL = `${config.api.baseUrl2}${config.api.evaluation.list}`;
+    URL = URL.replace('{course_key}', courseKey);
+
+    return this.http.get<any[]>(URL).pipe(
+      catchError((err) => {
+        this.toastr.error('Could not load history.', 'Error');
+        return throwError(() => err);
+      })
+    );
+  }
+
+  getEvaluationDetail(id: number): Observable<any> {
+    let URL = `${config.api.baseUrl2}${config.api.evaluation.detail}`;
+    URL = URL.replace('{id}', String(id));
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => {
+        this.toastr.error('Could not load evaluation detail.', 'Error');
+        return throwError(() => err);
+      })
+    );
+  }
 }

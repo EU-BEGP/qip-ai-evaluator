@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EvaluationService } from '../../services/evaluation-service';
+import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 
 @Component({
   selector: 'app-evaluation',
@@ -19,7 +20,8 @@ import { EvaluationService } from '../../services/evaluation-service';
     MatInputModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatSelectModule
   ],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',
@@ -29,6 +31,8 @@ export class EvaluationComponent {
   data: any = null;
   isLoading = false;
   codeControl = new FormControl('', Validators.required);
+  evaluationList: any[] = [];
+  isLoadingHistory = false;
 
   constructor (
     private evaluationService: EvaluationService,
@@ -48,9 +52,51 @@ export class EvaluationComponent {
       next: (response) => {
         this.data = response.body;
         this.isLoading = false;
+        this.loadHistory();
       },
       error: (error) => {
         console.error('Evaluation error:', error);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  loadHistory(): void {
+    if (this.codeControl.invalid) {
+      this.codeControl.markAsTouched();
+      return;
+    }
+    
+    this.isLoadingHistory = true;
+    const courseKey = this.codeControl.value!;
+
+    this.evaluationService.getEvaluationList(courseKey).subscribe({
+      next: (list) => {
+        this.evaluationList = list;
+        this.isLoadingHistory = false;
+      },
+      error: (err) => {
+        console.error('Error loading history:', err);
+        this.evaluationList = [];
+        this.isLoadingHistory = false;
+      }
+    });
+  }
+
+  onHistorySelect(event: MatSelectChange): void {
+    const evaluationId = event.value;
+    if (!evaluationId) return;
+
+    this.data = null;
+    this.isLoading = true;
+
+    this.evaluationService.getEvaluationDetail(evaluationId).subscribe({
+      next: (response) => {
+        this.data = response;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading evaluation detail:', error);
         this.isLoading = false;
       }
     });

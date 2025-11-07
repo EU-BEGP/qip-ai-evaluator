@@ -6,7 +6,6 @@ import logging
 from retrievers.vector_store_manager import VectorStoreManager
 from evaluation.criteria_extractor import CriteriaExtractor
 from rag.content_evaluator import ContentEvaluator
-from database.database_manager import DatabaseManager
 from evaluation.report_manager import ReportManager
 
 
@@ -70,8 +69,7 @@ def load_or_extract_criteria(input_file):
 
 
 def evaluate_content(vector_manager, content_source, course_key):
-    db_manager = DatabaseManager()
-    evaluator = ContentEvaluator(database_manager=db_manager)
+    evaluator = ContentEvaluator()
     evaluator.vector_manager = vector_manager
 
     # Load documents - this now supports both files and Learnify course keys

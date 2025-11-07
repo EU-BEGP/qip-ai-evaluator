@@ -1,18 +1,14 @@
-# Src/app/evaluator/views.py
-
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 import logging
 from pathlib import Path
 import sys
 
-# -------------------- FIX PATHS --------------------
-# Add project root so imports work
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
 from rag.content_evaluator import ContentEvaluator
-from database.database_manager import DatabaseManager
 from .init_knowledge import build_knowledge_base_auto, load_criteria_auto
+from .models import Module, Evaluation
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -33,8 +29,7 @@ def evaluate_module(request):
         return Response({"error": "Missing 'course_key' in request body"}, status=400)
 
     # Create evaluator
-    db_manager = DatabaseManager()
-    evaluator = ContentEvaluator(database_manager=db_manager)
+    evaluator = ContentEvaluator()
     evaluator.vector_manager = vector_manager
 
     # Load module content
@@ -50,3 +45,48 @@ def evaluate_module(request):
     result_json = evaluator.generate_json_output()
 
     return Response(result_json)
+
+@api_view(['GET'])
+def list_evaluations(request, course_key):
+    """
+    Endpoint to list the last 3 evaluations for a module.
+    Returns a light-weight list (ID and date) for a dropdown.
+    """
+    try:
+        # 1. Ensure the module exists
+        Module.objects.get(pk=course_key)
+    except Module.DoesNotExist:
+        return Response({"error": "Module not found"}, status=404)
+
+    # 2. Get the last 3 evaluations for this module, ordered by date
+    evaluations = Evaluation.objects.filter(
+        module__course_key=course_key
+    ).order_by('-evaluation_date')[:3]
+
+    # 3. Prepare the light-weight data for the frontend
+    data = [
+        {
+            "id": ev.id,  # The unique ID of the evaluation
+            "date": ev.formatted_date # Using your @property from the model
+        }
+        for ev in evaluations
+    ]
+
+    return Response(data)
+
+@api_view(['GET'])
+def get_evaluation_detail(request, pk):
+    """
+    Endpoint to get the full JSON results for a specific
+    evaluation by its unique ID (pk).
+    """
+    try:
+        # 1. Find the evaluation by its primary key (id)
+        evaluation = Evaluation.objects.get(pk=pk)
+    except Evaluation.DoesNotExist:
+        return Response({"error": "Evaluation not found"}, status=404)
+
+    # 2. Use your model's method to get the JSON as a dict
+    results_dict = evaluation.get_results_dict()
+
+    return Response(results_dict)
