@@ -5,30 +5,11 @@ from typing import List, Dict
 from langchain.schema import Document
 from pydantic import BaseModel, Field, ValidationError, model_validator
 import json
-from ollama import Client
+from model_wrapper import get_llm_wrapper
 
 from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
 from retrievers.cross_encoder import CrossEncoderRAG
-
-# ---- Pydantic Model ----
-class CriterionEvaluation(BaseModel):
-    """Model for structured criterion evaluation output."""
-    Name: str
-    Shortcomings: list[str] = Field(..., description="List of shortcomings found, each ending with deduction -x.y")
-    Recommendations: list[str] = Field(..., description="List of recommendations, one per shortcoming")
-    Deductions: list[float] = Field(..., description="Numeric deductions matching each shortcoming")
-    Description: str = Field(..., description="Summary of the overall analysis")
-
-    @model_validator(mode="after")
-    def check_lengths(cls, values):
-        """Ensure Shortcomings, Recommendations, and Deductions lists have equal lengths."""
-        s, r, d = values.Shortcomings, values.Recommendations, values.Deductions
-        if not (len(s) == len(r) == len(d)):
-            raise ValueError(
-                f"Mismatch in lengths: Shortcomings={len(s)}, Recommendations={len(r)}, Deductions={len(d)}"
-            )
-        return values
 
 class ContentEvaluator:
     """Evaluates documents against academic criteria using LLMs with structured JSON output."""
@@ -41,26 +22,11 @@ class ContentEvaluator:
         self.results: Dict[str, Dict[str, Dict]] = {}
         self.document_chunks: List[Document] = []
         self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
-        self.client = Client()
         self.database_manager = database_manager
         
-        # Session memory
-        self.session_messages = []
-
-        # LLM settings from config
-        llm_settings = (self.cfg.get("llm_settings") or {}) if isinstance(self.cfg, dict) else {}
-        proc = (llm_settings.get("processing_llm") or {})
-        self.llm_model = proc.get("model")
-        self.llm_temperature = proc.get("temperature")
-        # Context size used by Ollama via options.num_ctx
-        self.llm_num_ctx = proc.get("context_size")
-
-        # Memory config
-        mem_cfg = (self.cfg.get("memory") or {}) if isinstance(self.cfg, dict) else {}
-        self.memory_enabled = bool(mem_cfg.get("enabled", True))
-        self.memory_mode = mem_cfg.get("mode", "llm_digest")  # "llm_digest" | "head_tail"
-        self.memory_head_chars = int(mem_cfg.get("head_chars", 4000))
-        self.memory_tail_chars = int(mem_cfg.get("tail_chars", 1500))
+        # Model wrapper setup
+        self.document_snapshot = ""
+        self.llm = get_llm_wrapper(self.cfg)
 
     def _load_config(self) -> Dict:
         """Load YAML configuration for LLM and processing."""
@@ -74,79 +40,40 @@ class ContentEvaluator:
         self.rag.set_documents(documents)
 
         # Build anchored memory snapshot once per document (global view)
-        if self.memory_enabled and self.document_chunks:
-            if (self.memory_mode or "").lower() == "llm_digest":
-                snapshot = self._build_document_digest_llm()
-            else:
-                snapshot = self._build_document_memory()
-            self.session_messages = [
-                {"role": "system", "content": "You are a precise academic evaluator. Treat the following snapshot as persistent memory for this document."},
-                {"role": "user", "content": snapshot},
-            ]
-        else:
-            self.session_messages = []
-
-    def _build_document_memory(self) -> str:
-        """Create a compact snapshot (head + optional tail) of the document for persistent memory."""
-        # Title: first non-empty line from the first chunk (generic, criterion-agnostic)
-        title = ""
-        first_text = self.document_chunks[0].page_content if self.document_chunks else ""
-        for line in first_text.splitlines():
-            if line.strip():
-                title = line.strip()
-                break
-
-        full_text = "\n\n".join(d.page_content for d in self.document_chunks)
-        head = full_text[: self.memory_head_chars]
-        tail = ""
-        if self.memory_tail_chars > 0 and len(full_text) > self.memory_head_chars:
-            tail = full_text[-self.memory_tail_chars:]
-
-        parts = [
-            "DOCUMENT SNAPSHOT (persistent)",
-            f"Title: {title or '(unknown)'}",
-            "--BEGIN HEAD--",
-            head,
-            "--END HEAD--",
-        ]
-        if tail:
-            parts += ["--BEGIN TAIL--", tail, "--END TAIL--"]
-        return "\n".join(parts)
+        snapshot = self._build_document_digest_llm()
+        self.document_snapshot = snapshot
 
     def _build_document_digest_llm(self) -> str:
-        """Create a compact, LLM-generated digest (metadata + outline + key facts) for persistent memory."""
+        """Create a compact, LLM-generated digest validated with DocumentSnapshot."""
         full_text = "\n\n".join(d.page_content for d in self.document_chunks)
 
-        digest_model = self.llm_model
-        digest_num_ctx = self.llm_num_ctx
-        digest_temp = self.llm_temperature
-
         prompt = (
-            "You will create a compact digest of a single academic module (medium length).\n"
-            "Return a concise but comprehensive snapshot under ~1000 tokens with the following sections:\n"
-            "- Metadata: Title (if present), Keywords (if present), Abstract (or a 3-5 sentence substitute), Intended Learning Outcomes (Knowledge, Skills and Autonomy and Responsibility).\n"
-            "- Outline: ordered list of major sections/headings.\n"
-            "- Important Information from the Module: 10-15 bullets covering main learning goals, scope, methods, and assessments.\n"
-            "Keep it factual and neutral. Do not invent content.\n\n"
-            "DOCUMENT CONTENT:\n" + full_text
+            "You are an **academic text parser** — not a summarizer, writer, or analyst.\n"
+            "Your ONLY task is to EXTRACT text segments from the DOCUMENT CONTENT below and place them into a JSON object that follows the DocumentSnapshot schema.\n\n"
+            "### HARD RULES:\n"
+            "1. Return **ONLY JSON** — no reasoning, no explanation, no <think> blocks.\n"
+            "2. **Copy text EXACTLY as it appears** in the document. Do not infer, interpret, or guess missing parts.\n"
+            "3. If something does not appear in the document, leave it empty (\"\" or []).\n"
+            "4. The 'Outline' field must list all main titles and subtitles IN THE DOCUMENT, word-for-word, in order.\n"
+            "5. The 'ImportantInformation' field may summarize briefly, but must be derived only from explicit content — not background knowledge.\n"
+            "6. Never add, reformulate, or assume information. Do not include anything that isn’t literally in the document.\n"
+            "7. Output must be syntactically valid JSON only.\n\n"
+            "### DOCUMENT CONTENT:\n" + full_text + "\n\n"
+            "### REQUIRED OUTPUT FORMAT:\n"
+            "{\n"
+            '  "Title": "...",\n'
+            '  "Keywords": ["..."],\n'
+            '  "Abstract": "...",\n'
+            '  "IntendedLearningOutcomesKnowledge": "...",\n'
+            '  "IntendedLearningOutcomesSkills": "...",\n'
+            '  "IntendedLearningOutcomesResponsibility": "...",\n'
+            '  "Outline": ["Title 1", "Subtitle 1.1", "Subtitle 1.2", "..."],\n'
+            '  "ImportantInformation": ["Point 1", "Point 2", "...", "Point 20"]\n'
+            "}\n\n"
+            "DO NOT ADD ANY TEXT THAT IS NOT DIRECTLY FOUND IN THE DOCUMENT CONTENT ABOVE."
         )
-
-        options: Dict = {}
-        if isinstance(digest_temp, (int, float)):
-            options["temperature"] = float(digest_temp)
-        if isinstance(digest_num_ctx, int):
-            options["num_ctx"] = digest_num_ctx
-
-        resp = self.client.chat(
-            model=digest_model,
-            messages=[
-                {"role": "system", "content": "You are a precise academic summarizer."},
-                {"role": "user", "content": prompt},
-            ],
-            options=options,
-            stream=False,
-        )
-        return resp.message.content.strip()
+        
+        return self.llm.run_prompt(prompt, mode="snapshot", remember=True)
 
     def _retrieve_top_document_chunks(self, query: str, k_doc: int) -> List[Document]:
         """Retrieve top-K document chunks using CrossEncoderRAG ranking without modifying them."""
@@ -197,7 +124,7 @@ class ContentEvaluator:
 
         prompt = (
             "You are an EXPERT AND CONFIDENT academic evaluator.\n"
-            "DO NOT BE TOO HARSH, DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON AND DO NOT TAKE STRONG DEDUCTIONS.\n"
+            "DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON AND DO NOT TAKE STRONG DEDUCTIONS.\n"
             "Evaluate the DOCUMENT against the criterion STRICTLY and ONLY using the RUBRIC.\n"
             "Rely on the KNOWLEDGE BASE for additional context if needed.\n"
             "### Instructions:\n"
@@ -208,7 +135,7 @@ class ContentEvaluator:
             "   - Provide exactly ONE Recommendation.\n"
             "   - Provide exactly ONE numeric Deduction.\n"
             "6. Finish with a concise Description summarizing the analysis.\n"
-            "7. DO NOT OVERTHINK, ANSWER PRECISE AND QUICKLY.\n"
+            "7. Conduct a thorough and precise analysis.\n"
             "8. ONLY return the following JSON format:\n\n"
             "{\n"
             '  "Name": "<Criterion Name>",\n'
@@ -220,7 +147,10 @@ class ContentEvaluator:
             f"### Criterion: {json.dumps(criterion, indent=2)}\n\n"
             f"### DOCUMENT:\n{doc_text}\n\n"
             f"### KNOWLEDGE BASE:\n{kb_text}\n\n"
+            f"### DOCUMENT SNAPSHOT:\n{self.document_snapshot}\n\n"
             f"{previous_eval_section}"
+            f"### RETURN ONLY THE JSON.\n"
+            f"### IF THERE ARE NO SHORTCOMINGS, RETURN 'NO SHORTCOMINGS', 'NO RECOMMENDATIONS', 'NO DEDUCTIONS' IN EACH SECTION CORRESPONDING SECTION OF THE JSON.\n"
         )
         print("-------------------- Prompt to LLM --------------------")
         print(prompt)
@@ -230,41 +160,13 @@ class ContentEvaluator:
         """Run evaluation for a single criterion against DOCUMENT and KNOWLEDGE BASE separately, with previous evaluation if available."""
         prompt = self._build_prompt(criterion, doc_chunks, kb_chunks, course_key, scan_name, criterion_name)
         start_time = time.time()
-
-        # Compose messages: anchored memory (if any) + per-criterion prompt
-        messages = (self.session_messages or []) + [{"role": "user", "content": prompt}]
-
-        # Build options only with configured values
-        eval_options: Dict = {}
-        if isinstance(self.llm_temperature, (int, float)):
-            eval_options["temperature"] = float(self.llm_temperature)
-        if isinstance(self.llm_num_ctx, int):
-            eval_options["num_ctx"] = self.llm_num_ctx
-
-        response = self.client.chat(
-            model=self.llm_model,
-            messages=messages,
-            format=CriterionEvaluation.model_json_schema(),
-            options=eval_options,
-            think=False,
-            stream=False
-        )
-
+        
+        # Evaluate using LLM with structured output
+        eval_obj = self.llm.run_prompt(prompt, mode="criterion", remember=False)
         elapsed = time.time() - start_time
-        full_content = response.message.content
+        return {"evaluation": eval_obj, "elapsed": elapsed}
 
-        print(f"---- LLM Response for {criterion['name']} (Elapsed: {elapsed:.2f}s) ----")
-        print(full_content)
-
-        try:
-            eval_obj = CriterionEvaluation.model_validate_json(full_content)
-            return {"evaluation": eval_obj, "elapsed": elapsed}
-        except ValidationError as e:
-            print(f"Validation error for {criterion['name']}: {e}")
-            print("Raw response:", full_content)
-            return None
-
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 7, k_kb: int = 4, course_key: str = None):
+    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None):
         """Evaluate all criteria using CrossEncoderRAG for docs and vector store for KB. Save results to DB at the end."""
         self.document_chunks = document_chunks
         benchmark_results = []
@@ -292,7 +194,7 @@ class ContentEvaluator:
                 # Evaluate criterion, passing course_key, scan_name, criterion_name
                 res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, scan_name, crit["name"])
                 if res:
-                    eval_obj: CriterionEvaluation = res["evaluation"]
+                    eval_obj = res["evaluation"]
                     shortcomings_with_deductions = [
                         f"{s} {d:.1f}" for s, d in zip(eval_obj.Shortcomings, eval_obj.Deductions)
                     ]

@@ -21,11 +21,19 @@ document_processing:
 vector_store:
   path: "data/vector_store"
 
-llm_settings:    
+llm_settings:
+#  wrapper: "gemini"    
+#  api_key: "AIzaSyC-2egqV71JwTB96Irw29O-xNqAD6EQRmk"
+#  processing_llm:
+#    model: "gemini-2.5-flash-lite"
+#    temperature: 0.0
+#    top_p: 0.1
+
+  wrapper: "ollama"    
   processing_llm:
-    model: "qwen3:4b"
-    temperature: 0.0
-    top_p: 1
+    model: "qwen3:8b"
+    temperature: 0.1
+    top_p: 0.5
     context_size: 8192
 
 debug_mode: false
