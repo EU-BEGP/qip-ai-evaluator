@@ -44,9 +44,57 @@ class ContentEvaluator:
         self.document_snapshot = snapshot
 
     def _build_document_digest_llm(self) -> str:
-        """Create a compact, LLM-generated digest validated with DocumentSnapshot."""
-        full_text = "\n\n".join(d.page_content for d in self.document_chunks)
+        """
+        Create a compact, LLM-generated digest using a smart-chunking strategy 
+        (first 5 + top 20) to prevent crashes and improve accuracy.
+        """
+        
+        # 1. Define the number of chunks
+        total_chunks_to_use = 25
+        first_n_chunks = 5
+        top_k_chunks = 20 # (total - first_n)
+        
+        # 2. Check if the document is already small
+        if len(self.document_chunks) <= total_chunks_to_use:
+            # Document is small, just use all of it.
+            print(f"[INFO] Snapshot: Document is small ({len(self.document_chunks)} chunks). Using all.")
+            selected_chunks = self.document_chunks
+        
+        else:
+            # 3. Document is large. Implement the new strategy.
+            print(f"[INFO] Snapshot: Document is large ({len(self.document_chunks)} chunks). Using {total_chunks_to_use} smart chunks (first {first_n_chunks} + top {top_k_chunks}).")
+            
+            # 3a. Always get the first 5 chunks
+            first_five_chunks = self.document_chunks[:first_n_chunks]
+            
+            # 3b. Get the pool of remaining chunks
+            remaining_chunks = self.document_chunks[first_n_chunks:]
+            
+            # 3c. Define a query to find the "best" chunks for a snapshot
+            # We are looking for metadata, so we query for that.
+            search_query = (
+                "Document Title, Abstract, Keywords, "
+                "Intended Learning Outcomes, Outline, Table of Contents, Main Headings"
+            )
+            
+            # 3d. Use RAG to find the top 20 best remaining chunks
+            ranked_remaining = self.rag.rank_chunks(
+                search_query, 
+                documents=remaining_chunks, 
+                top_k=top_k_chunks
+            )
+            top_twenty_chunks = [doc for doc, _, _ in ranked_remaining]
+            
+            # 3e. Combine them. We sort the top_twenty by their original index
+            # to keep the document in a logical order for the LLM.
+            top_twenty_chunks.sort(key=lambda doc: doc.metadata.get("chunk_index", 0))
+            
+            selected_chunks = first_five_chunks + top_twenty_chunks
+            
+        # 4. Create the final text from *only* the selected chunks
+        full_text = "\n\n".join(d.page_content for d in selected_chunks)
 
+        # The prompt uses the smaller, smarter full_text
         prompt = (
             "You are an **academic text parser** — not a summarizer, writer, or analyst.\n"
             "Your ONLY task is to EXTRACT text segments from the DOCUMENT CONTENT below and place them into a JSON object that follows the DocumentSnapshot schema.\n\n"
@@ -134,6 +182,7 @@ class ContentEvaluator:
             "4. For EACH Shortcoming:\n"
             "   - Provide exactly ONE Recommendation.\n"
             "   - Provide exactly ONE numeric Deduction.\n"
+            "   - **CRITICAL RULE:** The `Shortcomings`, `Recommendations`, and `Deductions` lists MUST always have the same number of items.\n"
             "6. Finish with a concise Description summarizing the analysis.\n"
             "7. Conduct a thorough and precise analysis.\n"
             "8. ONLY return the following JSON format:\n\n"
@@ -143,14 +192,18 @@ class ContentEvaluator:
             '  "Recommendations": ["<recommendation1>", "<recommendation2>", ...],\n'
             '  "Deductions": [-x.y, -x.y, ...],\n'
             '  "Description": "<summary of the analysis>"\n'
-            "}\n\n"
+            "}\n"
+            "9. **If there are NO shortcomings:**\n"
+            "   - You MUST return:\n"
+            '     "Shortcomings": ["NO SHORTCOMINGS"]\n'
+            '     "Recommendations": ["NO RECOMMENDATIONS"]\n'
+            '     "Deductions": [0.0]\n'
+            '     "Description": "<summary of the analysis>"\n'
             f"### Criterion: {json.dumps(criterion, indent=2)}\n\n"
             f"### DOCUMENT:\n{doc_text}\n\n"
             f"### KNOWLEDGE BASE:\n{kb_text}\n\n"
             f"### DOCUMENT SNAPSHOT:\n{self.document_snapshot}\n\n"
             f"{previous_eval_section}"
-            f"### RETURN ONLY THE JSON.\n"
-            f"### IF THERE ARE NO SHORTCOMINGS, RETURN 'NO SHORTCOMINGS', 'NO RECOMMENDATIONS', 'NO DEDUCTIONS' IN EACH SECTION CORRESPONDING SECTION OF THE JSON.\n"
         )
         print("-------------------- Prompt to LLM --------------------")
         print(prompt)

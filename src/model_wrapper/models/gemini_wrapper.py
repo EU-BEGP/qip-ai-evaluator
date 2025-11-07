@@ -8,7 +8,7 @@ import json  # <-- Import json
 class CriterionEvaluation(BaseModel):
     """Model for structured criterion evaluation output."""
     Name: str
-    Shortcomings: list[str] = Field(..., description="List of shortcomings found, each ending with deduction -x.y")
+    Shortcomings: list[str] = Field(..., description="List of shortcomings found")
     Recommendations: list[str] = Field(..., description="List of recommendations, one per shortcoming")
     Deductions: list[float] = Field(..., description="Numeric deductions matching each shortcoming")
     Description: str = Field(..., description="Summary of the overall analysis")
