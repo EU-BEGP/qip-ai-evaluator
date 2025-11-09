@@ -1,0 +1,86 @@
+<div class="search-container">
+    <div class="search mt-2">
+    <h2 class="title">Evaluation</h2>
+
+    <form class="p-2">
+        <mat-form-field class="input-field mb-2">
+        <mat-label>Learnify Code</mat-label>
+        <input matInput [formControl]="codeControl" placeholder="OYJPG" />
+        <mat-icon matSuffix>code</mat-icon>
+
+        <mat-error *ngIf="codeControl.hasError('required') && codeControl.touched">
+            The code field cannot be empty.
+        </mat-error>
+        </mat-form-field>
+
+        <div class="button-row">
+        <button class="access-button" type="button" mat-raised-button color="primary" (click)="evaluate()" [disabled]="codeControl.invalid || isLoadingHistory"> Evaluate </button>
+        
+        <button class="access-button" type="button" mat-stroked-button color="primary" (click)="loadHistory()" [disabled]="codeControl.invalid || isLoadingHistory">
+            <mat-icon>history</mat-icon>
+            {{ isLoadingHistory ? 'Loading...' : 'Load History' }}
+        </button>
+        </div>
+    </form>
+
+    <div class="p-2" *ngIf="evaluationList.length > 0">
+        <mat-form-field class="input-field">
+        <mat-label>Load from history</mat-label>
+        <mat-select (selectionChange)="onHistorySelect($event)" [disabled]="isLoading">
+            <mat-option *ngFor="let item of evaluationList" [value]="item.id">
+            {{ item.date }} (ID: {{ item.id }})
+            </mat-option>
+        </mat-select>
+        </mat-form-field>
+    </div>
+
+    <div *ngIf="isLoading" class="spinner-container">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading, please wait...</p>
+    </div>
+    </div>
+</div>
+
+<div *ngIf="data !== null && !isLoading" class="m-5">
+  <h3 class="text-center">{{ data.title }}</h3>
+
+  <div *ngFor="let item of data.content" class="scan-item">
+    <h5>{{ item.scan }}</h5>
+    <p>{{ item.description }}</p>
+    <table class="table table-striped evaluation-table">
+      <colgroup>
+        <col style="width:12%" />
+        <col style="width:30%" />
+        <col style="width:6%" />
+        <col style="width:28%" />
+        <col style="width:28%" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Criterion</th>
+          <th>Description</th>
+          <th class="text-center">Score</th>
+          <th>Shortcomings</th>
+          <th>Recommendations</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let criterion of item.criteria">
+          <td>{{ criterion.name }}</td>
+          <td>{{ criterion.description }}</td>
+          <td class="text-center">{{ criterion.score }}</td>
+          <td>
+            <ul class="ps-3 mb-0">
+              <li *ngFor="let shortcoming of criterion.shortcomings">{{ shortcoming }}</li>
+            </ul>
+          </td>
+          <td>
+            <ul class="ps-3 mb-0">
+              <li *ngFor="let recommendation of criterion.recommendations">{{ recommendation }}</li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

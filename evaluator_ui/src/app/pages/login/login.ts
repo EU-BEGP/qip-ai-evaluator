@@ -45,12 +45,6 @@ export class LoginComponent {
     private router: Router
   ) { }
 
-  ngOnInit(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-    }
-  }
-
   get emailControl() {
     return this.loginForm.controls['email'];
   }
