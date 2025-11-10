@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
 import yaml
-from typing import List, Dict
+from typing import List, Dict, Optional
 from langchain.schema import Document
 import json
 from model_wrapper import get_llm_wrapper
@@ -219,21 +219,39 @@ class ContentEvaluator:
         elapsed = time.time() - start_time
         return {"evaluation": eval_obj, "elapsed": elapsed}
 
-    def evaluate_all(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None):
-        """Evaluate all criteria using CrossEncoderRAG for docs and vector store for KB. Save results to DB at the end."""
+    def evaluate(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None, scan_name: Optional[str] = None):
+        """
+        Evaluate documents against criteria.
+        
+        If 'scan_name' is provided, only that scan is evaluated.
+        If 'scan_name' is None, all scans are evaluated.
+        """
         self.document_chunks = document_chunks
         benchmark_results = []
+        
+        # Determine which scans to run
+        scans_to_process = []
+        if scan_name:
+            # Find the specific scan
+            scans_to_process = [s for s in self.criteria_manager.scans if s.get("scan") == scan_name]
+            if not scans_to_process:
+                print(f"[ERROR] Scan '{scan_name}' not found in criteria configuration.")
+                return {} # Return empty results
+        else:
+            # Run all scans (default behavior)
+            scans_to_process = self.criteria_manager.scans
 
-        for scan in self.criteria_manager.scans:
-            scan_name = scan.get("scan")
+        for scan in scans_to_process:
+            current_scan_name = scan.get("scan")
             criteria = scan.get("criteria", [])
+            print(f"[INFO] Starting evaluation for scan: {current_scan_name}")
 
             for c in criteria:
                 crit = {
-                    "key": f"{scan_name}:{c['name']}",
+                    "key": f"{current_scan_name}:{c['name']}",
                     "name": c["name"],
-                    "text": self.criteria_manager.get_criterion_text(scan_name, c["name"]),
-                    "description": self.criteria_manager.get_criterion_description(scan_name, c["name"])
+                    "text": self.criteria_manager.get_criterion_text(current_scan_name, c["name"]),
+                    "description": self.criteria_manager.get_criterion_description(current_scan_name, c["name"])
                 }
 
                 search_query = f"{crit['name']}: {crit['description']}"
@@ -245,14 +263,14 @@ class ContentEvaluator:
                 kb_chunks = self._retrieve_knowledge_base_chunks(search_query, doc_chunks, k_kb)
 
                 # Evaluate criterion, passing course_key, scan_name, criterion_name
-                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, scan_name, crit["name"])
+                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, current_scan_name, crit["name"])
                 if res:
                     eval_obj = res["evaluation"]
                     shortcomings_with_deductions = [
                         f"{s} {d:.1f}" for s, d in zip(eval_obj.Shortcomings, eval_obj.Deductions)
                     ]
 
-                    self.results.setdefault(scan_name, {})[crit["name"]] = {
+                    self.results.setdefault(current_scan_name, {})[crit["name"]] = {
                         "description": eval_obj.Description,
                         "llm_response": eval_obj.model_dump_json(indent=2),
                         "retrieved_chunks": [d.page_content for d in doc_chunks + kb_chunks],
@@ -265,7 +283,7 @@ class ContentEvaluator:
                     benchmark_results.append((crit["name"], res["elapsed"], sum(eval_obj.Deductions)))
 
         if Evaluation and course_key:
-            results_json = self.generate_json_output()
+            results_json = self.generate_json_output(scans_processed=scans_to_process)
             
             try:
                 # 1. Get or create the module (mimics 'save_module')

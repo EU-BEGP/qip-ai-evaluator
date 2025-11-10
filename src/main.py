@@ -95,7 +95,7 @@ def evaluate_content(vector_manager, content_source, course_key):
     evaluator.current_document_chunks = docs
     evaluator.set_documents_for_rag(docs)
 
-    evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5, course_key=course_key)
+    evaluator.evaluate(document_chunks=docs, k_doc=10, k_kb=5, course_key=course_key)
     result_json = evaluator.generate_json_output()
 
     cfg = load_config()
