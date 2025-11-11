@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { AccountCredentials } from '../interfaces/user';
+import { AccountCredentials } from '../interfaces/account-credentials';
 import { catchError, Observable, tap } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import config from '../config.json';
@@ -30,6 +30,7 @@ export class AuthService {
       .pipe(
         tap((response: any) => {
           const token = response.body.token;
+          localStorage.setItem('accountEmail', account.email);
           localStorage.setItem('token', token);
           this.toastr.success(`Welcome ${account.email}`);
         }),

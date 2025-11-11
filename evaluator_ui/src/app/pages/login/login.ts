@@ -9,7 +9,7 @@ import { Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth-service';
-import { AccountCredentials } from '../../interfaces/user';
+import { AccountCredentials } from '../../interfaces/account-credentials';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({

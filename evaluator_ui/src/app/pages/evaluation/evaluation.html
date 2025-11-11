@@ -2,24 +2,24 @@
 
 <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)" class="mx-5 mt-2">
   <mat-tab label="All Scans">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
   <mat-tab label="Academic Metadata">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
   <mat-tab label="Learning Content">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
   <mat-tab label="Assessment">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
   <mat-tab label="Multimedia">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
   <mat-tab label="Certificate">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
   <mat-tab label="Summary">
-    <app-search-component [tab]="currentTab"/>
+    <app-search-component [tab]="currentTab" (startPooling)="startPooling()"/>
   </mat-tab>
 </mat-tab-group>

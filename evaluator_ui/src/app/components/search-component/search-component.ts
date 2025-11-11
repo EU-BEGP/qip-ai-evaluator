@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,6 +10,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EvaluationService } from '../../services/evaluation-service';
 import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
+import { ScanRequest } from '../../interfaces/scan-request';
 
 @Component({
   selector: 'app-search-component',
@@ -30,6 +31,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 })
 export class SearchComponent {
   @Input() tab!: string;
+  @Output() startPooling = new EventEmitter<void>();
 
   data: any = null;
   isLoading = false;
@@ -39,7 +41,7 @@ export class SearchComponent {
   selectedTabIndex = 0;
 
   constructor (
-    private evaluationService: EvaluationService,
+    private evaluationService: EvaluationService
   ) {}
 
   evaluate(): void {
@@ -48,20 +50,19 @@ export class SearchComponent {
       return;
     }
 
-    this.data = null;
-    this.isLoading = true;
     const courseKey = this.codeControl.value!;
-    console.log('Evaluating in tab:', this.tab);
+    const scanRequest: ScanRequest = { 
+      course_key: courseKey,
+      email: localStorage.getItem('accountEmail')!,
+      scan_name: this.tab == 'All Scans' ? '' : this.tab
+    }
 
-    this.evaluationService.evaluate(courseKey).subscribe({
+    this.evaluationService.evaluate(scanRequest).subscribe({
       next: (response) => {
-        this.data = response.body;
-        this.isLoading = false;
-        this.loadHistory();
+        this.startPooling.emit();
       },
       error: (error) => {
         console.error('Evaluation error:', error);
-        this.isLoading = false;
       }
     });
   }
@@ -73,10 +74,16 @@ export class SearchComponent {
     }
     
     this.isLoadingHistory = true;
+    this.evaluationList = [];
+    this.data = null;
     const courseKey = this.codeControl.value!;
-    console.log('Loading history in tab:', this.tab);
+    const scanRequest: ScanRequest = { 
+      course_key: courseKey,
+      email: localStorage.getItem('accountEmail')!,
+      scan_name: this.tab == 'All Scans' ? '' : this.tab
+    }
 
-    this.evaluationService.getEvaluationList(courseKey).subscribe({
+    this.evaluationService.getEvaluationList(scanRequest).subscribe({
       next: (list) => {
         this.evaluationList = list;
         this.isLoadingHistory = false;
@@ -96,15 +103,29 @@ export class SearchComponent {
     this.data = null;
     this.isLoading = true;
 
-    this.evaluationService.getEvaluationDetail(evaluationId).subscribe({
-      next: (response) => {
-        this.data = response;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading evaluation detail:', error);
-        this.isLoading = false;
-      }
-    });
+    if (this.tab === 'All Scans') {
+      this.evaluationService.getEvaluationDetailModule(evaluationId).subscribe({
+        next: (response) => {
+          this.data = response;
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('Error loading evaluation detail:', error);
+          this.isLoading = false;
+        }
+      });
+    }
+    else {
+      this.evaluationService.getEvaluationDetailScan(evaluationId).subscribe({
+        next: (response) => {
+          this.data = response;
+          this.isLoading = false;
+        },
+        error: (error) => {
+          console.error('Error loading evaluation detail:', error);
+          this.isLoading = false;
+        }
+      });
+    }
   }
 }

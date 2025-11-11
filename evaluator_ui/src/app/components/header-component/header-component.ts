@@ -20,6 +20,7 @@ export class HeaderComponent {
 
   logout(): void {
     localStorage.removeItem('token');
+    localStorage.removeItem('accountEmail');
     this.router.navigateByUrl('login');
   }
 }

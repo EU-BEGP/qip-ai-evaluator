@@ -8,8 +8,11 @@
     },
     "evaluation": {
       "evaluate": "evaluate/",
-      "list": "module/{course_key}/evaluations/",
-      "detail": "evaluation/{id}/"
+      "list": "list_evaluations/",
+      "detailModule": "evaluation_detail/module/{id}/",
+      "detailScan": "evaluation_detail/scan/{id}/",
+      "statusModule": "evaluation_status/module/{id}/",
+      "statusScan": "evaluation_status/scan/{id}/"
     }
   }
 }
