@@ -5,12 +5,11 @@ from typing import List, Dict, Optional
 from langchain.schema import Document
 import json
 from model_wrapper import get_llm_wrapper
+from datetime import datetime
 
 from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
 from retrievers.cross_encoder import CrossEncoderRAG
-
-from evaluator.models import Module, Evaluation
 
 class ContentEvaluator:
     """Evaluates documents against academic criteria using LLMs with structured JSON output."""
@@ -151,23 +150,33 @@ class ContentEvaluator:
         # Step 4: Return the top reranked chunks only (discard scores)
         return [doc for doc, _, _ in reranked]
 
-    def _build_prompt(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None) -> str:
+    def _find_criterion_in_history(self, prev_eval_json: Dict, scan_name: str, criterion_name: str) -> Optional[Dict]:
+        """ Helper to search the provided previous_evaluation JSON (dict)."""
+        if not prev_eval_json or 'content' not in prev_eval_json:
+            return None
+        
+        for scan_data in prev_eval_json.get('content', []):
+            if scan_data.get('scan') == scan_name:
+                for crit_data in scan_data.get('criteria', []):
+                    if crit_data.get('name') == criterion_name:
+                        return crit_data
+        return None
+
+    def _build_prompt(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None, previous_evaluation: Optional[Dict] = None) -> str:
         """Build evaluation prompt with DOCUMENT, KNOWLEDGE BASE, and previous evaluation sections."""
         doc_text = "\n\n".join(d.page_content for d in doc_chunks)
         kb_text = "\n\n".join(d.page_content for d in kb_chunks)
 
         previous_eval_section = ""
-        if Evaluation and course_key and scan_name and criterion_name:
-            history = Evaluation.get_criterion_history(course_key, scan_name, criterion_name, limit=1)
-            if history:
-                prev = history[0]
+        if previous_evaluation and scan_name and criterion_name:
+            prev = self._find_criterion_in_history(previous_evaluation, scan_name, criterion_name)
+            if prev:
                 previous_eval_section = (
                     f"### PREVIOUS EVALUATION TO '{criterion_name}' IN THE MODULE (most recent):\n"
-                    f"Date: {prev['evaluation_date']}\n"
-                    f"Description: {prev['description']}\n"
-                    f"Score: {prev['score']}\n"
-                    f"Shortcomings: {prev['shortcomings']}\n"
-                    f"Recommendations: {prev['recommendations']}\n\n"
+                    f"Description: {prev.get('description', '')}\n"
+                    f"Score: {prev.get('score', 0.0)}\n"
+                    f"Shortcomings: {prev.get('shortcomings', [])}\n"
+                    f"Recommendations: {prev.get('recommendations', [])}\n\n"
                 )
 
         prompt = (
@@ -209,34 +218,43 @@ class ContentEvaluator:
         print(prompt)
         return prompt
 
-    def _evaluate_criterion(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None):
+    def _evaluate_criterion(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None, previous_evaluation: Optional[Dict] = None):
         """Run evaluation for a single criterion against DOCUMENT and KNOWLEDGE BASE separately, with previous evaluation if available."""
-        prompt = self._build_prompt(criterion, doc_chunks, kb_chunks, course_key, scan_name, criterion_name)
+        prompt = self._build_prompt(criterion, doc_chunks, kb_chunks, course_key, scan_name, criterion_name, previous_evaluation=previous_evaluation)
         start_time = time.time()
         
         # Evaluate using LLM with structured output
         eval_obj = self.llm.run_prompt(prompt, mode="criterion", remember=False)
         elapsed = time.time() - start_time
         return {"evaluation": eval_obj, "elapsed": elapsed}
+    
+    def get_module_last_modified(self, course_key: str) -> str:
+        """
+        [NUEVO] Devuelve la fecha de "última modificación" del módulo.
+        Hardcodeado como solicitaste.
+        """
+        # Devuelve una fecha ISO 8601 hardcodeada
+        return datetime(2025, 1, 15, 12, 30, 0).isoformat() + "Z"
 
-    def evaluate(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None, scan_name: Optional[str] = None):
+    def evaluate(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None):
         """
         Evaluate documents against criteria.
         
-        If 'scan_name' is provided, only that scan is evaluated.
-        If 'scan_name' is None, all scans are evaluated.
+        If 'scan_names' is provided, only those scans are evaluated.
+        If 'scan_names' is None, all scans are evaluated.
         """
         self.document_chunks = document_chunks
         benchmark_results = []
         
         # Determine which scans to run
         scans_to_process = []
-        if scan_name:
+        if scan_names:
             # Find the specific scan
-            scans_to_process = [s for s in self.criteria_manager.scans if s.get("scan") == scan_name]
+            scan_name_set = set(scan_names)
+            scans_to_process = [s for s in self.criteria_manager.scans if s.get("scan") in scan_name_set]
             if not scans_to_process:
-                print(f"[ERROR] Scan '{scan_name}' not found in criteria configuration.")
-                return {} # Return empty results
+                print(f"[ERROR] Scans '{scan_names}' not found in criteria configuration.")
+                return self.generate_json_output(scans_processed=[])
         else:
             # Run all scans (default behavior)
             scans_to_process = self.criteria_manager.scans
@@ -263,7 +281,7 @@ class ContentEvaluator:
                 kb_chunks = self._retrieve_knowledge_base_chunks(search_query, doc_chunks, k_kb)
 
                 # Evaluate criterion, passing course_key, scan_name, criterion_name
-                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, current_scan_name, crit["name"])
+                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, current_scan_name, crit["name"], previous_evaluation=previous_evaluation)
                 if res:
                     eval_obj = res["evaluation"]
                     shortcomings_with_deductions = [
@@ -282,38 +300,17 @@ class ContentEvaluator:
                     }
                     benchmark_results.append((crit["name"], res["elapsed"], sum(eval_obj.Deductions)))
 
-        if Evaluation and course_key:
-            results_json = self.generate_json_output(scans_processed=scans_to_process)
-            
-            try:
-                # 1. Get or create the module (mimics 'save_module')
-                module_obj, _ = Module.objects.get_or_create(course_key=course_key)
-                
-                # 2. Delete old evaluations (mimics 'save_evaluation' logic)
-                old_evaluation_ids = Evaluation.objects.filter(
-                    module=module_obj
-                ).order_by('-evaluation_date').values_list('id', flat=True)[2:]
-                
-                if old_evaluation_ids:
-                    Evaluation.objects.filter(id__in=list(old_evaluation_ids)).delete()
+        results_json = self.generate_json_output(scans_processed=scans_to_process)
+        return results_json
 
-                # 3. Create new evaluation
-                new_evaluation = Evaluation(module=module_obj)
-                new_evaluation.set_results_dict(results_json)
-                new_evaluation.save()
-                
-                print(f"[INFO] Successfully saved new evaluation {new_evaluation.id} for module {course_key}")
-            except Exception as e:
-                print(f"[ERROR] Failed to save evaluation to Django DB: {e}")
-
-        return self.results
-
-    def generate_json_output(self) -> Dict:
+    def generate_json_output(self, scans_processed: Optional[List[Dict]] = None) -> Dict:
         """Generate consolidated JSON output with evaluations for all scans and criteria."""
         main_title = self.document_chunks[0].page_content.split("\n")[0] if self.document_chunks else "Document Evaluation"
         content_list = []
+        
+        scans_to_iterate = scans_processed if scans_processed is not None else []
 
-        for scan in self.criteria_manager.scans:
+        for scan in scans_to_iterate:
             scan_name = scan.get("scan")
             scan_desc = scan.get("description", "")
             scan_dict = {"scan": scan_name, "description": scan_desc, "criteria": []}

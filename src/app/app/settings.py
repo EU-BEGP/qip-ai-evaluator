@@ -27,6 +27,18 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# --- CELERY CONFIGURATION ---
+CELERY_BROKER_URL = 'redis://localhost:6379/2'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/2'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+
+# --- CORRECTED CALLBACK URL ---
+# This MUST point to your Web Page API's callback endpoint
+QIP_CALLBACK_URL = 'http://localhost:8000/api/callback/'
+QIP_CALLBACK_SECRET = '123'
 
 # Application definition
 
