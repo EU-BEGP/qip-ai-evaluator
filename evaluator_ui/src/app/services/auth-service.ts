@@ -29,7 +29,7 @@ export class AuthService {
       .post(URL, account, this.httpOptions)
       .pipe(
         tap((response: any) => {
-          const token = response.body.token;
+          const token = response.body.access;
           localStorage.setItem('accountEmail', account.email);
           localStorage.setItem('token', token);
           this.toastr.success(`Welcome ${account.email}`);

@@ -45,6 +45,12 @@ export class LoginComponent {
     private router: Router
   ) { }
 
+  ngOnInit(): void {
+    if (localStorage.getItem('token')) {
+      this.router.navigateByUrl('evaluation');
+    }
+  }
+
   get emailControl() {
     return this.loginForm.controls['email'];
   }

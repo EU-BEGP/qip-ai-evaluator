@@ -14,6 +14,7 @@ import { SearchComponent } from '../../components/search-component/search-compon
 import { HeaderComponent } from '../../components/header-component/header-component';
 import { Subscription } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
+import { StorageService } from '../../services/storage-service';
 
 @Component({
   selector: 'app-evaluation',
@@ -37,19 +38,25 @@ import { ToastrService } from 'ngx-toastr';
 })
 export class EvaluationComponent {
   private poolingSub?: Subscription;
+  private evaluationIdSub?: Subscription;
 
   currentTab = '';
   selectedTabIndex = 0;
+  disableEvaluateButton = false;
   tabs = ['All Scans', 'Academic Metadata Scan', 'Learning Content Scan', 'Assessment Scan', 'Multimedia Scan', 'Certificate Scan', 'Summary Scan'];
 
   constructor (
     private toastr: ToastrService,
-    private evaluationService: EvaluationService
+    private evaluationService: EvaluationService,
+    private storageService: StorageService
   ) {}
 
   ngOnInit() {
     this.currentTab = this.tabs[this.selectedTabIndex];
     this.startPooling();
+    this.evaluationIdSub = this.storageService.evaluationId$.subscribe((id) => {
+      this.disableEvaluateButton = id !== null;
+    });
   }
 
   onTabChange(index: number): void {
@@ -61,6 +68,7 @@ export class EvaluationComponent {
     const evaluationId = localStorage.getItem('evaluationId' + localStorage.getItem('accountEmail'));
 
     if(evaluationId && isAll) {
+      this.storageService.setEvaluationId(evaluationId);
       if (isAll == 'true') {
         this.poolingSub = this.evaluationService.getStatusModule(evaluationId!)
         .subscribe({
@@ -69,11 +77,13 @@ export class EvaluationComponent {
               this.toastr.success('Please go to the tab corresponding to “' + response.scan_name + '” and enter the course key “' + response.course_key +'”.', 'Evaluation completed');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
               localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
+              this.storageService.clearEvaluationId();
             }
             else if (response.status === 'Failed') {
               this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
               localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
+              this.storageService.clearEvaluationId();
             }
           },
           error: (err) => {
@@ -89,11 +99,13 @@ export class EvaluationComponent {
               this.toastr.success('Please go to the tab corresponding to “' + response.scan_name + '” and enter the course key “' + response.course_key +'”.', 'Evaluation completed');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
               localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
+              this.storageService.clearEvaluationId();
             }
             else if (response.status === 'Failed') {
               this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
               localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
+              this.storageService.clearEvaluationId();
             }
           },
           error: (err) => {
@@ -106,5 +118,6 @@ export class EvaluationComponent {
 
   ngOnDestroy() {
     if (this.poolingSub) this.poolingSub.unsubscribe();
+    if (this.evaluationIdSub) this.evaluationIdSub.unsubscribe();
   }
 }

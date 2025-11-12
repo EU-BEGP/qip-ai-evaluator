@@ -4,6 +4,7 @@ import { catchError, interval, Observable, switchMap, takeWhile, tap, throwError
 import config from '../config.json';
 import { ToastrService } from 'ngx-toastr';
 import { ScanRequest } from '../interfaces/scan-request';
+import { StorageService } from './storage-service';
 
 @Injectable({
   providedIn: 'root',
@@ -15,7 +16,8 @@ export class EvaluationService {
 
   constructor(
     private http: HttpClient,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private storageService: StorageService
   ) { 
     this.httpOptions = {
       headers: new HttpHeaders({
@@ -26,7 +28,7 @@ export class EvaluationService {
   }
 
   evaluate(scanRequest: ScanRequest): Observable<any> {
-    const URL = `${config.api.baseUrl2}${config.api.evaluation.evaluate}`;
+    const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
     const body = scanRequest;
 
     return this.http.post(URL, body, this.httpOptions).pipe(
@@ -38,6 +40,7 @@ export class EvaluationService {
           localStorage.setItem('isAll' + body.email, 'true');
         }
         localStorage.setItem('evaluationId' + body.email, response.body.evaluationId);
+        this.storageService.setEvaluationId(response.body.evaluationId);
         this.toastr.success('Evaluation request successfully submitted.', 'Success');
       }),
       catchError((err) => {
@@ -47,17 +50,11 @@ export class EvaluationService {
     );
   }
 
-  getEvaluationList(scanRequest: ScanRequest): Observable<any[]> {
-    const URL = `${config.api.baseUrl2}${config.api.evaluation.list}`;
-    let params = new HttpParams()
-      .set('course_key', scanRequest.course_key)
-      .set('email', scanRequest.email);
+  getEvaluationList(scanRequest: ScanRequest): Observable<any> {
+    const URL = `${config.api.baseUrl}${config.api.evaluation.list}`;
+    const body = scanRequest;
 
-    if (scanRequest.scan_name != undefined && scanRequest.scan_name != '') {
-      params = params.set('scan_name', scanRequest.scan_name);
-    }
-
-    return this.http.get<any[]>(URL, { params }).pipe(
+    return this.http.post(URL, body, this.httpOptions).pipe(
       catchError((err) => {
         this.toastr.error('Could not load history.', 'Error');
         return throwError(() => err);
@@ -66,7 +63,7 @@ export class EvaluationService {
   }
 
   getEvaluationDetailModule(id: number): Observable<any> {
-    let URL = `${config.api.baseUrl2}${config.api.evaluation.detailModule}`;
+    let URL = `${config.api.baseUrl}${config.api.evaluation.detailModule}`;
     URL = URL.replace('{id}', String(id));
 
     return this.http.get<any>(URL).pipe(
@@ -78,7 +75,7 @@ export class EvaluationService {
   }
 
   getEvaluationDetailScan(id: number): Observable<any> {
-    let URL = `${config.api.baseUrl2}${config.api.evaluation.detailScan}`;
+    let URL = `${config.api.baseUrl}${config.api.evaluation.detailScan}`;
     URL = URL.replace('{id}', String(id));
 
     return this.http.get<any>(URL).pipe(
@@ -90,7 +87,7 @@ export class EvaluationService {
   }
 
   getStatusModule(id: string) {
-    let URL = `${config.api.baseUrl2}${config.api.evaluation.statusModule}`;
+    let URL = `${config.api.baseUrl}${config.api.evaluation.statusModule}`;
     URL = URL.replace('{id}', String(id));
 
     return interval(this.POLL_INTERVAL).pipe(
@@ -100,7 +97,7 @@ export class EvaluationService {
   }
 
   getStatusScan(id: string) {
-    let URL = `${config.api.baseUrl2}${config.api.evaluation.statusScan}`;
+    let URL = `${config.api.baseUrl}${config.api.evaluation.statusScan}`;
     URL = URL.replace('{id}', String(id));
 
     return interval(this.POLL_INTERVAL).pipe(

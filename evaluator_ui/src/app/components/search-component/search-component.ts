@@ -31,6 +31,7 @@ import { ScanRequest } from '../../interfaces/scan-request';
 })
 export class SearchComponent {
   @Input() tab!: string;
+  @Input() disableEvaluateButton!: boolean;
   @Output() startPooling = new EventEmitter<void>();
 
   data: any = null;
