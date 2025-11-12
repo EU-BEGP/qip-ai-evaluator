@@ -1,92 +1,105 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework import status
 import logging
+import uuid
 from pathlib import Path
 import sys
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
+from .tasks import run_evaluation_task
 from rag.content_evaluator import ContentEvaluator
-from .init_knowledge import build_knowledge_base_auto, load_criteria_auto
-from .models import Module, Evaluation
+base_evaluator = ContentEvaluator()
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
-# -------------------- AUTO LOAD KB AND CRITERIA --------------------
-vector_manager = build_knowledge_base_auto()
-criteria_data = load_criteria_auto()
-
-# -------------------- API ENDPOINT --------------------
 @api_view(['POST'])
 def evaluate_module(request):
     """
-    Endpoint to evaluate a Learnify module.
-    Request body: {"course_key": "OYJPG"}
-    Returns: evaluation JSON
+    Endpoint to START an evaluation for a Learnify module.
+    This is ASYNCHRONOUS. It returns a task ID immediately.
+    
+    Request body (example):
+    {
+        "course_key": "OYJPG",
+        "qip_user_id": "user-uuid-12345",
+        "scan_names": ["Quality", "Metadata"],
+        "previous_evaluation": { ...full results JSON... }
+    }
+    
+    "scan_names" is optional (runs all scans if omitted).
+    "previous_evaluation" is optional.
+    "qip_user_id" is required.
     """
     course_key = request.data.get("course_key")
+    qip_user_id = request.data.get("qip_user_id")
+    scan_names = request.data.get("scan_names") # Optional
+    previous_evaluation = request.data.get("previous_evaluation") # Optional
+    evaluation_id = request.data.get("evaluation_id")
+
+    # --- Validation ---
     if not course_key:
-        return Response({"error": "Missing 'course_key' in request body"}, status=400)
+        return Response(
+            {"error": "Missing 'course_key' in request body"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if not qip_user_id:
+        return Response(
+            {"error": "Missing 'qip_user_id' in request body"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if scan_names is not None and not isinstance(scan_names, list):
+        return Response(
+            {"error": "'scan_names' must be a list of strings"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if previous_evaluation is not None and not isinstance(previous_evaluation, dict):
+        return Response(
+            {"error": "'previous_evaluation' must be an object (JSON)"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    # Create evaluator
-    evaluator = ContentEvaluator()
-    evaluator.vector_manager = vector_manager
+    # 1. Generate a unique ID for this specific evaluation run
+    logger.info(f"Received evaluation request {evaluation_id} for course '{course_key}' from user '{qip_user_id}'.")
 
-    # Load module content
-    docs = vector_manager.load_documents([course_key])
-    for i, doc in enumerate(docs):
-        doc.metadata["chunk_index"] = i + 1
-
-    evaluator.current_document_chunks = docs
-    evaluator.set_documents_for_rag(docs)
-
-    # Evaluate
-    evaluator.evaluate_all(document_chunks=docs, k_doc=10, k_kb=5, course_key=course_key)
-    result_json = evaluator.generate_json_output()
-
-    return Response(result_json)
-
-@api_view(['GET'])
-def list_evaluations(request, course_key):
-    """
-    Endpoint to list the last 3 evaluations for a module.
-    Returns a light-weight list (ID and date) for a dropdown.
-    """
     try:
-        # 1. Ensure the module exists
-        Module.objects.get(pk=course_key)
-    except Module.DoesNotExist:
-        return Response({"error": "Module not found"}, status=404)
+        last_modified_date = base_evaluator.get_module_last_modified(course_key)
+    except Exception as e:
+        logger.error(f"Error getting module_last_modified for {course_key}: {e}")
+        return Response({"error": "Could not determine module date"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # 2. Get the last 3 evaluations for this module, ordered by date
-    evaluations = Evaluation.objects.filter(
-        module__course_key=course_key
-    ).order_by('-evaluation_date')[:3]
+    # 2. Schedule the background task
+    run_evaluation_task.delay(
+        evaluation_id=evaluation_id,
+        course_key=course_key,
+        qip_user_id=qip_user_id,
+        scan_names=scan_names,
+        previous_evaluation=previous_evaluation
+    )
 
-    # 3. Prepare the light-weight data for the frontend
-    data = [
+    # 3. Return an "Accepted" response immediately
+    return Response(
         {
-            "id": ev.id,  # The unique ID of the evaluation
-            "date": ev.formatted_date # Using your @property from the model
-        }
-        for ev in evaluations
-    ]
-
-    return Response(data)
+            "message": "Evaluation has been started.",
+            "evaluation_id": evaluation_id,
+            "course_key": course_key,
+            "last_modified_date": last_modified_date
+        },
+        status=status.HTTP_202_ACCEPTED
+    )
 
 @api_view(['GET'])
-def get_evaluation_detail(request, pk):
-    """
-    Endpoint to get the full JSON results for a specific
-    evaluation by its unique ID (pk).
-    """
+def module_last_modified(request):
+
+    course_key = request.query_params.get('course_key')
+    if not course_key:
+        return Response({"error": "Missing 'course_key' query parameter"}, status=status.HTTP_400_BAD_REQUEST)
+        
     try:
-        # 1. Find the evaluation by its primary key (id)
-        evaluation = Evaluation.objects.get(pk=pk)
-    except Evaluation.DoesNotExist:
-        return Response({"error": "Evaluation not found"}, status=404)
-
-    # 2. Use your model's method to get the JSON as a dict
-    results_dict = evaluation.get_results_dict()
-
-    return Response(results_dict)
+        mod_date = base_evaluator.get_module_last_modified(course_key)
+        return Response({"last_modified_date": mod_date}, status=status.HTTP_200_OK)
+    except Exception as e:
+        logger.error(f"Error getting module_last_modified for {course_key}: {e}")
+        return Response({"error": "Could not determine module date"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
