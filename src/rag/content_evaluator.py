@@ -1,15 +1,19 @@
 import time
 from pathlib import Path
 import yaml
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Callable
 from langchain.schema import Document
 import json
 from model_wrapper import get_llm_wrapper
 from datetime import datetime
+import requests
+import logging
 
 from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
 from retrievers.cross_encoder import CrossEncoderRAG
+
+logger = logging.getLogger(__name__)
 
 class ContentEvaluator:
     """Evaluates documents against academic criteria using LLMs with structured JSON output."""
@@ -228,20 +232,46 @@ class ContentEvaluator:
         elapsed = time.time() - start_time
         return {"evaluation": eval_obj, "elapsed": elapsed}
     
-    def get_module_last_modified(self, course_key: str) -> str:
+    def get_module_last_modified(self, course_key: str) -> Optional[str]:
         """
-        [NUEVO] Devuelve la fecha de "última modificación" del módulo.
-        Hardcodeado como solicitaste.
+        Returns the "last modified" date of the module
+        by querying the Learnify API.
         """
-        # Devuelve una fecha ISO 8601 hardcodeada
-        return datetime(2025, 1, 15, 12, 30, 0).isoformat() + "Z"
-
-    def evaluate(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None):
+        structure_base_url = "https://time.learnify.se/learnifyer/api/2/page"
+        structure_url = f"{structure_base_url}/0?key={course_key}"
+        
+        logger.info(f"🔄 Fetching module modified date for key: {course_key}")
+        
+        try:
+            response = requests.get(structure_url, timeout=10) # 10 second timeout
+            response.raise_for_status() # Raises an error for 4xx/5xx codes
+            
+            root_data = response.json()
+            modified_date = root_data.get("modified")
+            
+            if not modified_date:
+                logger.warning(f"API response for {course_key} OK, but 'modified' key was missing.")
+                return None
+                
+            # The format is like "2025-09-11T00:36:35.513"
+            return modified_date 
+            
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"Failed to load structure for {course_key}: HTTP {e.response.status_code}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Failed to load structure for {course_key}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"An unexpected error occurred in get_module_last_modified: {e}")
+            return None
+        
+    def evaluate(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None,        interim_callback: Optional[Callable[[dict], None]] = None):
         """
         Evaluate documents against criteria.
         
-        If 'scan_names' is provided, only those scans are evaluated.
-        If 'scan_names' is None, all scans are evaluated.
+        If 'interim_callback' is provided, it will be called after EACH criterion
+        is evaluated with the full, growing JSON for the current scan.
         """
         self.document_chunks = document_chunks
         benchmark_results = []
@@ -299,6 +329,47 @@ class ContentEvaluator:
                         "elapsed": res["elapsed"]
                     }
                     benchmark_results.append((crit["name"], res["elapsed"], sum(eval_obj.Deductions)))
+                
+                # --- INTERIM CALLBACK LOGIC ---
+                    if interim_callback:
+                        try:
+                            # 1. Build the 'scan_dict' for the *current scan*
+                            scan_dict = {
+                                "scan": current_scan_name,
+                                "description": scan.get("description", ""),
+                                "criteria": []
+                            }
+                            
+                            # 2. Iterate criteria *for this scan* that are *already done*
+                            for crit_in_scan in scan.get("criteria", []):
+                                crit_name = crit_in_scan.get("name")
+                                # Only add if it's in the processed results
+                                if crit_name in self.results.get(current_scan_name, {}):
+                                    crit_results = self.results[current_scan_name][crit_name]
+                                    scan_dict["criteria"].append({
+                                        "name": crit_name,
+                                        "description": crit_results.get("description", ""),
+                                        "score": crit_results.get("score", 0.0),
+                                        "shortcomings": crit_results.get("shortcomings", []),
+                                        "recommendations": crit_results.get("recommendations", []),
+                                        "max_score": 5.0
+                                    })
+                            
+                            # 3. Get the title
+                            main_title = self.document_chunks[0].page_content.split("\n")[0] if self.document_chunks else "Document Evaluation"
+                            
+                            # 4. Build the full JSON payload
+                            interim_json_payload = {
+                                "title": main_title,
+                                "content": [scan_dict]
+                            }
+                            
+                            # 5. Send the full, growing JSON
+                            interim_callback(interim_json_payload)
+                            logger.info(f"[{course_key}] Sent interim callback for criterion: {c['name']}")
+                        
+                        except Exception as e:
+                            logger.error(f"[{course_key}] Interim callback failed: {e}", exc_info=True)
 
         results_json = self.generate_json_output(scans_processed=scans_to_process)
         return results_json

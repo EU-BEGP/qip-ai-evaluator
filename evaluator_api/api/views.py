@@ -222,7 +222,7 @@ def start_new_evaluation(request):
             status=status.HTTP_202_ACCEPTED
         )
 
-# --- 2. POST /list_evaluations (FIXED per your new logic) ---
+# --- 2. POST /list_evaluations ---
 @api_view(['POST']) 
 @permission_classes([IsAuthenticated])
 def list_evaluations(request):
@@ -266,25 +266,50 @@ def list_evaluations(request):
     
     return Response(results)
 
-# --- 3. GET /evaluation_detail/module/<pk> ---
+# --- 3. GET /evaluation_detail/module/<pk> (MODIFIED) ---
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def evaluation_detail_module(request, pk):
     evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
-    if evaluation.status != Evaluation.Status.COMPLETED or not evaluation.result_json:
-        return Response(status=status.HTTP_404_NOT_FOUND)
-    return Response(evaluation.result_json)
+    
+    if evaluation.result_json:
+        # Returns the merged JSON, even if the evaluation is IN_PROGRESS
+        return Response(evaluation.result_json)
+        
+    if evaluation.status == Evaluation.Status.IN_PROGRESS:
+        # The merge hasn't happened yet, tell the client to wait
+        return Response(
+            {"status": "IN_PROGRESS", "message": "Evaluation is running, final JSON is not merged yet."},
+            status=status.HTTP_202_ACCEPTED
+        )
+        
+    if evaluation.status == Evaluation.Status.COMPLETED and not evaluation.result_json:
+         # This can happen if the merge fails or is delayed
+         return Response({"status": "COMPLETED", "message": "Evaluation is complete but JSON is not yet available, please wait."}, status=status.HTTP_202_ACCEPTED)
 
-# --- 4. GET /evaluation_detail/scan/<pk> ---
+    # The status is FAILED or NOT_STARTED
+    return Response(status=status.HTTP_404_NOT_FOUND)
+
+# --- 4. GET /evaluation_detail/scan/<pk> (MODIFIED) ---
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def evaluation_detail_scan(request, pk):
     scan = get_object_or_404(Scan, pk=pk, evaluation__module__user=request.user)
     
-    if scan.status != Scan.Status.COMPLETED or not scan.result_json:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+    if scan.result_json:
+        # --- THIS IS THE KEY ---
+        # Returns the partial, growing JSON even if the status is IN_PROGRESS
+        return Response(scan.result_json)
     
-    return Response(scan.result_json)
+    if scan.status == Scan.Status.IN_PROGRESS:
+        # It's running, but no criteria are complete yet
+        return Response(
+            {"status": "IN_PROGRESS", "message": "Scan is running, no criteria complete yet."},
+            status=status.HTTP_202_ACCEPTED
+        )
+    
+    # Status is FAILED, PENDING, or COMPLETED with no JSON
+    return Response(status=status.HTTP_404_NOT_FOUND)
 
 # --- 5. GET /evaluation_status/module/<pk> ---
 @api_view(['GET'])
@@ -309,7 +334,7 @@ def evaluation_status_scan(request, pk):
         "scan_name": scan.scan_type
     })
 
-# --- RAG API CALLBACK ---
+# --- RAG API CALLBACK (MODIFIED) ---
 @api_view(['POST'])
 @verify_rag_callback
 @transaction.atomic
@@ -318,15 +343,56 @@ def evaluation_callback(request):
     evaluation_id = data.get('evaluation_id')
     
     try:
-        evaluation = Evaluation.objects.get(id=int(evaluation_id), status=Evaluation.Status.IN_PROGRESS)
+        # Lock the evaluation row for this transaction
+        evaluation = Evaluation.objects.select_for_update().get(id=int(evaluation_id))
     except (Evaluation.DoesNotExist, TypeError, ValueError):
-        logger.warning(f"Callback received for unknown or completed evaluation: {evaluation_id}")
-        return Response({"message": "Evaluation not found or not in progress"}, status=status.HTTP_200_OK)
+        logger.warning(f"Callback received for unknown evaluation: {evaluation_id}")
+        return Response({"message": "Evaluation not found"}, status=status.HTTP_200_OK)
+
+    # If eval is already done, ignore new callbacks
+    if evaluation.status in [Evaluation.Status.COMPLETED, Evaluation.Status.FAILED]:
+        logger.warning(f"Callback received for already-finished evaluation: {evaluation_id}")
+        return Response({"message": "Evaluation already finished"}, status=status.HTTP_200_OK)
 
     callback_status = data.get('status')
     results_json = data.get('results')
     
-    if callback_status == 'FAILED':
+    # --- NEW: Handle Interim Updates ---
+    if callback_status == 'CRITERION_COMPLETE':
+        interim_result_json = data.get('interim_result')
+        
+        # Validate the received JSON
+        if not interim_result_json or 'content' not in interim_result_json or not interim_result_json['content']:
+            logger.warning(f"[{evaluation_id}] Invalid interim callback: missing or malformed 'interim_result'")
+            return Response({"error": "Invalid interim_result"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            # Extract scan name from the JSON
+            scan_name = interim_result_json['content'][0].get('scan')
+            if not scan_name:
+                 logger.warning(f"[{evaluation_id}] Interim JSON missing scan name in content[0]")
+                 return Response({"error": "Interim JSON missing scan name"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get the Scan object
+            scan_obj = Scan.objects.get(evaluation=evaluation, scan_type=scan_name)
+            
+            # --- THIS IS THE KEY ---
+            # Overwrite the DB field with the new, bigger JSON
+            scan_obj.result_json = interim_result_json
+            scan_obj.save()
+            
+            logger.info(f"[{evaluation_id}] Saved interim result for scan: {scan_name}")
+            return Response({"message": "Interim callback processed"}, status=status.HTTP_200_OK)
+
+        except Scan.DoesNotExist:
+             logger.warning(f"[{evaluation_id}] Interim callback for unknown scan: {scan_name}")
+             return Response({"error": "Scan not found"}, status=status.HTTP_404_NOT_FOUND)
+        except (KeyError, IndexError, TypeError) as e:
+            logger.error(f"[{evaluation_id}] Failed to parse interim JSON: {e}")
+            return Response({"error": "Failed to parse interim JSON"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # --- EXISTING: Handle Final Statuses ---
+    elif callback_status == 'FAILED':
         evaluation.status = Evaluation.Status.FAILED
         evaluation.error_message = data.get('error')
         evaluation.save()
@@ -337,38 +403,40 @@ def evaluation_callback(request):
     elif callback_status == 'COMPLETE' and results_json:
         all_possible_scans = set(Scan.ScanType.values)
         
-        # **FIX:** This logic now saves the full JSON structure per scan
+        # This logic is the same as before
         callback_title = results_json.get('title', 'Evaluation')
         
         for scan_data in results_json.get('content', []):
             scan_type = scan_data.get('scan')
             if scan_type in all_possible_scans:
                 
-                # Create the full JSON structure for this *single scan*
+                # Create the final JSON for this *single scan*
                 scan_specific_json = {
                     "title": callback_title,
                     "content": [scan_data] # Put the single scan in a content list
                 }
                 
+                # Overwrites the partial JSON, fixing title/description
                 Scan.objects.update_or_create(
                     evaluation=evaluation,
                     scan_type=scan_type,
                     defaults={
                         'status': Scan.Status.COMPLETED,
-                        'result_json': scan_specific_json # Save the full structure
+                        'result_json': scan_specific_json
                     }
                 )
             else:
                 logger.warning(f"Unknown scan type received: {scan_type}")
         
+        # Call the *final* merge task
         check_and_merge_evaluation.delay(evaluation.id)
     
     else:
         evaluation.status = Evaluation.Status.FAILED
-        evaluation.error_message = "Invalid callback or missing results"
+        evaluation.error_message = "Invalid final callback or missing results"
         evaluation.save()
         evaluation.scans.filter(
             status__in=[Scan.Status.IN_PROGRESS, Scan.Status.PENDING]
         ).update(status=Scan.Status.FAILED)
 
-    return Response({"message": "Callback processed"}, status=status.HTTP_200_OK)
+    return Response({"message": "Final callback processed"}, status=status.HTTP_200_OK)

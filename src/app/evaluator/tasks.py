@@ -5,7 +5,7 @@ from celery import shared_task
 from django.conf import settings
 from pathlib import Path
 import sys
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Callable
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
@@ -47,7 +47,6 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
 
     try:
         # 1. Use the SHARED evaluator instance
-        #    (We no longer create a new one here)
         evaluator = evaluator_instance
 
         # 2. Load module content (uses the evaluator's shared vector_manager)
@@ -60,7 +59,12 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
         for i, doc in enumerate(docs):
             doc.metadata["chunk_index"] = i + 1
 
-        evaluator.set_documents_for_rag(docs) # Renamed from current_document_chunks
+        evaluator.set_documents_for_rag(docs)
+
+        interim_callback_lambda = lambda interim_json: send_interim_callback(
+            evaluation_id=evaluation_id,
+            interim_json=interim_json
+        )
 
         # 3. Evaluate
         result_json = evaluator.evaluate(
@@ -69,16 +73,42 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
             k_kb=5,
             course_key=course_key,
             scan_names=scan_names,
-            previous_evaluation=previous_evaluation
+            previous_evaluation=previous_evaluation,
+            interim_callback=interim_callback_lambda
         )
 
-        # 4. Evaluation finished, send the callback
-        logger.info(f"[{evaluation_id}] Evaluation complete. Sending callback...")
+        # 4. Evaluation finished, send the FINAL callback
+        logger.info(f"[{evaluation_id}] Evaluation complete. Sending FINAL callback...")
         send_callback(evaluation_id, course_key, qip_user_id, status="COMPLETE", results=result_json, error=None)
         
     except Exception as e:
         logger.error(f"[{evaluation_id}] Evaluation task failed: {e}", exc_info=True)
         send_callback(evaluation_id, course_key, qip_user_id, status="FAILED", error=str(e), results=None)
+
+def send_interim_callback(evaluation_id: str, interim_json: dict):
+    """
+    Helper function to POST the full, growing JSON for a single scan.
+    """
+    callback_url = settings.QIP_CALLBACK_URL
+    secret_key = settings.QIP_CALLBACK_SECRET
+
+    payload = {
+        "evaluation_id": evaluation_id,
+        "status": "CRITERION_COMPLETE",
+        "interim_result": interim_json
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Callback-Secret": secret_key
+    }
+
+    try:
+        requests.post(callback_url, json=payload, headers=headers, timeout=5)
+        logger.info(f"[{evaluation_id}] Interim callback sent.")
+    
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"[{evaluation_id}] FAILED to send interim callback: {e}")
 
 def send_callback(evaluation_id: str, course_key: str, qip_user_id: str, status: str, results: Optional[dict], error: Optional[str]):
     """
@@ -104,7 +134,7 @@ def send_callback(evaluation_id: str, course_key: str, qip_user_id: str, status:
     try:
         response = requests.post(callback_url, json=payload, headers=headers, timeout=10)
         response.raise_for_status() 
-        logger.info(f"[{evaluation_id}] Callback sent successfully to {callback_url}.")
+        logger.info(f"[{evaluation_id}] FINAL callback sent successfully to {callback_url}.")
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"[{evaluation_id}] FAILED to send callback to {callback_url}: {e}")
+        logger.error(f"[{evaluation_id}] FAILED to send FINAL callback to {callback_url}: {e}")
