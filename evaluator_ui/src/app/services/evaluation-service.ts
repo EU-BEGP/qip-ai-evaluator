@@ -39,8 +39,8 @@ export class EvaluationService {
         else {
           localStorage.setItem('isAll' + body.email, 'true');
         }
-        localStorage.setItem('evaluationId' + body.email, response.body.evaluationId);
-        this.storageService.setEvaluationId(response.body.evaluationId);
+        localStorage.setItem('evaluationId' + body.email, response.body.scan_id);
+        this.storageService.setEvaluationId(response.body.scan_id);
         this.toastr.success('Evaluation request successfully submitted.', 'Success');
       }),
       catchError((err) => {

@@ -86,7 +86,7 @@ export class SearchComponent {
 
     this.evaluationService.getEvaluationList(scanRequest).subscribe({
       next: (list) => {
-        this.evaluationList = list;
+        this.evaluationList = list.body;
         this.isLoadingHistory = false;
       },
       error: (err) => {
