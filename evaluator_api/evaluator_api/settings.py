@@ -12,6 +12,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
+# --- ADDED IMPORTS ---
+import os
+from decouple import config
+import dj_database_url
+# --- END ADDED IMPORTS ---
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,13 +25,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-z(3tw_^_u^9c8$#^)q+-3%=%6ghdno)x_(@ltq442j0ti0$cka'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+SECRET_KEY = config('SECRET_KEY')
+DEBUG = config('DEBUG', default=False, cast=bool)
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
 
 
 # Application definition
@@ -78,16 +79,8 @@ WSGI_APPLICATION = 'evaluator_api.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'evaluator_db',
-        'USER': 'postgres',
-        'PASSWORD': '18240807',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config('DATABASE_URL')
 }
 
 
@@ -137,8 +130,8 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = 'static/'
+STATIC_URL = '/evaluator/api/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -146,22 +139,20 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- API Endpoints ---
-EXTERNAL_LOGIN_API_URL = 'https://eubbc-digital.upb.edu/booking/api/users/token/'
-RAG_CALLBACK_SECRET = '123' # This must match the other project
-RAG_API_EVALUATE_URL = 'http://localhost:8001/api/evaluate/'
-RAG_API_MODULE_MODIFIED_URL = 'http://localhost:8001/api/module_last_modified/'
+# --- FOR PRODUCTION ---
+EXTERNAL_LOGIN_API_URL = config('EXTERNAL_LOGIN_API_URL')
+RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
+RAG_API_EVALUATE_URL = config('RAG_API_EVALUATE_URL')
+RAG_API_MODULE_MODIFIED_URL = config('RAG_API_MODULE_MODIFIED_URL')
 
-# --- ADDED: CORS Configuration ---
-# Allow your Angular app to call this API
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:4200",
-    "http://127.0.0.1:4200",
-]
+# --- CORS Configuration ---
+# Read allowed origins from environment variable
+CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
+CSRF_TRUSTED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
 
-# --- ADDED: Celery Configuration ---
-# This is required for your 'check_and_merge_evaluation' task
-CELERY_BROKER_URL = 'redis://localhost:6379/1'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/1'
+# --- MCelery Configuration ---
+CELERY_BROKER_URL = config('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
