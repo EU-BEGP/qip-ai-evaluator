@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # 1. The Redis Broker for Celery
+  broker:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # 2. The Django App (running Gunicorn)
+  app:
+    build: .
+    ports:
+      # Map container 8000 to HOST 8005 (localhost only)
+      - "127.0.0.1:8005:8000"
+    volumes:
+      # Map host static dir to container's static dir
+      - /files/qip_rag_staticfiles:/app/static
+      # Map host db dir to container's db dir
+      - sqlite_db:/app/app/db
+    env_file: .env.prod
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  # 4. The Celery Worker
+  celery_worker:
+    build: .
+    # Command to start the worker (pointing to 'app' project)
+    command: celery -A app worker -l info
+    volumes:
+      # Worker also needs access to the database
+      - sqlite_db:/app/app/db
+    env_file: .env.prod
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+volumes:
+  sqlite_db: # Persistent volume for the SQLite file
+  redis_data:
+  

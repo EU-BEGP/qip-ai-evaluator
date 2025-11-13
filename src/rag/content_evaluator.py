@@ -5,9 +5,9 @@ from typing import List, Dict, Optional, Callable
 from langchain.schema import Document
 import json
 from model_wrapper import get_llm_wrapper
-from datetime import datetime
 import requests
 import logging
+import os
 
 from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
@@ -32,10 +32,15 @@ class ContentEvaluator:
         self.llm = get_llm_wrapper(self.cfg)
 
     def _load_config(self) -> Dict:
-        """Load YAML configuration for LLM and processing."""
+        """Load YAML configuration and substitute env vars."""
         config_path = Path(__file__).parents[1] / "config" / "config.yaml"
         with open(config_path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f)
+            content = f.read()
+        
+        content = content.replace("${HF_TOKEN}", os.environ.get("HF_TOKEN", ""))
+        content = content.replace("${GEMINI_API_KEY}", os.environ.get("GEMINI_API_KEY", ""))
+        
+        return yaml.safe_load(content)
 
     def set_documents_for_rag(self, documents: List[Document]):
         """Set documents for CrossEncoderRAG and initialize anchored session memory for this document."""
