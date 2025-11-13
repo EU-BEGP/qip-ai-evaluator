@@ -4,8 +4,8 @@
 
     <form class="p-2">
         <mat-form-field class="input-field mb-2">
-        <mat-label>Learnify Code</mat-label>
-        <input matInput [formControl]="codeControl" placeholder="OYJPG" />
+        <mat-label>Learnify Copy Link</mat-label>
+        <input matInput [formControl]="codeControl" placeholder="https://time.learnify.se/l/show.html#att/OYJPG" />
         <mat-icon matSuffix>code</mat-icon>
 
         <mat-error *ngIf="codeControl.hasError('required') && codeControl.touched">

@@ -5,6 +5,7 @@ import logging
 import uuid
 from pathlib import Path
 import sys
+import re
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
@@ -39,7 +40,12 @@ def evaluate_module(request):
     previous_evaluation = request.data.get("previous_evaluation") # Optional
     evaluation_id = request.data.get("evaluation_id")
 
-    # --- Validation ---
+    # --- Validation ---'
+    if not course_key:
+        return Response(
+            {"error": "Missing or invalid 'course_key' in request body"}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
     if not course_key:
         return Response(
             {"error": "Missing 'course_key' in request body"}, 
