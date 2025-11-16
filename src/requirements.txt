@@ -13,6 +13,8 @@ redis
 # RAG & AI
 langchain>=0.2.21
 langchain-community>=0.0.210
+langchain-core>=0.2.0
+langchain-text-splitters>=0.3.0
 tiktoken>=0.4.0
 sentence-transformers>=2.2.2
 torch>=2.0.0
@@ -22,14 +24,15 @@ google-generativeai>=0.7.0
 # Document Loaders
 pypdf>=3.15.0
 python-docx>=0.8.11
-pdf2docx>=0.5.8
 openpyxl>=3.1.5
-docling==2.58.0
+docling==2.5.80
 beautifulsoup4>=4.9.0
+opencv-python-headless
 
 # Utilities
 requests>=2.25.0
 PyYAML>=6.0
 numpy<2.0.0
 sqlalchemy>=2.0.0
-python-decouple # For .env
+python-decouple
+dj-database-url
