@@ -1,5 +1,5 @@
 export interface ScanRequest {
-  course_key: string;
+  course_link: string;
   email: string;
   scan_name: string;
 }

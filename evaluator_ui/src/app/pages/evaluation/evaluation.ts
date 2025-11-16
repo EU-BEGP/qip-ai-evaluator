@@ -15,6 +15,7 @@ import { HeaderComponent } from '../../components/header-component/header-compon
 import { Subscription } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import { StorageService } from '../../services/storage-service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-evaluation',
@@ -40,27 +41,52 @@ export class EvaluationComponent {
   private poolingSub?: Subscription;
   private evaluationIdSub?: Subscription;
 
-  currentTab = '';
-  selectedTabIndex = 0;
+  linkModule = '';
   disableEvaluateButton = false;
-  tabs = ['All Scans', 'Academic Metadata Scan', 'Learning Content Scan', 'Assessment Scan', 'Multimedia Scan', 'Certificate Scan', 'Summary Scan'];
+  evaluationId?: string;
+  loaded: boolean = false;
+  scansList: { name: string; id: number | undefined | null; evaluable: boolean; updatedData?: any }[] = [
+    { "name": "All Scans", "id": undefined, "evaluable": true },
+    { "name": "Academic Metadata Scan", "id": undefined, "evaluable": true },
+    { "name": "Learning Content Scan", "id": undefined, "evaluable": true },
+    { "name": "Assessment Scan", "id": undefined, "evaluable": true },
+    { "name": "Multimedia Scan", "id": undefined, "evaluable": true },
+    { "name": "Certificate Scan", "id": undefined, "evaluable": true },
+    { "name": "Summary Scan", "id": undefined, "evaluable": true }
+  ]
 
   constructor (
     private toastr: ToastrService,
     private evaluationService: EvaluationService,
-    private storageService: StorageService
+    private storageService: StorageService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
-    this.currentTab = this.tabs[this.selectedTabIndex];
+    this.route.paramMap.subscribe(params => {
+      this.evaluationId = params.get('id') || undefined;
+      if (this.evaluationId !== undefined) {
+        this.evaluationService.getLinkModule(this.evaluationId).subscribe({
+          next: (response) => {
+            this.linkModule = response.course_link;
+            this.evaluationService.getIdsList(this.evaluationId!).subscribe({
+              next: (response) => {
+                this.scansList = response;
+                this.loaded = true;
+              }
+            });
+          }
+        });
+      }
+      else {
+        this.loaded = true;
+      }
+    });
+
     this.startPooling();
     this.evaluationIdSub = this.storageService.evaluationId$.subscribe((id) => {
       this.disableEvaluateButton = id !== null;
     });
-  }
-
-  onTabChange(index: number): void {
-    this.currentTab = this.tabs[index];
   }
 
   startPooling(): void {
@@ -69,12 +95,23 @@ export class EvaluationComponent {
 
     if(evaluationId && isAll) {
       this.storageService.setEvaluationId(evaluationId);
+      
       if (isAll == 'true') {
         this.poolingSub = this.evaluationService.getStatusModule(evaluationId!)
         .subscribe({
           next: (response) => {
-            if (response.status === 'Completed') {
-              this.toastr.success('Please go to the tab corresponding to “' + response.scan_name + '” and enter the course key “' + response.course_key +'”.', 'Evaluation completed');
+            if (response.status === 'In Progress') {
+              if (response.evaluation_id === this.evaluationId) {
+                const index = this.getScanIndexByName(response.scan_name);
+                this.updateData(index, isAll, evaluationId);
+              }
+            }
+            else if (response.status === 'Completed') {
+              if (response.evaluation_id === this.evaluationId) {
+                const index = this.getScanIndexByName(response.scan_name);
+                this.finishEvaluation(index, isAll, evaluationId);
+              }
+              this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
               localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
               this.storageService.clearEvaluationId();
@@ -95,8 +132,18 @@ export class EvaluationComponent {
         this.poolingSub = this.evaluationService.getStatusScan(evaluationId!)
         .subscribe({
           next: (response) => {
-            if (response.status === 'Completed') {
-              this.toastr.success('Please go to the tab corresponding to “' + response.scan_name + '” and enter the course key “' + response.course_key +'”.', 'Evaluation completed');
+            if (response.status === 'In Progress') {
+              if (response.evaluation_id === this.evaluationId) {
+                const index = this.getScanIndexByName(response.scan_name);
+                this.updateData(index, isAll, evaluationId);
+              }
+            }
+            else if (response.status === 'Completed') {
+              if (response.evaluation_id === this.evaluationId) {
+                const index = this.getScanIndexByName(response.scan_name);
+                this.finishEvaluation(index, isAll, evaluationId);
+              }
+              this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
               localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
               this.storageService.clearEvaluationId();
@@ -116,8 +163,48 @@ export class EvaluationComponent {
     }
   }
 
+  finishEvaluation(index: number, all: string, evaluationId: string): void {
+    this.scansList[index].id = Number(evaluationId);
+    this.scansList[index].evaluable = false;
+    this.updateData(index, all, evaluationId);
+  }
+
+  updateData(index: number, all: string, evaluationId: string): void {
+    this.scansList[index].evaluable = false;
+    if (all === 'true') {
+      this.evaluationService.getEvaluationDetailModule(Number(evaluationId)).subscribe({
+        next: (response) => {
+          this.scansList[index].updatedData = response;
+        }
+      })
+    }
+    else if (all === 'false') {
+      this.evaluationService.getEvaluationDetailScan(Number(evaluationId)).subscribe({
+        next: (response) => {
+          this.scansList[index].updatedData = response;
+        }
+      })
+    }
+  }
+
+  getEmoji(id: number | undefined | null): string {
+    if (id === null) {
+      return ' ❌';
+    }
+    else if (id === undefined) {
+      return '';
+    }
+    else {
+      return ' ✅';
+    }
+  }
+
+  getScanIndexByName(name: string): number {
+    return this.scansList.findIndex(scan => scan.name === name);
+  }
+
   ngOnDestroy() {
-    if (this.poolingSub) this.poolingSub.unsubscribe();
+    //if (this.poolingSub) this.poolingSub.unsubscribe();
     if (this.evaluationIdSub) this.evaluationIdSub.unsubscribe();
   }
-}
+}3

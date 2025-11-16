@@ -1,14 +1,10 @@
-.search-container {
+.container {
   width: 100%;
   height: auto;
   background-color: #ffffff;
   display: flex;
   justify-content: center;
   align-items: flex-start;
-}
-
-.search {
-  width: 60%;
 }
 
 .evaluation-table {
@@ -41,24 +37,4 @@
 
 .evaluation-table td.text-center {
   text-align: center;
-}
-
-.spinner-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  margin-top: 1rem;
-}
-
-.button-row {
-  display: flex;
-  gap: 10px;
-  margin-top: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.button-row .access-button {
-  margin-top: 0;
-  margin-bottom: 0;
 }

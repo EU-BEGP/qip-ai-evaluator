@@ -23,4 +23,8 @@ export class HeaderComponent {
     localStorage.removeItem('accountEmail');
     this.router.navigateByUrl('login');
   }
+
+  navigateToHome(): void {
+    this.router.navigateByUrl('modules');
+  }
 }

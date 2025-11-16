@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, DoCheck } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,33 +29,44 @@ import { ScanRequest } from '../../interfaces/scan-request';
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',
 })
-export class SearchComponent {
-  @Input() tab!: string;
+export class SearchComponent implements OnInit, DoCheck {
   @Input() disableEvaluateButton!: boolean;
+  @Input() linkModule!: string;
+  @Input() scanInformation!: any;
   @Output() startPooling = new EventEmitter<void>();
 
+  private lastUpdatedData: any;
+
+  tab: string = '';
   data: any = null;
   isLoading = false;
   codeControl = new FormControl('', Validators.required);
   evaluationList: any[] = [];
-  isLoadingHistory = false;
   selectedTabIndex = 0;
 
   constructor (
     private evaluationService: EvaluationService
   ) {}
 
-  evaluate(): void {
-    if (this.codeControl.invalid) {
-      this.codeControl.markAsTouched();
-      return;
+  ngOnInit(): void {
+    this.tab = this.scanInformation.name;
+    if (this.scanInformation.id !== undefined && this.scanInformation.id !== null) {
+      this.loadData();
     }
+  }
 
-    const courseKey = this.codeControl.value!;
+  ngDoCheck(): void {
+    if (this.scanInformation?.updatedData && this.lastUpdatedData !== this.scanInformation.updatedData) {
+      this.data = this.scanInformation.updatedData;
+      this.lastUpdatedData = this.scanInformation.updatedData;
+    }
+  }
+
+  evaluate(): void {
     const scanRequest: ScanRequest = { 
-      course_key: courseKey,
+      course_link: this.linkModule,
       email: localStorage.getItem('accountEmail')!,
-      scan_name: this.tab == 'All Scans' ? '' : this.tab
+      scan_name: this.tab
     }
 
     this.evaluationService.evaluate(scanRequest).subscribe({
@@ -68,44 +79,10 @@ export class SearchComponent {
     });
   }
 
-  loadHistory(): void {
-    if (this.codeControl.invalid) {
-      this.codeControl.markAsTouched();
-      return;
-    }
-    
-    this.isLoadingHistory = true;
-    this.evaluationList = [];
-    this.data = null;
-    const courseKey = this.codeControl.value!;
-    const scanRequest: ScanRequest = { 
-      course_key: courseKey,
-      email: localStorage.getItem('accountEmail')!,
-      scan_name: this.tab == 'All Scans' ? '' : this.tab
-    }
-
-    this.evaluationService.getEvaluationList(scanRequest).subscribe({
-      next: (list) => {
-        this.evaluationList = list.body;
-        this.isLoadingHistory = false;
-      },
-      error: (err) => {
-        console.error('Error loading history:', err);
-        this.evaluationList = [];
-        this.isLoadingHistory = false;
-      }
-    });
-  }
-
-  onHistorySelect(event: MatSelectChange): void {
-    const evaluationId = event.value;
-    if (!evaluationId) return;
-
-    this.data = null;
+  loadData(): void {
     this.isLoading = true;
-
     if (this.tab === 'All Scans') {
-      this.evaluationService.getEvaluationDetailModule(evaluationId).subscribe({
+      this.evaluationService.getEvaluationDetailModule(this.scanInformation.id).subscribe({
         next: (response) => {
           this.data = response;
           this.isLoading = false;
@@ -117,7 +94,7 @@ export class SearchComponent {
       });
     }
     else {
-      this.evaluationService.getEvaluationDetailScan(evaluationId).subscribe({
+      this.evaluationService.getEvaluationDetailScan(this.scanInformation.id).subscribe({
         next: (response) => {
           this.data = response;
           this.isLoading = false;

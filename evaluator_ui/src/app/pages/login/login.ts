@@ -47,7 +47,7 @@ export class LoginComponent {
 
   ngOnInit(): void {
     if (localStorage.getItem('token')) {
-      this.router.navigateByUrl('evaluation');
+      this.router.navigateByUrl('modules');
     }
   }
 
@@ -101,7 +101,7 @@ export class LoginComponent {
 
     if (returnUrl) this.router.navigateByUrl(returnUrl);
     else {
-      this.router.navigateByUrl('evaluation');
+      this.router.navigateByUrl('modules');
     }
   }
 }

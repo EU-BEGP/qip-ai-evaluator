@@ -1,0 +1,48 @@
+<app-header-component/>
+
+<div class="d-flex justify-content-end mx-5 mt-4">
+  <button mat-raised-button color="primary" [disabled]="disableEvaluateButton" (click)="openNewEvalModal()">+ New Evaluation</button>
+</div>
+
+<div *ngIf="showNewEvalModal" class="modal-backdrop bg-dark bg-opacity-50 evaluation-modal">
+  <div class="card p-4 evaluation-card">
+    <h5 class="mb-3">New Evaluation</h5>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Course Link</mat-label>
+      <input matInput [(ngModel)]="newEvalCourseLink" placeholder="https://time.learnify.se/l/show.html#att/OYJPG" />
+    </mat-form-field>
+
+    <mat-form-field appearance="fill" class="w-100">
+      <mat-label>Scan</mat-label>
+      <mat-select [(ngModel)]="newEvalScan">
+        <mat-option *ngFor="let s of scans" [value]="s">{{ s }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+      <button mat-stroked-button (click)="closeNewEvalModal()">Cancel</button>
+      <button mat-raised-button color="primary" [disabled]="!canEvaluate()" (click)="evaluateNew()">Evaluate</button>
+    </div>
+  </div>
+</div>
+
+<div class="modules-container m-5 d-flex flex-wrap justify-content-center gap-5">
+
+  <div *ngFor="let module of modules; let i = index" class="position-relative">
+    <app-module-card-component 
+      [data]="module" 
+      (onClick)="onClickCard($event, i)"
+    />
+
+    <div *ngIf="openCardIndex === i" class="mt-2 history-list">
+      <ul class="list-group">
+        <li *ngFor="let item of (evaluationListByIndex[i] || [])" 
+            class="list-group-item list-group-item-action evaluation-item"
+            (click)="onSelectEvaluation(item, i)">
+          {{ item.date }} (ID: {{ item.id }})
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>

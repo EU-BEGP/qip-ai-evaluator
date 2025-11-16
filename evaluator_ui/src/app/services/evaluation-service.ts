@@ -33,7 +33,7 @@ export class EvaluationService {
 
     return this.http.post(URL, body, this.httpOptions).pipe(
       tap((response: any) => {
-        if (body.scan_name != undefined && body.scan_name != '') {
+        if (body.scan_name != undefined && body.scan_name != '' && body.scan_name != 'All Scans') {
           localStorage.setItem('isAll' + body.email, 'false');
         }
         else {
@@ -103,6 +103,37 @@ export class EvaluationService {
     return interval(this.POLL_INTERVAL).pipe(
       switchMap(() => this.http.get<any>(URL)),
       takeWhile(res => res.status !== 'Completed' && res.status !== 'Failed', true)
+    );
+  }
+
+  getIdsList(id: string) {
+    let URL = `${config.api.baseUrl}${config.api.evaluation.idsList}`;
+    URL = URL.replace('{id}', String(id));
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => {
+        return throwError(() => err);
+      })
+    );
+  }
+
+  getLinkModule(id: string) {
+    let URL = `${config.api.baseUrl}${config.api.evaluation.linkModule}`;
+    URL = URL.replace('{id}', String(id));
+    
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => {
+        return throwError(() => err);
+      })
+    );
+  }
+
+  getModules(email: string) {
+    let URL = `${config.api.baseUrl}${config.api.evaluation.modulesList}`;
+    URL = URL.replace('{email}', email);
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err))
     );
   }
 }
