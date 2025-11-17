@@ -239,18 +239,19 @@ def list_evaluations(request):
     scan_name = request.data.get('scan_name') 
 
     if not course_key or not email or request.user.email != email:
-        return Response({"error": "Invalid course_key or email, or token mismatch."}, status=status.HTTP_403_FORBIDDEN)
+        return Response({"error": "Invalid course_link or email, or token mismatch."}, status=status.HTTP_403_FORBIDDEN)
 
     module = get_module_for_user(request.user, course_key)
     if not module:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
-    if scan_name:
+    if scan_name and scan_name.lower() != "all scans":
         # Logic for a specific scan: Find all *Scans*
+        # KEEP AS IS: Only return COMPLETED specific scans
         scans = Scan.objects.filter(
             evaluation__module=module,
             scan_type=scan_name,
-            status=Scan.Status.COMPLETED  # Only list completed ones
+            status=Scan.Status.COMPLETED 
         ).select_related('evaluation').order_by('-evaluation__created_at')[:10]
         
         results = [
@@ -258,10 +259,10 @@ def list_evaluations(request):
             for scan in scans
         ]
     else:
-        # Logic for all evaluations for that module
+        # Logic for all evaluations (History)
         evaluations = Evaluation.objects.filter(
             module=module, 
-            status=Evaluation.Status.COMPLETED, # Only list completed ones
+            status__in=[Evaluation.Status.COMPLETED, Evaluation.Status.IN_PROGRESS],
         ).order_by('-created_at')[:10]
         
         results = [
