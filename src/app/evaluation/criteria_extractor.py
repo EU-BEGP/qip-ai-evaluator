@@ -1,6 +1,5 @@
 import json
 import re
-from pdf2docx import Converter
 from docx import Document
 from docx.table import Table
 from docx.oxml.text.paragraph import CT_P
@@ -15,14 +14,6 @@ class CriteriaExtractor:
         self.input_path = input_path
         self.output_path = output_path
         self.scans = []
-
-    def convert_pdf_to_docx(self, pdf_path: str) -> str:
-        """Transform a PDF file to a DOCX file."""
-        docx_path = pdf_path.replace('.pdf', '.docx')
-        cv = Converter(pdf_path)
-        cv.convert(docx_path)
-        cv.close()
-        return docx_path
 
     def save_scans_to_json(self, scans, output_path: str) -> None:
         """Save extracted scans to a JSON file."""
@@ -124,12 +115,7 @@ class CriteriaExtractor:
     def process_file(self):
         """Process the input file and extract scans."""
         try:
-            if self.input_path.lower().endswith('.pdf'):
-                docx_path = self.convert_pdf_to_docx(self.input_path)
-                self.scans = self.extract_scans_from_docx(docx_path)
-                os.remove(docx_path)  # Remove temporary DOCX file
-                self.save_scans_to_json(self.scans, self.output_path)
-            elif self.input_path.lower().endswith('.docx'):
+            if self.input_path.lower().endswith('.docx'):
                 self.scans = self.extract_scans_from_docx(self.input_path)
                 self.save_scans_to_json(self.scans, self.output_path)
             elif self.input_path.lower().endswith('.xlsx'):

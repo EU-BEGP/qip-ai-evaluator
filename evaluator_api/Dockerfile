@@ -13,7 +13,7 @@ RUN apt-get update \
 # 4. Set the working directory
 WORKDIR /app
 
-# 5. Install Python dependencies from your locked file
+# 5. Install Python dependencies
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
@@ -27,5 +27,5 @@ USER django_user
 # 8. Expose the port Gunicorn will run on
 EXPOSE 8000
 
-# 9. Start Gunicorn (project name from manage.py)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "evaluator_api.wsgi:application"]
+# 9. Start Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--timeout", "900", "evaluator_api.wsgi:application"]

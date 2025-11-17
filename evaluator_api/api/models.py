@@ -39,6 +39,7 @@ class Module(models.Model):
     course_key = models.CharField(max_length=100)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    title = models.CharField(max_length=255, blank=True, null=True)
     
     class Meta:
         unique_together = ('user', 'course_key') 
@@ -68,6 +69,8 @@ class Evaluation(models.Model):
     
     # Stores the final *merged* JSON file
     result_json = models.JSONField(null=True, blank=True)
+
+    title = models.CharField(max_length=255, blank=True, null=True)
 
     @property
     def formatted_date(self):

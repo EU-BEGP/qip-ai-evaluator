@@ -19,7 +19,7 @@ document_processing:
     hf_token: "${HF_TOKEN}"
 
 vector_store:
-  path: "data/vector_store"
+  path: "db/vector_store"
 
 llm_settings:
    wrapper: "gemini"
