@@ -1,38 +1,41 @@
 # Core Django
-django>=5.0
-djangorestframework>=3.15
-django-cors-headers>=4.9.0
+django==5.2.7
+djangorestframework==3.16.1
+django-cors-headers==4.9.0
 
 # WSGI Server
-gunicorn
+gunicorn==22.0.0
 
 # Celery
-celery
-redis
+celery==5.5.3
+redis==7.0.1
 
 # RAG & AI
-langchain>=0.2.21
-langchain-community>=0.0.210
-langchain-core>=0.2.0
-langchain-text-splitters>=0.3.0
-tiktoken>=0.4.0
-sentence-transformers>=2.2.2
-torch>=2.0.0
-chromadb>=0.4.4
-google-generativeai>=0.7.0
+langchain==0.3.27
+langchain-community==0.3.21
+langchain-core==0.3.76
+langchain-text-splitters==0.3.11
+tiktoken==0.11.0
+sentence-transformers==5.1.0
+torch==2.9.0
+chromadb==1.0.21
+google-generativeai==0.8.5
+
+# Ollama
+ollama==0.5.3
+langchain-ollama==0.3.8
 
 # Document Loaders
-pypdf>=3.15.0
-python-docx>=0.8.11
-openpyxl>=3.1.5
-docling==2.5.80
-beautifulsoup4>=4.9.0
-opencv-python-headless
+python-docx==1.2.0
+openpyxl==3.1.5
+docling==2.58.0
+beautifulsoup4==4.14.2
+opencv-python-headless==4.11.0.86
 
 # Utilities
-requests>=2.25.0
-PyYAML>=6.0
-numpy<2.0.0
-sqlalchemy>=2.0.0
-python-decouple
-dj-database-url
+requests==2.32.5
+PyYAML==6.0.2
+numpy==1.26.4
+sqlalchemy==2.0.43
+python-decouple==3.8
+dj-database-url==2.1.0

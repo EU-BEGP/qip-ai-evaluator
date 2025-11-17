@@ -8,3 +8,4 @@ requests==2.32.5
 gunicorn==22.0.0 
 python-decouple==3.8
 dj-database-url==2.1.0
+django-cors-headers==4.9.0
