@@ -49,6 +49,28 @@ def build_results_json(evaluation: Evaluation) -> dict:
         "content": content_list
     }
 
+def _calculate_score_from_scan_json(scan_result_json):
+    """Calculates the average score (0-100) from the criteria data in a single Scan's JSON."""
+    if not scan_result_json:
+        return None
+    
+    total_score = 0.0
+    criteria_count = 0
+    
+    # The JSON format is { "content": [ { "criteria": [...] } ] }
+    content = scan_result_json.get("content", [])
+    if content and isinstance(content, list):
+        for scan_data in content:
+            for criterion in scan_data.get("criteria", []):
+                score = criterion.get("score", 0.0)
+                total_score += score
+                criteria_count += 1
+    
+    if criteria_count > 0:
+        average_5_scale = total_score / criteria_count
+        return int((average_5_scale / 5.0) * 100), total_score, criteria_count
+    return None, 0, 0
+
 # --- 0. Login Proxy Endpoint ---
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -396,142 +418,87 @@ def get_module_link(request, pk):
 @permission_classes([IsAuthenticated])
 def get_evaluation_ids(request, pk):
     """
-    Returns a list of all possible scans, their IDs (if generated),
-    and whether they can be evaluated.
+    Returns a list of all possible scans, their IDs, evaluability, and calculated average score (0-100).
     """
-    # 1. Get the requested Evaluation
     evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
 
-    # 2. Determine "Recency" (Is this the active/latest version?)
-    # If there is a newer Evaluation object for this module, this one is 'History'.
+    # 1. Determine Recency (Is this the active/latest version?)
     latest_eval = Evaluation.objects.filter(
         module=evaluation.module
     ).order_by('-created_at').first()
-    
     is_recent = (latest_eval and evaluation.id == latest_eval.id)
 
-    # 3. Get existing scans map
-    existing_scans_map = {s.scan_type: s for s in evaluation.scans.all()}
-    existing_scan_types = set(existing_scans_map.keys())
-    all_possible_types = set(Scan.ScanType.values)
+    # 2. Pre-calculate Scores and find Global Totals
+    existing_scans = evaluation.scans.all()
+    existing_scans_map = {}
+    
+    global_total_score = 0.0
+    global_criteria_count = 0
+    
+    for scan in existing_scans:
+        # Calculate score (returns 0-100 score, raw_total, raw_count)
+        score_100, raw_total, raw_count = _calculate_score_from_scan_json(scan.result_json)
+        
+        existing_scans_map[scan.scan_type] = {
+            "obj": scan,
+            "score_100": score_100,
+            "raw_total": raw_total,
+            "raw_count": raw_count,
+            "is_completed": scan.status == Scan.Status.COMPLETED # Use status for accuracy
+        }
+        
+        # Only include COMPLETED scans in the GLOBAL average
+        if scan.status == Scan.Status.COMPLETED and raw_count > 0:
+             global_total_score += raw_total
+             global_criteria_count += raw_count
 
+    # 3. Calculate Global Average
+    if global_criteria_count > 0:
+        global_avg_5_scale = global_total_score / global_criteria_count
+        global_avg_100 = int((global_avg_5_scale / 5.0) * 100)
+    else:
+        global_avg_100 = None # Use None if no scores available (matches requested logic)
+
+    # 4. Build Final Response List
+    all_possible_types = set(Scan.ScanType.values)
+    existing_types = set(existing_scans_map.keys())
+    are_scans_missing = len(existing_types) < len(all_possible_types)
+    
     response_list = []
 
-    # 4. Logic for "All Scans" (Module Level) entry
-    # Evaluable if: It is Recent AND Not all scans are completed yet
-    are_scans_missing = len(existing_scan_types) < len(all_possible_types)
-    
+    # A. "All Scans" (Module Level) entry
     response_list.append({
         "name": "All Scans",
-        "id": evaluation.id, # The ID of the module evaluation itself
-        "evaluable": is_recent and are_scans_missing
+        "id": evaluation.id, 
+        "evaluable": is_recent and are_scans_missing,
+        "scan_max": 100,
+        "scan_average": global_avg_100 # Overall average
     })
 
-    # 5. Iterate through individual Scan Types
-    for scan_type_name in Scan.ScanType.values:
-        scan_obj = existing_scans_map.get(scan_type_name)
+    # B. Individual Scan entries
+    for scan_type_name in all_possible_types:
+        data = existing_scans_map.get(scan_type_name)
         
-        if scan_obj:
-            # Case A: Scan already exists
+        if data:
+            # Case A: Scan exists (Return score if completed, else null)
             item = {
                 "name": scan_type_name,
-                "id": scan_obj.id,
-                "evaluable": False # Already exists
+                "id": data["obj"].id,
+                "evaluable": False, # Already exists, not evaluable here
+                "scan_max": 100,
+                "scan_average": data["score_100"] if data["is_completed"] else None
             }
         else:
             # Case B: Scan does not exist (ID is null)
-            # Evaluable ONLY if this is the recent version
             item = {
                 "name": scan_type_name,
                 "id": None,
-                "evaluable": is_recent
+                "evaluable": is_recent, # Only evaluable if it's the recent version
+                "scan_max": 100,
+                "scan_average": None
             }
         
         response_list.append(item)
-
-    return Response(response_list, status=status.HTTP_200_OK)
-
-# --- 9. GET /modules/<email> ---
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_user_modules(request, email):
-    """
-    Returns a summary list of all modules belonging to the user email.
-    Includes title, dates, and calculated average score (0-100).
-    """
-    if request.user.email != email:
-        return Response({"error": "You can only list your own modules."}, status=status.HTTP_403_FORBIDDEN)
-
-    modules = Module.objects.filter(user__email=email)
-    response_list = []
-
-    for mod in modules:
-        # 1. Find the LATEST evaluation (Even if IN_PROGRESS)
-        #    We exclude 'NOT_STARTED' only.
-        latest_eval = Evaluation.objects.filter(
-            module=mod
-        ).exclude(
-            status=Evaluation.Status.NOT_STARTED
-        ).order_by('-updated_at').first()
-
-        # 2. Last Modify (From Learnify via RAG API)
-        rag_last_modified_str = get_rag_last_modified(mod.course_key)
-        
-        learnify_date_formatted = "N/A"
-        if rag_last_modified_str:
-            try:
-                learnify_date_formatted = isoparse(rag_last_modified_str).strftime("%Y-%m-%d")
-            except Exception:
-                learnify_date_formatted = rag_last_modified_str
-
-        module_data = {
-            "title": mod.title if mod.title else "Pending Evaluation...", 
-            "link": mod.course_key,
-            "last_modify": learnify_date_formatted,
-            "last_evaluation": "N/A",
-            "last_average": 0,
-            "last_max": 100
-        }
-
-        if latest_eval:
-            # A. Update Date (Shows when it was last worked on)
-            module_data["last_evaluation"] = latest_eval.updated_at.strftime("%Y-%m-%d")
-
-            # B. Title Fallback
-            if not mod.title and latest_eval.title:
-                 module_data["title"] = latest_eval.title
-
-            # C. Robust Average Calculation
-            total_score = 0.0
-            criteria_count = 0
-
-            if latest_eval.result_json:
-                # OPTION A: FAST - Read from final JSON
-                content = latest_eval.result_json.get("content", [])
-                if isinstance(content, list):
-                    for scan_data in content:
-                        for criterion in scan_data.get("criteria", []):
-                            score = criterion.get("score", 0.0)
-                            total_score += score
-                            criteria_count += 1
-            else:
-                # OPTION B: REAL-TIME - Read from Scans DB (If JSON not ready yet)
-                scans = latest_eval.scans.exclude(result_json__isnull=True)
-                for scan in scans:
-                    # Each scan result_json has "content": [{ "criteria": [...] }]
-                    scan_content = scan.result_json.get("content", [])
-                    if isinstance(scan_content, list) and len(scan_content) > 0:
-                        # Usually partial JSON has 1 item in content
-                        for criterion in scan_content[0].get("criteria", []):
-                            score = criterion.get("score", 0.0)
-                            total_score += score
-                            criteria_count += 1
-
-            if criteria_count > 0:
-                average_5_scale = total_score / criteria_count
-                module_data["last_average"] = int((average_5_scale / 5.0) * 100)
-
-        response_list.append(module_data)
 
     return Response(response_list, status=status.HTTP_200_OK)
 
