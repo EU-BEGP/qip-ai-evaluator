@@ -11,6 +11,7 @@ import { EvaluationService } from '../../services/evaluation-service';
 import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ScanRequest } from '../../interfaces/scan-request';
+import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
 
 @Component({
   selector: 'app-search-component',
@@ -24,7 +25,8 @@ import { ScanRequest } from '../../interfaces/scan-request';
     MatButtonModule,
     MatProgressSpinnerModule,
     MatSelectModule,
-    MatTabsModule
+    MatTabsModule,
+    EvaluationCircleComponent
   ],
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',

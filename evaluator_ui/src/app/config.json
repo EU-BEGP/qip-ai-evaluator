@@ -6,15 +6,15 @@
       "login": "auth/login/"
     },
     "evaluation": {
-      "evaluate": "evaluate",
-      "list": "list_evaluations",
-      "detailModule": "evaluation_detail/module/{id}",
-      "detailScan": "evaluation_detail/scan/{id}",
-      "statusModule": "evaluation_status/module/{id}",
-      "statusScan": "evaluation_status/scan/{id}",
-      "idsList": "evaluation_ids/{id}",
-      "linkModule": "link_module/{id}",
-      "modulesList": "modules/{email}"
+      "evaluate": "evaluate/",
+      "list": "list_evaluations/",
+      "detailModule": "evaluation_detail/module/{id}/",
+      "detailScan": "evaluation_detail/scan/{id}/",
+      "statusModule": "evaluation_status/module/{id}/",
+      "statusScan": "evaluation_status/scan/{id}/",
+      "idsList": "evaluation_ids/{id}/",
+      "linkModule": "link_module/{id}/",
+      "modulesList": "modules/{email}/"
     }
   }
 }
