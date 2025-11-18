@@ -1,0 +1,24 @@
+<div class="circle-wrapper">
+  <div class="circle-title mb-3" *ngIf="title">
+    <b>{{ title }}</b>
+  </div>
+
+  <circle-progress
+    [percent]="percentage"
+    [radius]="small ? 50 : 80"
+    [outerStrokeWidth]="small ? 8 : 12"
+    [innerStrokeWidth]="small ? 4 : 8"
+    [outerStrokeColor]="'#3e98c7'"
+    [innerStrokeColor]="'#e7f1fb'"
+    [showUnits]="true"
+    [units]="'%'"
+    [showSubtitle]="false"
+    [showBackground]="false"
+    [animation]="true"
+    [animationDuration]="400"
+  ></circle-progress>
+
+  <div class="circle-text" *ngIf="label">
+    <b>{{ label }}</b>
+  </div>
+</div>
