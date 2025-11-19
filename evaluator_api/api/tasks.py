@@ -1,7 +1,7 @@
 from celery import shared_task
 from django.db import transaction
 import logging
-from .models import Evaluation, Scan
+from .models import Evaluation, Scan, Message
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +105,22 @@ def check_and_merge_evaluation(evaluation_id):
                 # It stays IN_PROGRESS so more scans can be added later.
                 evaluation.status = Evaluation.Status.IN_PROGRESS
                 logger.info(f"Partial Evaluation merge {evaluation_id} complete. Stays IN_PROGRESS ({len(completed_scan_types)}/6).")
+            
+            # --- Create Notification Message if requested batch is done ---
+            if requested_scan_types.issubset(completed_scan_types):
+                module_title = final_title if final_title else evaluation.module.course_key
+                
+                if len(requested_scan_types) == len(all_possible_scan_types):
+                     scan_text = "Full Evaluation"
+                else:
+                     scan_text = ", ".join(list(requested_scan_types))
+
+                Message.objects.create(
+                    user=evaluation.module.user,
+                    title="Evaluation Completed",
+                    content=f"The evaluation of module '{module_title}' for scan(s): {scan_text} has been completed.",
+                    is_read=False
+                )
             
             # --- 5. Save Changes ---
             # Save the merged JSON and the new status.
