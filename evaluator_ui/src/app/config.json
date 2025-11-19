@@ -18,7 +18,8 @@
     },
     "notifications": {
       "read": "read_message/",
-      "mailbox": "user_mailbox/{email}/"
+      "mailbox": "user_mailbox/{email}/",
+      "unreadQuantity": "notifications_unread/{email}/ "
     }
   }
 }

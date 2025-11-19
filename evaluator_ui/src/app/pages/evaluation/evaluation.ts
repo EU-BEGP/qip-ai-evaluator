@@ -8,7 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EvaluationService } from '../../services/evaluation-service';
-import { MatSelectModule, MatSelectChange } from '@angular/material/select';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SearchComponent } from '../../components/search-component/search-component';
 import { Subscription } from 'rxjs';
@@ -36,7 +36,7 @@ import { ActivatedRoute } from '@angular/router';
   standalone: true
 })
 export class EvaluationComponent {
-  private poolingSub?: Subscription;
+  private pollingSub?: Subscription;
   private evaluationIdSub?: Subscription;
 
   linkModule = '';
@@ -73,13 +73,13 @@ export class EvaluationComponent {
       this.loaded = true;
     }
 
-    this.startPooling();
+    this.startPolling();
     this.evaluationIdSub = this.storageService.evaluationId$.subscribe((id) => {
       this.disableEvaluateButton = id !== null;
     });
   }
 
-  startPooling(): void {
+  startPolling(): void {
     const isAll = localStorage.getItem('isAll' + localStorage.getItem('accountEmail'));
     const evaluationId = localStorage.getItem('evaluationId' + localStorage.getItem('accountEmail'));
 
@@ -87,7 +87,7 @@ export class EvaluationComponent {
       this.storageService.setEvaluationId(evaluationId);
       
       if (isAll == 'true') {
-        this.poolingSub = this.evaluationService.getStatusModule(evaluationId!)
+        this.pollingSub = this.evaluationService.getStatusModule(evaluationId!)
         .subscribe({
           next: (response) => {
             if (response.status === 'In Progress') {
@@ -99,7 +99,7 @@ export class EvaluationComponent {
             else if (response.status === 'Completed') {
               if (response.evaluation_id === this.evaluationId) {
                 const index = this.getScanIndexByName(response.scan_name);
-                this.finishEvaluation(index, response.scan_name, evaluationId);
+                this.finishEvaluation();
               }
               this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
@@ -119,7 +119,7 @@ export class EvaluationComponent {
         });
       }
       else {
-        this.poolingSub = this.evaluationService.getStatusScan(evaluationId!)
+        this.pollingSub = this.evaluationService.getStatusScan(evaluationId!)
         .subscribe({
           next: (response) => {
             if (response.status === 'In Progress') {
@@ -131,7 +131,7 @@ export class EvaluationComponent {
             else if (response.status === 'Completed') {
               if (response.evaluation_id === this.evaluationId) {
                 const index = this.getScanIndexByName(response.scan_name);
-                this.finishEvaluation(index, response.scan_name, evaluationId);
+                this.finishEvaluation();
               }
               this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
               localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
@@ -153,7 +153,7 @@ export class EvaluationComponent {
     }
   }
 
-  finishEvaluation(index: number, scanName: string, evaluationId: string): void {
+  finishEvaluation(): void {
     this.evaluationService.getIdsList(this.evaluationId!).subscribe({
       next: (response) => {
         this.scansList = response;
@@ -200,7 +200,7 @@ export class EvaluationComponent {
   }
 
   ngOnDestroy() {
-    //if (this.poolingSub) this.poolingSub.unsubscribe();
+    if (this.pollingSub) this.pollingSub.unsubscribe();
     if (this.evaluationIdSub) this.evaluationIdSub.unsubscribe();
   }
 }

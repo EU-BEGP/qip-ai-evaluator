@@ -35,7 +35,7 @@ export class SearchComponent implements OnInit, DoCheck {
   @Input() disableEvaluateButton!: boolean;
   @Input() linkModule!: string;
   @Input() scanInformation!: any;
-  @Output() startPooling = new EventEmitter<void>();
+  @Output() startPolling = new EventEmitter<void>();
 
   private lastUpdatedData: any;
 
@@ -73,7 +73,7 @@ export class SearchComponent implements OnInit, DoCheck {
 
     this.evaluationService.evaluate(scanRequest).subscribe({
       next: (response) => {
-        this.startPooling.emit();
+        this.startPolling.emit();
       },
       error: (error) => {
         console.error('Evaluation error:', error);

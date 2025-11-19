@@ -1,5 +1,5 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { MessageRequest } from '../interfaces/message-request';
 import { catchError, Observable, throwError } from 'rxjs';
 import config from '../config.json';
@@ -9,6 +9,7 @@ import config from '../config.json';
 })
 export class NotificationService {
   private httpOptions = <any>{};
+  unreadCount = signal(0);
 
   constructor(
     private http: HttpClient,
@@ -39,5 +40,18 @@ export class NotificationService {
     return this.http.get<any>(URL).pipe(
       catchError((err) => throwError(() => err))
     );
+  }
+
+  getUnreadNotificationsQuantity(email: string): Observable<any> {
+    let URL = `${config.api.baseUrl}${config.api.notifications.unreadQuantity}`;
+    URL = URL.replace('{email}', email);
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err))
+    );
+  }
+
+  setUnreadCount(value: number) {
+    this.unreadCount.set(value);
   }
 }

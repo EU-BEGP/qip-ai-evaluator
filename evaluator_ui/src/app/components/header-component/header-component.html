@@ -9,7 +9,10 @@
     <span class="spacer"></span>
 
     <button mat-icon-button aria-label="Notifications" class="me-1" (click)="navigateToNotifications()">
-        <mat-icon>notifications</mat-icon>
+        <mat-icon class="bell">notifications</mat-icon>
+        <span class="badge" *ngIf="notificationService.unreadCount() > 0">
+            {{ notificationService.unreadCount() }}
+        </span>
     </button>
 
     <button mat-button aria-label="Logout icon" (click)="logout()">
