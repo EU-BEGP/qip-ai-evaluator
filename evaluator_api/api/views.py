@@ -9,7 +9,7 @@ from dateutil.parser import isoparse
 import requests
 import logging
 
-from .models import User, Module, Evaluation, Scan
+from .models import User, Module, Evaluation, Scan, Message
 from .security import verify_rag_callback
 from .tasks import check_and_merge_evaluation
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -52,12 +52,11 @@ def build_results_json(evaluation: Evaluation) -> dict:
 def _calculate_score_from_scan_json(scan_result_json):
     """Calculates the average score (0-100) from the criteria data in a single Scan's JSON."""
     if not scan_result_json:
-        return None
-    
+        return None, 0, 0
+
     total_score = 0.0
     criteria_count = 0
     
-    # The JSON format is { "content": [ { "criteria": [...] } ] }
     content = scan_result_json.get("content", [])
     if content and isinstance(content, list):
         for scan_data in content:
@@ -68,7 +67,8 @@ def _calculate_score_from_scan_json(scan_result_json):
     
     if criteria_count > 0:
         average_5_scale = total_score / criteria_count
-        return int((average_5_scale / 5.0) * 100), total_score, criteria_count
+        return int(round((average_5_scale / 5.0) * 100)), total_score, criteria_count
+        
     return None, 0, 0
 
 # --- 0. Login Proxy Endpoint ---
@@ -422,7 +422,7 @@ def get_evaluation_ids(request, pk):
     """
     evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
 
-    # 1. Determine Recency (Is this the active/latest version?)
+    # 1. Determine Recency
     latest_eval = Evaluation.objects.filter(
         module=evaluation.module
     ).order_by('-created_at').first()
@@ -444,25 +444,24 @@ def get_evaluation_ids(request, pk):
             "score_100": score_100,
             "raw_total": raw_total,
             "raw_count": raw_count,
-            "is_completed": scan.status == Scan.Status.COMPLETED # Use status for accuracy
+            "is_completed": scan.status == Scan.Status.COMPLETED
         }
         
-        # Only include COMPLETED scans in the GLOBAL average
-        if scan.status == Scan.Status.COMPLETED and raw_count > 0:
+        # Include in global average if data exists, regardless of status
+        if raw_count > 0:
              global_total_score += raw_total
              global_criteria_count += raw_count
 
     # 3. Calculate Global Average
     if global_criteria_count > 0:
         global_avg_5_scale = global_total_score / global_criteria_count
-        global_avg_100 = int((global_avg_5_scale / 5.0) * 100)
+        # Use round() for standard rounding (e.g., 83.77 -> 84)
+        global_avg_100 = int(round((global_avg_5_scale / 5.0) * 100))
     else:
-        global_avg_100 = None # Use None if no scores available (matches requested logic)
+        global_avg_100 = None 
 
     # 4. Build Final Response List
     all_possible_types = set(Scan.ScanType.values)
-    existing_types = set(existing_scans_map.keys())
-    are_scans_missing = len(existing_types) < len(all_possible_types)
     
     response_list = []
 
@@ -470,9 +469,9 @@ def get_evaluation_ids(request, pk):
     response_list.append({
         "name": "All Scans",
         "id": evaluation.id, 
-        "evaluable": is_recent and are_scans_missing,
+        "evaluable": is_recent, 
         "scan_max": 100,
-        "scan_average": global_avg_100 # Overall average
+        "scan_average": global_avg_100 
     })
 
     # B. Individual Scan entries
@@ -480,20 +479,20 @@ def get_evaluation_ids(request, pk):
         data = existing_scans_map.get(scan_type_name)
         
         if data:
-            # Case A: Scan exists (Return score if completed, else null)
+            # Case A: Scan exists
             item = {
                 "name": scan_type_name,
                 "id": data["obj"].id,
-                "evaluable": False, # Already exists, not evaluable here
+                "evaluable": False, 
                 "scan_max": 100,
-                "scan_average": data["score_100"] if data["is_completed"] else None
+                "scan_average": data["score_100"] 
             }
         else:
-            # Case B: Scan does not exist (ID is null)
+            # Case B: Scan does not exist
             item = {
                 "name": scan_type_name,
                 "id": None,
-                "evaluable": is_recent, # Only evaluable if it's the recent version
+                "evaluable": is_recent,
                 "scan_max": 100,
                 "scan_average": None
             }
@@ -501,6 +500,180 @@ def get_evaluation_ids(request, pk):
         response_list.append(item)
 
     return Response(response_list, status=status.HTTP_200_OK)
+
+# --- 9. GET /modules/<email> ---
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_modules(request, email):
+    """
+    Returns a summary list of all modules belonging to the user email.
+    Includes title, dates, and calculated average score (0-100).
+    """
+    if request.user.email != email:
+        return Response({"error": "You can only list your own modules."}, status=status.HTTP_403_FORBIDDEN)
+
+    modules = Module.objects.filter(user__email=email)
+    response_list = []
+
+    for mod in modules:
+        # 1. Find the LATEST evaluation (Even if IN_PROGRESS)
+        #    We exclude 'NOT_STARTED' only.
+        latest_eval = Evaluation.objects.filter(
+            module=mod
+        ).exclude(
+            status=Evaluation.Status.NOT_STARTED
+        ).order_by('-updated_at').first()
+
+        # 2. Last Modify (From Learnify via RAG API)
+        rag_last_modified_str = get_rag_last_modified(mod.course_key)
+        
+        learnify_date_formatted = "N/A"
+        if rag_last_modified_str:
+            try:
+                learnify_date_formatted = isoparse(rag_last_modified_str).strftime("%Y-%m-%d")
+            except Exception:
+                learnify_date_formatted = rag_last_modified_str
+
+        module_data = {
+            "title": mod.title if mod.title else "Pending Evaluation...", 
+            "link": mod.course_key,
+            "last_modify": learnify_date_formatted,
+            "last_evaluation": "N/A",
+            "last_average": 0,
+            "last_max": 100
+        }
+
+        if latest_eval:
+            # A. Update Date (Shows when it was last worked on)
+            module_data["last_evaluation"] = latest_eval.updated_at.strftime("%Y-%m-%d")
+
+            # B. Title Fallback
+            if not mod.title and latest_eval.title:
+                 module_data["title"] = latest_eval.title
+
+            # C. Robust Average Calculation
+            total_score = 0.0
+            criteria_count = 0
+
+            if latest_eval.result_json:
+                # OPTION A: FAST - Read from final JSON
+                content = latest_eval.result_json.get("content", [])
+                if isinstance(content, list):
+                    for scan_data in content:
+                        for criterion in scan_data.get("criteria", []):
+                            score = criterion.get("score", 0.0)
+                            total_score += score
+                            criteria_count += 1
+            else:
+                # OPTION B: REAL-TIME - Read from Scans DB (If JSON not ready yet)
+                scans = latest_eval.scans.exclude(result_json__isnull=True)
+                for scan in scans:
+                    # Each scan result_json has "content": [{ "criteria": [...] }]
+                    scan_content = scan.result_json.get("content", [])
+                    if isinstance(scan_content, list) and len(scan_content) > 0:
+                        # Usually partial JSON has 1 item in content
+                        for criterion in scan_content[0].get("criteria", []):
+                            score = criterion.get("score", 0.0)
+                            total_score += score
+                            criteria_count += 1
+
+            if criteria_count > 0:
+                average_5_scale = total_score / criteria_count
+                module_data["last_average"] = int((average_5_scale / 5.0) * 100)
+
+        response_list.append(module_data)
+
+    return Response(response_list, status=status.HTTP_200_OK)
+
+# --- 10. GET /user_mailbox/<email>/ ---
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_mailbox(request, email):
+    """
+    Returns the top 20 messages for a user.
+    SORTING LOGIC:
+    1. Unread messages (is_read=False) come FIRST.
+    2. Then messages are sorted by creation date (newest first).
+    """
+    # Security: Only allow users to see their own mailbox
+    if request.user.email != email:
+        return Response({"error": "Access denied to this mailbox."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        user = User.objects.get(email=email)
+        
+        # Order by 'is_read' (False comes before True in ascending order)
+        # Then by '-created_at' (Newest first)
+        messages = Message.objects.filter(user=user).order_by('is_read', '-created_at')[:20]
+        
+        # Manual serialization
+        data = [
+            {
+                "id": msg.id,
+                "user_id": msg.user_id,
+                "title": msg.title,
+                "content": msg.content,
+                "read": msg.is_read,
+                # It's helpful to send the date to the frontend too
+                "created_at": msg.created_at 
+            }
+            for msg in messages
+        ]
+        
+        return Response(data, status=status.HTTP_200_OK)
+
+    except User.DoesNotExist:
+        # Return empty list if user not found
+        return Response([], status=status.HTTP_200_OK)
+
+# --- 11. POST /read_message/ ---
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_message_read(request):
+    """
+    Marks a specific message as read.
+    Request Body: { "email": "...", "message_id": 12 }
+    """
+    email = request.data.get('email')
+    message_id = request.data.get('message_id')
+
+    # validation
+    if not email or not message_id:
+        return Response({"error": "Email and message_id are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Security check: User can only modify their own messages
+    if request.user.email != email:
+        return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        # Find the message ensuring it belongs to the user
+        message = Message.objects.get(id=message_id, user__email=email)
+        
+        # Update status
+        message.is_read = True
+        message.save()
+        
+        return Response({"message": "Message marked as read."}, status=status.HTTP_200_OK)
+
+    except Message.DoesNotExist:
+        return Response({"error": "Message not found or does not belong to this user."}, status=status.HTTP_404_NOT_FOUND)
+
+# --- 12. GET /notifications_unread/<email>/ ---
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_unread_notifications_count(request, email):
+    """
+    Returns the quantity of unread messages for a user.
+    """
+    # Security check
+    if request.user.email != email:
+        return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+
+    # Count unread messages
+    # We filter by user (request.user) and is_read=False
+    quantity = Message.objects.filter(user=request.user, is_read=False).count()
+
+    return Response({"quantity": quantity}, status=status.HTTP_200_OK)
 
 # --- RAG API CALLBACK ---
 @api_view(['POST'])

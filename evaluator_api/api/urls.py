@@ -16,6 +16,9 @@ urlpatterns = [
     path('evaluation_ids/<int:pk>/', views.get_evaluation_ids, name='get_evaluation_ids'),
     path('modules/<str:email>/', views.get_user_modules, name='get_user_modules'),
     path('callback/', views.evaluation_callback, name='evaluation_callback'),
+    path('user_mailbox/<str:email>/', views.get_user_mailbox, name='get_user_mailbox'),
+    path('read_message/', views.mark_message_read, name='mark_message_read'),
+    path('notifications_unread/<str:email>/', views.get_unread_notifications_count, name='get_unread_notifications_count'),
 
     # --- Internal Callback ---
     path('callback/', views.evaluation_callback, name='evaluation_callback'),

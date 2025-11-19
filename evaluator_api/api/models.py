@@ -106,3 +106,26 @@ class Scan(models.Model):
 
     def __str__(self):
         return self.scan_type
+    
+# --- 6. Message Model (New) ---
+class Message(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='messages'
+    )
+    title = models.CharField(max_length=255)
+    content = models.TextField()
+    
+    # 'read' maps to 'read' in JSON, avoid conflict with read() method
+    is_read = models.BooleanField(default=False) 
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Sort by newest first
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Message {self.id} for {self.user.email}"
