@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { ModuleCardComponent } from '../../components/module-card-component/module-card-component';
-import { HeaderComponent } from '../../components/header-component/header-component';
 import { EvaluationService } from '../../services/evaluation-service';
 import { CommonModule } from '@angular/common';
 import { ScanRequest } from '../../interfaces/scan-request';
@@ -17,7 +16,6 @@ import { StorageService } from '../../services/storage-service';
   selector: 'app-modules',
   imports: [
     ModuleCardComponent,
-    HeaderComponent,
     CommonModule,
     MatSelectModule,
     MatFormFieldModule,

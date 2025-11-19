@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,7 +11,6 @@ import { EvaluationService } from '../../services/evaluation-service';
 import { MatSelectModule, MatSelectChange } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SearchComponent } from '../../components/search-component/search-component';
-import { HeaderComponent } from '../../components/header-component/header-component';
 import { Subscription } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import { StorageService } from '../../services/storage-service';
@@ -30,8 +29,7 @@ import { ActivatedRoute } from '@angular/router';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTabsModule,
-    SearchComponent,
-    HeaderComponent
+    SearchComponent
   ],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',
@@ -159,18 +157,6 @@ export class EvaluationComponent {
     this.evaluationService.getIdsList(this.evaluationId!).subscribe({
       next: (response) => {
         this.scansList = response;
-        
-        /*if (scanName === 'All Scans') {
-          console.log('UPDATING ALL SCANS');
-          this.scansList.forEach((scan, i) => {
-            this.updateData(this.getScanIndexByName(scan.name), scan.name, scan.id!.toString());
-          });
-        }
-        else {
-          console.log('UPDATING SCAN: ' + scanName);
-          this.updateData(index, scanName, evaluationId);
-          this.updateData(this.getScanIndexByName('All Scans'), 'All Scans', this.evaluationId!);
-        }*/
       }
     });
   }

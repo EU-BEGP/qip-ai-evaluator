@@ -27,4 +27,8 @@ export class HeaderComponent {
   navigateToHome(): void {
     this.router.navigateByUrl('modules');
   }
+
+  navigateToNotifications() {
+    this.router.navigateByUrl('notifications');
+  }
 }

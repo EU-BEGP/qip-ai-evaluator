@@ -86,7 +86,7 @@ export class EvaluationService {
     );
   }
 
-  getStatusModule(id: string) {
+  getStatusModule(id: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.statusModule}`;
     URL = URL.replace('{id}', String(id));
 
@@ -96,7 +96,7 @@ export class EvaluationService {
     );
   }
 
-  getStatusScan(id: string) {
+  getStatusScan(id: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.statusScan}`;
     URL = URL.replace('{id}', String(id));
 
@@ -106,7 +106,7 @@ export class EvaluationService {
     );
   }
 
-  getIdsList(id: string) {
+  getIdsList(id: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.idsList}`;
     URL = URL.replace('{id}', String(id));
 
@@ -117,7 +117,7 @@ export class EvaluationService {
     );
   }
 
-  getLinkModule(id: string) {
+  getLinkModule(id: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.linkModule}`;
     URL = URL.replace('{id}', String(id));
     
@@ -128,7 +128,7 @@ export class EvaluationService {
     );
   }
 
-  getModules(email: string) {
+  getModules(email: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.modulesList}`;
     URL = URL.replace('{email}', email);
 
