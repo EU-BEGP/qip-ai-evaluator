@@ -2,6 +2,16 @@
     max-width: 600px;
 }
 
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.card p {
+  margin: 0 0 0.75rem 0;
+}
+
 .clickable {
   cursor: pointer;
   transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;

@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { catchError, interval, Observable, switchMap, takeWhile, tap, throwError } from 'rxjs';
+import { catchError, interval, Observable, scan, switchMap, takeWhile, tap, throwError } from 'rxjs';
 import config from '../config.json';
 import { ToastrService } from 'ngx-toastr';
 import { ScanRequest } from '../interfaces/scan-request';
@@ -29,6 +29,7 @@ export class EvaluationService {
 
   evaluate(scanRequest: ScanRequest): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
+    if (scanRequest.scan_name === 'All Scans') {scanRequest.scan_name = '' }
     const body = scanRequest;
 
     return this.http.post(URL, body, this.httpOptions).pipe(
