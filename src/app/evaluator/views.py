@@ -46,6 +46,7 @@ def evaluate_module(request):
     scan_names = request.data.get("scan_names")
     previous_evaluation = request.data.get("previous_evaluation")
     evaluation_id = request.data.get("evaluation_id")
+    existing_snapshot = request.data.get("existing_snapshot")
 
     # --- Validation ---
     if not course_link_input:
@@ -83,7 +84,8 @@ def evaluate_module(request):
         course_key=clean_course_code,
         qip_user_id=qip_user_id,
         scan_names=scan_names,
-        previous_evaluation=previous_evaluation
+        previous_evaluation=previous_evaluation,
+        existing_snapshot=existing_snapshot
     )
 
     # 5. Return Response

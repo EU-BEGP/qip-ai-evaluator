@@ -212,6 +212,7 @@ def start_new_evaluation(request):
         "qip_user_id": str(request.user.id),
         "scan_names": scans_to_run_now, 
         "previous_evaluation": previous_evaluation_json,
+        "existing_snapshot": evaluation_to_run.document_snapshot
     }
 
     try:
@@ -719,6 +720,14 @@ def evaluation_callback(request):
 
     callback_status = data.get('status')
     results_json = data.get('results')
+
+    if callback_status == 'SNAPSHOT_CREATED':
+        snapshot_text = data.get('snapshot')
+        if snapshot_text:
+            evaluation.document_snapshot = snapshot_text
+            evaluation.save()
+            logger.info(f"[{evaluation_id}] Document snapshot saved via callback.")
+        return Response({"message": "Snapshot saved"}, status=status.HTTP_200_OK)
     
     # --- Handle Interim Updates ---
     if callback_status == 'CRITERION_COMPLETE':
