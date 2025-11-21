@@ -114,7 +114,7 @@ def start_new_evaluation(request):
         return Response({"error": "Invalid course_link or email, or token mismatch."}, status=status.HTTP_403_FORBIDDEN)
     
     # Validate scan_name if provided
-    if scan_name and scan_name not in Scan.ScanType.values:
+    if scan_name and scan_name.lower() != "all scans" and scan_name not in Scan.ScanType.values:
          return Response({"error": f"Invalid scan_name. Allowed: {Scan.ScanType.values}"}, status=status.HTTP_400_BAD_REQUEST)
     
     module, _ = Module.objects.get_or_create(user=request.user, course_key=course_key)
@@ -125,8 +125,12 @@ def start_new_evaluation(request):
     
     rag_last_modified_date = isoparse(rag_last_modified_str)
     
-    # If scan_name is empty, we request ALL scans
-    scans_requested_now = [scan_name] if scan_name else list(Scan.ScanType.values)
+    # If scan_name is empty or All Scans, we request ALL scans
+    if not scan_name or scan_name.lower() == "all scans":
+        scans_requested_now = list(Scan.ScanType.values)
+        scan_name = None 
+    else:
+        scans_requested_now = [scan_name]
     
     existing_eval = Evaluation.objects.filter(
         module=module,
@@ -208,6 +212,7 @@ def start_new_evaluation(request):
         "qip_user_id": str(request.user.id),
         "scan_names": scans_to_run_now, 
         "previous_evaluation": previous_evaluation_json,
+        "existing_snapshot": evaluation_to_run.document_snapshot
     }
 
     try:
@@ -297,31 +302,27 @@ def list_evaluations(request):
     
     return Response(results)
 
-# --- 3. GET /evaluation_detail/module/<pk> (MODIFIED) ---
+# --- 3. GET /evaluation_detail/module/<pk> ---
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def evaluation_detail_module(request, pk):
     evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
     
     if evaluation.result_json:
-        # Returns the merged JSON, even if the evaluation is IN_PROGRESS
         return Response(evaluation.result_json)
         
     if evaluation.status == Evaluation.Status.IN_PROGRESS:
-        # The merge hasn't happened yet, tell the client to wait
         return Response(
-            {"status": "IN_PROGRESS", "message": "Evaluation is running, final JSON is not merged yet."},
+            {"status": "IN_PROGRESS", "message": "Evaluation started, waiting for first results..."},
             status=status.HTTP_202_ACCEPTED
         )
         
     if evaluation.status == Evaluation.Status.COMPLETED and not evaluation.result_json:
-         # This can happen if the merge fails or is delayed
          return Response({"status": "COMPLETED", "message": "Evaluation is complete but JSON is not yet available, please wait."}, status=status.HTTP_202_ACCEPTED)
 
-    # The status is FAILED or NOT_STARTED
     return Response(status=status.HTTP_404_NOT_FOUND)
 
-# --- 4. GET /evaluation_detail/scan/<pk> (MODIFIED) ---
+# --- 4. GET /evaluation_detail/scan/<pk> ---
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def evaluation_detail_scan(request, pk):
@@ -422,13 +423,27 @@ def get_evaluation_ids(request, pk):
     """
     evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
 
-    # 1. Determine Recency
+    # 1. Determine if it is the most recent LOCAL evaluation
     latest_eval = Evaluation.objects.filter(
         module=evaluation.module
     ).order_by('-created_at').first()
-    is_recent = (latest_eval and evaluation.id == latest_eval.id)
+    is_local_recent = (latest_eval and evaluation.id == latest_eval.id)
 
-    # 2. Pre-calculate Scores and find Global Totals
+    # 2. Determine if it is UP TO DATE with Learnify (Remote Check)
+    rag_last_modified_str = get_rag_last_modified(evaluation.module.course_key)
+    is_remote_outdated = False
+    
+    if rag_last_modified_str:
+        try:
+            remote_date = isoparse(rag_last_modified_str)
+            # If the remote date is NEWER than our evaluation creation date, we are outdated.
+            if remote_date > evaluation.created_at:
+                is_remote_outdated = True
+        except Exception as e:
+            logger.warning(f"Error parsing dates in get_evaluation_ids: {e}")
+            is_remote_outdated = False
+
+    # 3. Pre-calculate Scores
     existing_scans = evaluation.scans.all()
     existing_scans_map = {}
     
@@ -436,40 +451,46 @@ def get_evaluation_ids(request, pk):
     global_criteria_count = 0
     
     for scan in existing_scans:
-        # Calculate score (returns 0-100 score, raw_total, raw_count)
         score_100, raw_total, raw_count = _calculate_score_from_scan_json(scan.result_json)
         
         existing_scans_map[scan.scan_type] = {
             "obj": scan,
             "score_100": score_100,
-            "raw_total": raw_total,
-            "raw_count": raw_count,
             "is_completed": scan.status == Scan.Status.COMPLETED
         }
         
-        # Include in global average if data exists, regardless of status
         if raw_count > 0:
              global_total_score += raw_total
              global_criteria_count += raw_count
 
-    # 3. Calculate Global Average
+    # 4. Calculate Global Average
     if global_criteria_count > 0:
         global_avg_5_scale = global_total_score / global_criteria_count
-        # Use round() for standard rounding (e.g., 83.77 -> 84)
         global_avg_100 = int(round((global_avg_5_scale / 5.0) * 100))
     else:
         global_avg_100 = None 
 
-    # 4. Build Final Response List
+    # 5. Build Final Response List
     all_possible_types = set(Scan.ScanType.values)
-    
     response_list = []
+
+    # --- LOGIC FOR 'All Scans' EVALUABILITY ---
+    # It is evaluable ONLY if:
+    # A. It is the latest one we have locally.
+    # B. It is NOT outdated compared to Learnify (Remote).
+    # C. It is NOT fully completed yet.
+    
+    all_scans_evaluable = (
+        is_local_recent and 
+        not is_remote_outdated and 
+        evaluation.status != Evaluation.Status.COMPLETED
+    )
 
     # A. "All Scans" (Module Level) entry
     response_list.append({
         "name": "All Scans",
         "id": evaluation.id, 
-        "evaluable": is_recent, 
+        "evaluable": all_scans_evaluable, 
         "scan_max": 100,
         "scan_average": global_avg_100 
     })
@@ -483,16 +504,18 @@ def get_evaluation_ids(request, pk):
             item = {
                 "name": scan_type_name,
                 "id": data["obj"].id,
-                "evaluable": False, 
+                "evaluable": False, # Individual scans are not re-evaluable directly via this ID
                 "scan_max": 100,
                 "scan_average": data["score_100"] 
             }
         else:
             # Case B: Scan does not exist
+            # If the PARENT (All Scans) is evaluable, these "ghost" scans technically
+            # represent work that would be done if "All Scans" is clicked.
             item = {
                 "name": scan_type_name,
                 "id": None,
-                "evaluable": is_recent,
+                "evaluable": all_scans_evaluable,
                 "scan_max": 100,
                 "scan_average": None
             }
@@ -697,8 +720,16 @@ def evaluation_callback(request):
 
     callback_status = data.get('status')
     results_json = data.get('results')
+
+    if callback_status == 'SNAPSHOT_CREATED':
+        snapshot_text = data.get('snapshot')
+        if snapshot_text:
+            evaluation.document_snapshot = snapshot_text
+            evaluation.save()
+            logger.info(f"[{evaluation_id}] Document snapshot saved via callback.")
+        return Response({"message": "Snapshot saved"}, status=status.HTTP_200_OK)
     
-    # --- NEW: Handle Interim Updates ---
+    # --- Handle Interim Updates ---
     if callback_status == 'CRITERION_COMPLETE':
         interim_result_json = data.get('interim_result')
         
@@ -717,10 +748,42 @@ def evaluation_callback(request):
             # Get the Scan object
             scan_obj = Scan.objects.get(evaluation=evaluation, scan_type=scan_name)
             
-            # --- THIS IS THE KEY ---
             # Overwrite the DB field with the new, bigger JSON
             scan_obj.result_json = interim_result_json
             scan_obj.save()
+            
+            # Initialize if empty
+            if not evaluation.result_json:
+                evaluation.result_json = {"title": "", "content": []}
+            
+            # Create a copy to modify
+            current_json = evaluation.result_json
+            new_content_item = interim_result_json['content'][0]
+            
+            # Find if scan already exists in content list
+            existing_content = current_json.get('content', [])
+            found_index = -1
+            
+            for i, item in enumerate(existing_content):
+                if item.get('scan') == scan_name:
+                    found_index = i
+                    break
+            
+            if found_index != -1:
+                # Update existing scan entry
+                existing_content[found_index] = new_content_item
+            else:
+                # Append new scan entry
+                existing_content.append(new_content_item)
+            
+            # Update title if available
+            if interim_result_json.get('title') and not current_json.get('title'):
+                current_json['title'] = interim_result_json['title']
+                
+            # Save back to evaluation
+            current_json['content'] = existing_content
+            evaluation.result_json = current_json
+            evaluation.save()
             
             logger.info(f"[{evaluation_id}] Saved interim result for scan: {scan_name}")
             return Response({"message": "Interim callback processed"}, status=status.HTTP_200_OK)
@@ -732,7 +795,7 @@ def evaluation_callback(request):
             logger.error(f"[{evaluation_id}] Failed to parse interim JSON: {e}")
             return Response({"error": "Failed to parse interim JSON"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # --- EXISTING: Handle Final Statuses ---
+    # --- Handle Final Statuses ---
     elif callback_status == 'FAILED':
         evaluation.status = Evaluation.Status.FAILED
         evaluation.error_message = data.get('error')

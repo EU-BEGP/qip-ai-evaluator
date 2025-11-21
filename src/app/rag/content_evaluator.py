@@ -42,14 +42,18 @@ class ContentEvaluator:
         
         return yaml.safe_load(content)
 
-    def set_documents_for_rag(self, documents: List[Document]):
-        """Set documents for CrossEncoderRAG and initialize anchored session memory for this document."""
+    def set_documents_for_rag(self, documents: List[Document], existing_snapshot: Optional[str] = None):
+        """Set documents for CrossEncoderRAG and initialize/reuse anchored session memory."""
         self.document_chunks = documents
         self.rag.set_documents(documents)
 
-        # Build anchored memory snapshot once per document (global view)
-        snapshot = self._build_document_digest_llm()
-        self.document_snapshot = snapshot
+        if existing_snapshot:
+            logger.info("[INFO] Reusing provided document snapshot.")
+            self.document_snapshot = existing_snapshot
+        else:
+            logger.info("[INFO] Generating new document snapshot via LLM...")
+            snapshot = self._build_document_digest_llm()
+            self.document_snapshot = snapshot
 
     def _build_document_digest_llm(self) -> str:
         """

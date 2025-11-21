@@ -72,6 +72,8 @@ class Evaluation(models.Model):
 
     title = models.CharField(max_length=255, blank=True, null=True)
 
+    document_snapshot = models.TextField(null=True, blank=True)
+
     @property
     def formatted_date(self):
         return self.created_at.strftime("%Y-%m-%d %H:%M") 

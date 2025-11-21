@@ -35,7 +35,7 @@ logger.info("Shared Celery worker instances are ready.")
 # --- END OF SHARED SETUP ---
 
 @shared_task(bind=True)
-def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: str, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None):
+def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: str, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None, existing_snapshot: Optional[str] = None):
     """
     Celery background task to run a full module evaluation.
     This runs in a separate "worker" process.
@@ -59,7 +59,10 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
         for i, doc in enumerate(docs):
             doc.metadata["chunk_index"] = i + 1
 
-        evaluator.set_documents_for_rag(docs)
+        evaluator.set_documents_for_rag(docs, existing_snapshot=existing_snapshot)
+
+        if not existing_snapshot and evaluator.document_snapshot:
+            send_snapshot_callback(evaluation_id, evaluator.document_snapshot)
 
         interim_callback_lambda = lambda interim_json: send_interim_callback(
             evaluation_id=evaluation_id,
@@ -84,6 +87,24 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
     except Exception as e:
         logger.error(f"[{evaluation_id}] Evaluation task failed: {e}", exc_info=True)
         send_callback(evaluation_id, course_key, qip_user_id, status="FAILED", error=str(e), results=None)
+
+def send_snapshot_callback(evaluation_id: str, snapshot_text: str):
+    callback_url = settings.QIP_CALLBACK_URL
+    secret_key = settings.QIP_CALLBACK_SECRET
+    
+    payload = {
+        "evaluation_id": evaluation_id,
+        "status": "SNAPSHOT_CREATED",
+        "snapshot": snapshot_text
+    }
+    
+    headers = {"Content-Type": "application/json", "X-Callback-Secret": secret_key}
+
+    try:
+        requests.post(callback_url, json=payload, headers=headers, timeout=5)
+        logger.info(f"[{evaluation_id}] Snapshot callback sent.")
+    except Exception as e:
+        logger.warning(f"[{evaluation_id}] Failed to send snapshot callback: {e}")
 
 def send_interim_callback(evaluation_id: str, interim_json: dict):
     """
