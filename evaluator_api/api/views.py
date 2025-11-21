@@ -72,8 +72,8 @@ def _calculate_score_from_scan_json(scan_result_json):
     
     if criteria_count > 0:
         average_5_scale = total_score / criteria_count
-        return average_5_scale, total_score, criteria_count
-        
+        average_rounded = round(average_5_scale, 2)
+        return average_rounded, total_score, criteria_count        
     return None, 0, 0
 
 # --- 0. Login Proxy Endpoint ---
@@ -471,7 +471,8 @@ def get_evaluation_ids(request, pk):
 
     # 4. Calculate Global Average
     if global_criteria_count > 0:
-        global_avg = global_total_score / global_criteria_count
+        global_avg_raw = global_total_score / global_criteria_count
+        global_avg = round(global_avg_raw, 2)
     else:
         global_avg = None 
 
@@ -603,7 +604,7 @@ def get_user_modules(request, email):
 
             if criteria_count > 0:
                 average_5_scale = total_score / criteria_count
-                module_data["last_average"] = average_5_scale
+                module_data["last_average"] = round(average_5_scale, 2)
 
         response_list.append(module_data)
 
