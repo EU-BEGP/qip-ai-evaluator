@@ -8,11 +8,16 @@ from django.shortcuts import get_object_or_404
 from dateutil.parser import isoparse
 import requests
 import logging
+import tempfile
+import os
+import json
+from django.http import HttpResponse
 
 from .models import User, Module, Evaluation, Scan, Message
 from .security import verify_rag_callback
 from .tasks import check_and_merge_evaluation
 from rest_framework_simplejwt.tokens import RefreshToken
+from evaluation.report_manager import ReportManager
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +55,7 @@ def build_results_json(evaluation: Evaluation) -> dict:
     }
 
 def _calculate_score_from_scan_json(scan_result_json):
-    """Calculates the average score (0-100) from the criteria data in a single Scan's JSON."""
+    """Calculates the average score (0-5.0) from the criteria data in a single Scan's JSON."""
     if not scan_result_json:
         return None, 0, 0
 
@@ -67,7 +72,7 @@ def _calculate_score_from_scan_json(scan_result_json):
     
     if criteria_count > 0:
         average_5_scale = total_score / criteria_count
-        return int(round((average_5_scale / 5.0) * 100)), total_score, criteria_count
+        return average_5_scale, total_score, criteria_count
         
     return None, 0, 0
 
@@ -419,17 +424,17 @@ def get_module_link(request, pk):
 @permission_classes([IsAuthenticated])
 def get_evaluation_ids(request, pk):
     """
-    Returns a list of all possible scans, their IDs, evaluability, and calculated average score (0-100).
+    Returns a list of all possible scans with IDs, evaluability, average score (0-5.0), and status.
     """
     evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
 
-    # 1. Determine if it is the most recent LOCAL evaluation
+    # 1. Determine Recency
     latest_eval = Evaluation.objects.filter(
         module=evaluation.module
     ).order_by('-created_at').first()
     is_local_recent = (latest_eval and evaluation.id == latest_eval.id)
 
-    # 2. Determine if it is UP TO DATE with Learnify (Remote Check)
+    # 2. Determine if Remote is Outdated
     rag_last_modified_str = get_rag_last_modified(evaluation.module.course_key)
     is_remote_outdated = False
     
@@ -443,7 +448,7 @@ def get_evaluation_ids(request, pk):
             logger.warning(f"Error parsing dates in get_evaluation_ids: {e}")
             is_remote_outdated = False
 
-    # 3. Pre-calculate Scores
+    # 3. Pre-calculate Scores and Status map
     existing_scans = evaluation.scans.all()
     existing_scans_map = {}
     
@@ -451,11 +456,12 @@ def get_evaluation_ids(request, pk):
     global_criteria_count = 0
     
     for scan in existing_scans:
-        score_100, raw_total, raw_count = _calculate_score_from_scan_json(scan.result_json)
+        score_5, raw_total, raw_count = _calculate_score_from_scan_json(scan.result_json)
         
         existing_scans_map[scan.scan_type] = {
             "obj": scan,
-            "score_100": score_100,
+            "score_average": score_5,
+            "status": scan.status,
             "is_completed": scan.status == Scan.Status.COMPLETED
         }
         
@@ -465,21 +471,15 @@ def get_evaluation_ids(request, pk):
 
     # 4. Calculate Global Average
     if global_criteria_count > 0:
-        global_avg_5_scale = global_total_score / global_criteria_count
-        global_avg_100 = int(round((global_avg_5_scale / 5.0) * 100))
+        global_avg = global_total_score / global_criteria_count
     else:
-        global_avg_100 = None 
+        global_avg = None 
 
     # 5. Build Final Response List
     all_possible_types = set(Scan.ScanType.values)
     response_list = []
 
-    # --- LOGIC FOR 'All Scans' EVALUABILITY ---
-    # It is evaluable ONLY if:
-    # A. It is the latest one we have locally.
-    # B. It is NOT outdated compared to Learnify (Remote).
-    # C. It is NOT fully completed yet.
-    
+    # Logic for 'All Scans' evaluability
     all_scans_evaluable = (
         is_local_recent and 
         not is_remote_outdated and 
@@ -491,8 +491,9 @@ def get_evaluation_ids(request, pk):
         "name": "All Scans",
         "id": evaluation.id, 
         "evaluable": all_scans_evaluable, 
-        "scan_max": 100,
-        "scan_average": global_avg_100 
+        "scan_max": 5.0, 
+        "scan_average": global_avg,
+        "status": evaluation.status
     })
 
     # B. Individual Scan entries
@@ -504,20 +505,20 @@ def get_evaluation_ids(request, pk):
             item = {
                 "name": scan_type_name,
                 "id": data["obj"].id,
-                "evaluable": False, # Individual scans are not re-evaluable directly via this ID
-                "scan_max": 100,
-                "scan_average": data["score_100"] 
+                "evaluable": False, 
+                "scan_max": 5.0, 
+                "scan_average": data["score_average"],
+                "status": data["status"]
             }
         else:
             # Case B: Scan does not exist
-            # If the PARENT (All Scans) is evaluable, these "ghost" scans technically
-            # represent work that would be done if "All Scans" is clicked.
             item = {
                 "name": scan_type_name,
                 "id": None,
                 "evaluable": all_scans_evaluable,
-                "scan_max": 100,
-                "scan_average": None
+                "scan_max": 5.0, 
+                "scan_average": None,
+                "status": "Not Started"
             }
         
         response_list.append(item)
@@ -530,12 +531,12 @@ def get_evaluation_ids(request, pk):
 def get_user_modules(request, email):
     """
     Returns a summary list of all modules belonging to the user email.
-    Includes title, dates, and calculated average score (0-100).
+    Includes title, dates, and calculated average score (0-5.0).
     """
     if request.user.email != email:
         return Response({"error": "You can only list your own modules."}, status=status.HTTP_403_FORBIDDEN)
 
-    modules = Module.objects.filter(user__email=email)
+    modules = Module.objects.filter(user__email=email).order_by('-updated_at')
     response_list = []
 
     for mod in modules:
@@ -562,8 +563,8 @@ def get_user_modules(request, email):
             "link": mod.course_key,
             "last_modify": learnify_date_formatted,
             "last_evaluation": "N/A",
-            "last_average": 0,
-            "last_max": 100
+            "last_average": 0.0, # Float default
+            "last_max": 5.0      # Max is 5.0
         }
 
         if latest_eval:
@@ -602,7 +603,7 @@ def get_user_modules(request, email):
 
             if criteria_count > 0:
                 average_5_scale = total_score / criteria_count
-                module_data["last_average"] = int((average_5_scale / 5.0) * 100)
+                module_data["last_average"] = average_5_scale
 
         response_list.append(module_data)
 
@@ -625,8 +626,7 @@ def get_user_mailbox(request, email):
     try:
         user = User.objects.get(email=email)
         
-        # Order by 'is_read' (False comes before True in ascending order)
-        # Then by '-created_at' (Newest first)
+        # Order by 'is_read' (False first) then by '-created_at' (Newest first)
         messages = Message.objects.filter(user=user).order_by('is_read', '-created_at')[:20]
         
         # Manual serialization
@@ -637,8 +637,8 @@ def get_user_mailbox(request, email):
                 "title": msg.title,
                 "content": msg.content,
                 "read": msg.is_read,
-                # It's helpful to send the date to the frontend too
-                "created_at": msg.created_at 
+                "created_at": msg.created_at,
+                "evaluation_id": msg.evaluation_id if msg.evaluation_id else None 
             }
             for msg in messages
         ]
@@ -697,6 +697,60 @@ def get_unread_notifications_count(request, email):
     quantity = Message.objects.filter(user=request.user, is_read=False).count()
 
     return Response({"quantity": quantity}, status=status.HTTP_200_OK)
+
+# --- 13. GET /download_pdf/<pk>/ ---
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_evaluation_pdf(request, pk):
+    """
+    Generates and returns a PDF report for a specific evaluation.
+    """
+    evaluation = get_object_or_404(Evaluation, pk=pk, module__user=request.user)
+    
+    if not evaluation.result_json:
+        return Response(
+            {"error": "Evaluation incomplete or missing results. Cannot generate PDF."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # 1. Create a temporary JSON file (ReportManager expects a file path)
+    # delete=False allows us to close it and let ReportManager open it by name
+    with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False, encoding='utf-8') as tmp_json:
+        json.dump(evaluation.result_json, tmp_json)
+        tmp_json_path = tmp_json.name
+    
+    # Define a temp path for the output PDF
+    tmp_pdf_path = f"{tmp_json_path}.pdf"
+
+    try:
+        # 2. Generate PDF using your existing logic
+        report_manager = ReportManager(tmp_json_path)
+        report_manager.generate_pdf_report(tmp_pdf_path)
+        
+        # 3. Read PDF bytes into memory
+        if not os.path.exists(tmp_pdf_path):
+             raise FileNotFoundError("PDF generator did not create the file.")
+
+        with open(tmp_pdf_path, 'rb') as f:
+            pdf_data = f.read()
+            
+        # 4. Return as Blob (Binary)
+        filename = f"Evaluation_{evaluation.module.course_key}_{pk}.pdf"
+        response = HttpResponse(pdf_data, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+
+    except Exception as e:
+        logger.error(f"Error generating PDF for evaluation {pk}: {e}")
+        return Response({"error": "Failed to generate PDF on server."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    finally:
+        # 5. Cleanup temporary files
+        if os.path.exists(tmp_json_path):
+            os.remove(tmp_json_path)
+        if os.path.exists(tmp_pdf_path):
+            os.remove(tmp_pdf_path)
 
 # --- RAG API CALLBACK ---
 @api_view(['POST'])

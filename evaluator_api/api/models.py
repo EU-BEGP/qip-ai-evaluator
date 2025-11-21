@@ -125,6 +125,14 @@ class Message(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
 
+    evaluation = models.ForeignKey(
+        'Evaluation',
+        on_delete=models.CASCADE, # If eval is deleted, delete the message
+        null=True, 
+        blank=True,
+        related_name='messages'
+    )
+
     class Meta:
         # Sort by newest first
         ordering = ['-created_at']

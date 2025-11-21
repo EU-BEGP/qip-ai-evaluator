@@ -117,6 +117,7 @@ def check_and_merge_evaluation(evaluation_id):
 
                 Message.objects.create(
                     user=evaluation.module.user,
+                    evaluation=evaluation, # <--- ADD THIS
                     title="Evaluation Completed",
                     content=f"The evaluation of module '{module_title}' for scan(s): {scan_text} has been completed.",
                     is_read=False
