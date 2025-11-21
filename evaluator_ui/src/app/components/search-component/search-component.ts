@@ -36,6 +36,7 @@ export class SearchComponent implements OnInit, DoCheck {
   @Input() linkModule!: string;
   @Input() scanInformation!: any;
   @Output() startPolling = new EventEmitter<void>();
+  @Output() downloadEvent = new EventEmitter<void>();
 
   private lastUpdatedData: any;
 
@@ -45,6 +46,7 @@ export class SearchComponent implements OnInit, DoCheck {
   codeControl = new FormControl('', Validators.required);
   evaluationList: any[] = [];
   selectedTabIndex = 0;
+  download: boolean = false;
 
   constructor (
     private evaluationService: EvaluationService
@@ -55,6 +57,8 @@ export class SearchComponent implements OnInit, DoCheck {
     if (this.scanInformation.id !== undefined && this.scanInformation.id !== null) {
       this.loadData();
     }
+
+    this.download = this.scanInformation.status === 'Completed' && this.scanInformation.name === 'All Scans'
   }
 
   ngDoCheck(): void {
@@ -107,5 +111,9 @@ export class SearchComponent implements OnInit, DoCheck {
         }
       });
     }
+  }
+
+  downloadPDF(): void {
+    this.downloadEvent.emit();
   }
 }

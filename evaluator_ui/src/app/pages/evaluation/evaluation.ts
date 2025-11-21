@@ -15,6 +15,8 @@ import { Subscription } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import { StorageService } from '../../services/storage-service';
 import { ActivatedRoute } from '@angular/router';
+import { Scan } from '../../interfaces/scan';
+import { UtilsService } from '../../services/utils-service';
 
 @Component({
   selector: 'app-evaluation',
@@ -29,7 +31,7 @@ import { ActivatedRoute } from '@angular/router';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTabsModule,
-    SearchComponent
+    SearchComponent,
   ],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',
@@ -43,13 +45,14 @@ export class EvaluationComponent {
   disableEvaluateButton = false;
   evaluationId?: string;
   loaded: boolean = false;
-  scansList: { name: string; id: number | undefined | null; evaluable: boolean; updatedData?: any, scan_max: number, scan_average: number | null }[] = [];
+  scansList: Scan[] = [];
 
   constructor (
     private toastr: ToastrService,
     private evaluationService: EvaluationService,
     private storageService: StorageService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private utilsService: UtilsService
   ) {}
 
   ngOnInit() {
@@ -166,41 +169,49 @@ export class EvaluationComponent {
     if (scanName === 'All Scans') {
       this.evaluationService.getEvaluationDetailModule(Number(evaluationId)).subscribe({
         next: (response) => {
-          this.scansList[index].updatedData = response;
+          this.scansList[index].updated_data = response;
         }
       })
     }
     else {
       this.evaluationService.getEvaluationDetailScan(Number(evaluationId)).subscribe({
         next: (response) => {
-          this.scansList[index].updatedData = response;
+          this.scansList[index].updated_data = response;
         }
       })
     }
   }
 
-  getEmoji(id: number | undefined | null, scansList: any, index: number): string {
-    if (index === 0) {
-      const allValid = scansList.every(
-        (scan: any) => scan.id !== null
-      );
-      return allValid ? ' ✅' : ' ❌';
-    }
-    
-    if (id === null) {
-      return ' ❌';
-    }
-    else {
-      return ' ✅';
-    }
+  getNameShort(value: string): string {
+    if (!value) return "";
+
+    const parts = value.trim().split(" ");
+
+    if (parts.length <= 1) return value;
+
+    parts.pop();
+    return parts.join(" ");
   }
 
   getScanIndexByName(name: string): number {
     return this.scansList.findIndex(scan => scan.name === name);
   }
 
+  download() {
+    this.utilsService.downloadPDF(this.evaluationId!).subscribe((data: Blob) => {
+      const pdfUrl = window.URL.createObjectURL(data);
+      const link = document.createElement('a');
+
+      link.href = pdfUrl;
+      link.download = 'report.pdf';
+      link.click();
+
+      window.URL.revokeObjectURL(pdfUrl);
+    });
+  }
+
   ngOnDestroy() {
-    if (this.pollingSub) this.pollingSub.unsubscribe();
+    //if (this.pollingSub) this.pollingSub.unsubscribe();
     if (this.evaluationIdSub) this.evaluationIdSub.unsubscribe();
   }
 }

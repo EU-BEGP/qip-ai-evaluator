@@ -13,7 +13,7 @@ export class EvaluationCircleComponent {
   @Input() obtained!: number;
   @Input() max!: number;
   @Input() label: string = '';
-  @Input() title: string = '';
+  @Input() title: boolean = false;
   @Input() small: boolean = false;
 
   percentage = 0;

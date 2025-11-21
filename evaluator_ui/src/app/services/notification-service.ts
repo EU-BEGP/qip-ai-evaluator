@@ -12,7 +12,7 @@ export class NotificationService {
   unreadCount = signal(0);
 
   constructor(
-    private http: HttpClient,
+    private http: HttpClient
   ) {
     this.httpOptions = {
       headers: new HttpHeaders({

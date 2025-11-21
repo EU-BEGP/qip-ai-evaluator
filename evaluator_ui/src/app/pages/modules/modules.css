@@ -31,7 +31,7 @@
 
 app-module-card-component {
     display: block;
-    height: 100%;
+    height: auto
 }
 
 .history-list {

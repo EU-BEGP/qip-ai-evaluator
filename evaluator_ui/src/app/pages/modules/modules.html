@@ -38,7 +38,7 @@
         <li *ngFor="let item of (evaluationListByIndex[i] || [])" 
             class="list-group-item list-group-item-action evaluation-item"
             (click)="onSelectEvaluation(item, i)">
-          {{ item.date }} (ID: {{ item.id }})
+          Date: {{ item.date }} (ID: {{ item.id }})
         </li>
       </ul>
     </div>

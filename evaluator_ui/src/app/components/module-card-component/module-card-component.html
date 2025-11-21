@@ -3,7 +3,7 @@
     <p><b class="me-2">Link:</b>{{ data.link }}</p>
     <p><b class="me-2">Last Modify:</b>{{ data.last_modify }}</p>
     <p><b class="me-2">Last Evaluation:</b>{{ data.last_evaluation }}</p>
-    <p><b>Last Average:</b>
+    <p><b>Last Average:</b> {{ data.last_average }}/{{ data.last_max }}
         <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
     </p>
     

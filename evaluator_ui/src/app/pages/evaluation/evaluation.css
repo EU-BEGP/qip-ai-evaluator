@@ -1,0 +1,13 @@
+.icon-progress {
+  color: red !important;
+}
+
+.icon-completed {
+  color: rgb(5, 185, 5) !important;
+}
+
+:host ::ng-deep .mat-mdc-tab-header {
+  width: 84%;
+  margin-left: auto;
+  margin-right: auto;
+}

@@ -4,6 +4,7 @@ import { MatListModule } from '@angular/material/list';
 import { Notification } from '../../interfaces/notification';
 import { NotificationService } from '../../services/notification-service';
 import { MatButtonModule } from '@angular/material/button';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-notifications',
@@ -22,7 +23,8 @@ export class Notifications {
   selectedNotification: Notification | null = null;
 
   constructor (
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -52,5 +54,9 @@ export class Notifications {
   closeNotificationModal(): void {
     this.showNotificationModal = false;
     this.selectedNotification = null;
+  }
+
+  goToEvaluation(id: number): void {
+    this.router.navigate(['/evaluation', id]);
   }
 }

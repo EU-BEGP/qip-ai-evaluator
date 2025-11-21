@@ -1,7 +1,7 @@
 {
   "version": "1.8.0",
   "api": {
-    "baseUrl": "http://127.0.0.1:8000/api/",
+    "baseUrl": "http://localhost:8000/api/",
     "users": {
       "login": "auth/login/"
     },
@@ -20,6 +20,9 @@
       "read": "read_message/",
       "mailbox": "user_mailbox/{email}/",
       "unreadQuantity": "notifications_unread/{email}/ "
+    },
+    "extra": {
+      "download": "download_pdf/{id}/"
     }
   }
 }

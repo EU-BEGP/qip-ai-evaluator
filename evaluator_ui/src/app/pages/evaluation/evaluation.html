@@ -1,7 +1,13 @@
-<mat-tab-group class="mx-5 mt-2">
+<mat-tab-group class="mt-2">
   <mat-tab *ngFor="let scan of scansList; let i = index">
     <ng-template mat-tab-label>
-      {{ scan.name + getEmoji(scan.id, scansList, i) }}
+      {{ getNameShort(scan.name) }}
+      <mat-icon *ngIf="scan.status === 'Completed'" class="icon-completed ms-1">
+        check
+      </mat-icon>
+      <mat-icon *ngIf="!(scan.status === 'Completed')" class="icon-progress ms-1">
+        close
+      </mat-icon>
     </ng-template>
 
     <app-search-component 
@@ -9,6 +15,7 @@
       [disableEvaluateButton]="disableEvaluateButton"
       [linkModule]="linkModule"
       (startPolling)="startPolling()"
+      (downloadEvent)="download()"
     />
   </mat-tab>
 </mat-tab-group>

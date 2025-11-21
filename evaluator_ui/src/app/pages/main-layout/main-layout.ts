@@ -8,7 +8,7 @@ import { NotificationService } from '../../services/notification-service';
   selector: 'app-main-layout',
   imports: [
     RouterOutlet,
-    HeaderComponent
+    HeaderComponent,
   ],
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.css',
