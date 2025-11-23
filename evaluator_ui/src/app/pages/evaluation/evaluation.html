@@ -14,7 +14,7 @@
       [scanInformation]="scan"
       [disableEvaluateButton]="disableEvaluateButton"
       [linkModule]="linkModule"
-      (startPolling)="startPolling()"
+      (startPolling)="startPolling($event)"
       (downloadEvent)="download()"
     />
   </mat-tab>

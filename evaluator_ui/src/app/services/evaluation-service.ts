@@ -34,14 +34,7 @@ export class EvaluationService {
 
     return this.http.post(URL, body, this.httpOptions).pipe(
       tap((response: any) => {
-        if (body.scan_name != undefined && body.scan_name != '' && body.scan_name != 'All Scans') {
-          localStorage.setItem('isAll' + body.email, 'false');
-        }
-        else {
-          localStorage.setItem('isAll' + body.email, 'true');
-        }
-        localStorage.setItem('evaluationId' + body.email, response.body.scan_id);
-        this.storageService.setEvaluationId(response.body.scan_id);
+        this.storageService.addEvaluation(response.body.scan_id, body.scan_name);
         this.toastr.success('Evaluation request successfully submitted.', 'Success');
       }),
       catchError((err) => {

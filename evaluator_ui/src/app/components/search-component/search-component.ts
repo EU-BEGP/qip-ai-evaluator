@@ -8,10 +8,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EvaluationService } from '../../services/evaluation-service';
-import { MatSelectModule, MatSelectChange } from '@angular/material/select';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ScanRequest } from '../../interfaces/scan-request';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
+import { ScanItem } from '../../interfaces/scan-item';
 
 @Component({
   selector: 'app-search-component',
@@ -35,7 +36,7 @@ export class SearchComponent implements OnInit, DoCheck {
   @Input() disableEvaluateButton!: boolean;
   @Input() linkModule!: string;
   @Input() scanInformation!: any;
-  @Output() startPolling = new EventEmitter<void>();
+  @Output() startPolling = new EventEmitter<ScanItem>();
   @Output() downloadEvent = new EventEmitter<void>();
 
   private lastUpdatedData: any;
@@ -77,7 +78,8 @@ export class SearchComponent implements OnInit, DoCheck {
 
     this.evaluationService.evaluate(scanRequest).subscribe({
       next: (response) => {
-        this.startPolling.emit();
+        this.startPolling.emit({ "scan_id": response.body.scan_id, "scan_name": scanRequest.scan_name });
+        this.scanInformation.evaluable = false;
       },
       error: (error) => {
         console.error('Evaluation error:', error);

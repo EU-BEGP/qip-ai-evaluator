@@ -23,9 +23,7 @@ export class AuthInterceptor implements HttpInterceptor {
           setHeaders: { Authorization: `Bearer ${token}` }
         });
       }
-    } catch (e) {
-      // Si falla localStorage → simplemente no añade token
-    }
+    } catch (e) {}
 
     return next.handle(authReq).pipe(
       catchError(err => this.handleAuthError(err))

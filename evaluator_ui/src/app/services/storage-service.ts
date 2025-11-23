@@ -1,32 +1,41 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { ScanItem } from '../interfaces/scan-item';
 
 @Injectable({
   providedIn: 'root',
 })
 export class StorageService {
-  private evaluationIdSubject = new BehaviorSubject<string | null> (null);
-  evaluationId$ = this.evaluationIdSubject.asObservable();
+  private readonly storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
 
-  constructor() {
-    window.addEventListener('storage', this.storageListener);
-  }
+  constructor() {}
 
-  private storageListener = (event: StorageEvent) => {
-    if (event.key === ('evaluationId' + localStorage.getItem('accountEmail'))) {
-      this.evaluationIdSubject.next(event.newValue);
+  addEvaluation(scanId: string, scanName: string): void {
+    const list = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+
+    const exists = list.some(
+      (item: ScanItem) =>
+        item.scan_id === scanId && item.scan_name === scanName
+    );
+
+    if (!exists) {
+      const item = { "scan_id": scanId, "scan_name": scanName }
+      list.push(item);
+      localStorage.setItem(this.storageKey, JSON.stringify(list));
     }
-  };
-
-  setEvaluationId(value: string): void {
-    this.evaluationIdSubject.next(value);
   }
 
-  clearEvaluationId(): void {
-    this.evaluationIdSubject.next(null);
-  }
+  removeEvaluation(scanId: string, scanName: string): void {
+    const list = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
 
-  ngOnDestroy(): void {
-    window.removeEventListener('storage', this.storageListener);
+    const updatedList = list.filter(
+      (item: ScanItem) =>
+        !(item.scan_id === scanId && item.scan_name === scanName)
+    );
+
+    if (updatedList.length === 0) {
+      localStorage.removeItem(this.storageKey);
+    } else {
+      localStorage.setItem(this.storageKey, JSON.stringify(updatedList));
+    }
   }
 }

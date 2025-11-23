@@ -11,12 +11,13 @@ import { EvaluationService } from '../../services/evaluation-service';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SearchComponent } from '../../components/search-component/search-component';
-import { Subscription } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import { StorageService } from '../../services/storage-service';
 import { ActivatedRoute } from '@angular/router';
 import { Scan } from '../../interfaces/scan';
 import { UtilsService } from '../../services/utils-service';
+import { ScanItem } from '../../interfaces/scan-item';
 
 @Component({
   selector: 'app-evaluation',
@@ -38,8 +39,7 @@ import { UtilsService } from '../../services/utils-service';
   standalone: true
 })
 export class EvaluationComponent {
-  private pollingSub?: Subscription;
-  private evaluationIdSub?: Subscription;
+  private destroy$ = new Subject<void>();
 
   linkModule = '';
   disableEvaluateButton = false;
@@ -76,84 +76,43 @@ export class EvaluationComponent {
       this.loaded = true;
     }
 
-    this.startPolling();
-    this.evaluationIdSub = this.storageService.evaluationId$.subscribe((id) => {
-      this.disableEvaluateButton = id !== null;
+    const storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
+    const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
+
+    list.forEach((item: ScanItem) => {
+      this.startPolling(item);
     });
   }
 
-  startPolling(): void {
-    const isAll = localStorage.getItem('isAll' + localStorage.getItem('accountEmail'));
-    const evaluationId = localStorage.getItem('evaluationId' + localStorage.getItem('accountEmail'));
+  startPolling(scanItem: ScanItem): void {
+    const obs = scanItem.scan_name === 'All Scans'
+      ? this.evaluationService.getStatusModule(scanItem.scan_id)
+      : this.evaluationService.getStatusScan(scanItem.scan_id);
 
-    if(evaluationId && isAll) {
-      this.storageService.setEvaluationId(evaluationId);
-      
-      if (isAll == 'true') {
-        this.pollingSub = this.evaluationService.getStatusModule(evaluationId!)
-        .subscribe({
-          next: (response) => {
-            if (response.status === 'In Progress') {
-              if (response.evaluation_id === this.evaluationId) {
-                const index = this.getScanIndexByName(response.scan_name);
-                this.updateData(index, response.scan_name, evaluationId);
-              }
-            }
-            else if (response.status === 'Completed') {
-              if (response.evaluation_id === this.evaluationId) {
-                const index = this.getScanIndexByName(response.scan_name);
-                this.finishEvaluation();
-              }
-              this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
-              localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
-              localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
-              this.storageService.clearEvaluationId();
-            }
-            else if (response.status === 'Failed') {
-              this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
-              localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
-              localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
-              this.storageService.clearEvaluationId();
-            }
-          },
-          error: (err) => {
-            console.error('Error checking status:', err);
+    obs.pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.status === 'In Progress') {
+          if (response.evaluation_id === this.evaluationId) {
+            const index = this.getScanIndexByName(response.scan_name);
+            this.updateData(index, response.scan_name, scanItem.scan_id);
           }
-        });
-      }
-      else {
-        this.pollingSub = this.evaluationService.getStatusScan(evaluationId!)
-        .subscribe({
-          next: (response) => {
-            if (response.status === 'In Progress') {
-              if (response.evaluation_id === this.evaluationId) {
-                const index = this.getScanIndexByName(response.scan_name);
-                this.updateData(index, response.scan_name, evaluationId);
-              }
-            }
-            else if (response.status === 'Completed') {
-              if (response.evaluation_id === this.evaluationId) {
-                const index = this.getScanIndexByName(response.scan_name);
-                this.finishEvaluation();
-              }
-              this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
-              localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
-              localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
-              this.storageService.clearEvaluationId();
-            }
-            else if (response.status === 'Failed') {
-              this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
-              localStorage.removeItem('evaluationId' + localStorage.getItem('accountEmail'));
-              localStorage.removeItem('isAll' + localStorage.getItem('accountEmail'));
-              this.storageService.clearEvaluationId();
-            }
-          },
-          error: (err) => {
-            console.error('Error checking status:', err);
+        }
+        else if (response.status === 'Completed') {
+          if (response.evaluation_id === this.evaluationId) {
+            this.finishEvaluation();
           }
-        });
+          this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
+          this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
+        }
+        else if (response.status === 'Failed') {
+          this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
+          this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
+        }
+      },
+      error: (err) => {
+        console.error('Error checking status:', err);
       }
-    }
+    });
   }
 
   finishEvaluation(): void {
@@ -211,7 +170,7 @@ export class EvaluationComponent {
   }
 
   ngOnDestroy() {
-    //if (this.pollingSub) this.pollingSub.unsubscribe();
-    if (this.evaluationIdSub) this.evaluationIdSub.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

@@ -9,7 +9,6 @@ import { MatInputModule } from '@angular/material/input';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { Subscription } from 'rxjs';
 import { StorageService } from '../../services/storage-service';
 
 @Component({
@@ -27,15 +26,12 @@ import { StorageService } from '../../services/storage-service';
   styleUrl: './modules.css',
 })
 export class Modules {
-  private evaluationIdSub?: Subscription;
-  
   modules: any[] = [];
   email: string = '';
   openCardIndex: number | null = null;
   evaluationListByIndex: { [key: number]: any[] } = {};
   disableEvaluateButton = false;
   
-  // New Evaluation modal
   showNewEvalModal = false;
   newEvalCourseLink: string = '';
   newEvalScan: string = '';
@@ -49,10 +45,6 @@ export class Modules {
 
   ngOnInit(): void {
     this.email = localStorage.getItem('accountEmail') || '';
-    
-    this.evaluationIdSub = this.storageService.evaluationId$.subscribe((id) => {
-      this.disableEvaluateButton = id !== null;
-    });
 
     this.evaluationService.getModules(this.email).subscribe({
       next: (response) => {
@@ -125,9 +117,5 @@ export class Modules {
         console.error('Evaluation error:', error);
       }
     });
-  }
-
-  ngOnDestroy() {
-    if (this.evaluationIdSub) this.evaluationIdSub.unsubscribe();
   }
 }
