@@ -1,16 +1,24 @@
 .container {
-  width: 100%;
+  min-width: 100%;
   height: auto;
   background-color: #ffffff;
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  flex-direction: column;
+  overflow-x: scroll;
 }
 
 .evaluation-table {
   width: 100%;
+  min-width: 940px;
   table-layout: fixed;
   border-collapse: collapse;
+}
+
+.module-title {
+  width: 100%;
+  min-width: 940px;
 }
 
 .evaluation-table th,
@@ -37,4 +45,24 @@
 
 .evaluation-table td.text-center {
   text-align: center;
+}
+
+.space-top {
+  margin-top: 48px;
+}
+
+@media screen and (max-width: 1000px) {
+  .container {
+    width: 90vw;
+    justify-content: stretch;
+  }
+
+  .module-title {
+    width: 90vw;
+    min-width: auto;
+  }
+
+  .space-top {
+    margin-top: 24px;
+  }
 }

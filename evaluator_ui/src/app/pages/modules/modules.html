@@ -1,4 +1,4 @@
-<div class="d-flex justify-content-end mx-5 mt-4">
+<div class="new-eval-button d-flex mx-5 mt-4">
   <button mat-raised-button color="primary" [disabled]="disableEvaluateButton" (click)="openNewEvalModal()">+ New Evaluation</button>
 </div>
 
@@ -25,8 +25,7 @@
   </div>
 </div>
 
-<div class="modules-container m-5 d-flex flex-wrap justify-content-center gap-5">
-
+<div class="modules-container space d-flex flex-wrap justify-content-center gap-5">
   <div *ngFor="let module of modules; let i = index" class="position-relative">
     <app-module-card-component 
       [data]="module" 

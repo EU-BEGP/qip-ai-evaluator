@@ -1,51 +1,53 @@
 <div class="d-flex flex-column align-items-center justify-content-center m-0 p-0">
-  <button class="text-center mt-5" mat-raised-button color="primary" [disabled]="disableEvaluateButton" *ngIf="scanInformation.evaluable" (click)="evaluate()">Evaluate</button>
-  <button class="text-center mt-5" mat-raised-button color="primary" *ngIf="download" (click)="downloadPDF()">Download PDF</button>
+  <button class="text-center space-top" mat-raised-button color="primary" [disabled]="disableEvaluateButton" *ngIf="scanInformation.evaluable" (click)="evaluate()">Evaluate</button>
+  <button class="text-center space-top" mat-raised-button color="primary" *ngIf="download" (click)="downloadPDF()">Download PDF</button>
 
-  <app-evaluation-circle-component class="mt-5" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="scanInformation.scan_average !== null"></app-evaluation-circle-component>
+  <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="scanInformation.scan_average !== null"></app-evaluation-circle-component>
 
-  <div class="my-5 container p-0">
+  <div class="my-5 p-0">
     <div *ngIf="data !== null && !isLoading" class="m-0">
-      <h3 class="text-center">{{ data.title }}</h3>
+      <h3 class="text-center module-title">{{ data.title }}</h3>
 
-      <div *ngFor="let item of data.content" class="scan-item">
-        <h5>{{ item.scan }}</h5>
-        <p>{{ item.description }}</p>
-        <table class="table table-striped evaluation-table">
-          <colgroup>
-            <col style="width:12%" />
-            <col style="width:30%" />
-            <col style="width:6%" />
-            <col style="width:28%" />
-            <col style="width:28%" />
-          </colgroup>
-          <thead>
-            <tr>
-              <th>Criterion</th>
-              <th>Description</th>
-              <th class="text-center">Score</th>
-              <th>Shortcomings</th>
-              <th>Recommendations</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let criterion of item.criteria">
-              <td>{{ criterion.name }}</td>
-              <td>{{ criterion.description }}</td>
-              <td class="text-center">{{ criterion.score }}</td>
-              <td>
-                <ul class="ps-3 mb-0">
-                  <li *ngFor="let shortcoming of criterion.shortcomings">{{ shortcoming }}</li>
-                </ul>
-              </td>
-              <td>
-                <ul class="ps-3 mb-0">
-                  <li *ngFor="let recommendation of criterion.recommendations">{{ recommendation }}</li>
-                </ul>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div class="container mx-0 px-0">
+        <div *ngFor="let item of data.content" class="scan-item">
+          <h5>{{ item.scan }}</h5>
+          <p>{{ item.description }}</p>
+          <table class="table table-striped evaluation-table">
+            <colgroup>
+              <col style="width:12%" />
+              <col style="width:28%" />
+              <col style="width:8%" />
+              <col style="width:28%" />
+              <col style="width:28%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Criterion</th>
+                <th>Description</th>
+                <th class="text-center">Score</th>
+                <th>Shortcomings</th>
+                <th>Recommendations</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let criterion of item.criteria">
+                <td>{{ criterion.name }}</td>
+                <td>{{ criterion.description }}</td>
+                <td class="text-center">{{ criterion.score }}</td>
+                <td>
+                  <ul class="ps-3 mb-0">
+                    <li *ngFor="let shortcoming of criterion.shortcomings">{{ shortcoming }}</li>
+                  </ul>
+                </td>
+                <td>
+                  <ul class="ps-3 mb-0">
+                    <li *ngFor="let recommendation of criterion.recommendations">{{ recommendation }}</li>
+                  </ul>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

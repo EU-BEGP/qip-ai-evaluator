@@ -1,5 +1,6 @@
 .notification-container {
   max-width: 76%;
+  min-width: 692px;
   display: flex;
   flex-direction: column;
   margin: auto;
@@ -76,4 +77,11 @@
   background: white;
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+
+@media screen and (max-width: 768px) {
+  .notification-container {
+    max-width: 90%;
+    min-width: auto;
+  }
 }
