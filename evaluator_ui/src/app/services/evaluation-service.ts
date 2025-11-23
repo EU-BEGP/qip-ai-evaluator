@@ -10,7 +10,7 @@ import { StorageService } from './storage-service';
   providedIn: 'root',
 })
 export class EvaluationService {
-  private readonly POLL_INTERVAL = 5000;
+  private evaluationInterval = config.time.evaluationPolling * 1000;
 
   private httpOptions = <any>{};
 
@@ -84,7 +84,7 @@ export class EvaluationService {
     let URL = `${config.api.baseUrl}${config.api.evaluation.statusModule}`;
     URL = URL.replace('{id}', String(id));
 
-    return interval(this.POLL_INTERVAL).pipe(
+    return interval(this.evaluationInterval).pipe(
       switchMap(() => this.http.get<any>(URL)),
       takeWhile(res => res.status !== 'Completed' && res.status !== 'Failed', true)
     );
@@ -94,7 +94,7 @@ export class EvaluationService {
     let URL = `${config.api.baseUrl}${config.api.evaluation.statusScan}`;
     URL = URL.replace('{id}', String(id));
 
-    return interval(this.POLL_INTERVAL).pipe(
+    return interval(this.evaluationInterval).pipe(
       switchMap(() => this.http.get<any>(URL)),
       takeWhile(res => res.status !== 'Completed' && res.status !== 'Failed', true)
     );

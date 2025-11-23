@@ -1,5 +1,9 @@
 {
   "version": "1.8.0",
+  "time": {
+    "notificationPolling": 3,
+    "evaluationPolling": 5
+  },
   "api": {
     "baseUrl": "http://localhost:8000/api/",
     "users": {

@@ -1,30 +1,42 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NgCircleProgressModule } from 'ng-circle-progress';
+import { NgxGaugeModule } from 'ngx-gauge';
 
 @Component({
   standalone: true,
   selector: 'app-evaluation-circle-component',
-  imports: [CommonModule, NgCircleProgressModule],
+  imports: [CommonModule, NgxGaugeModule],
   templateUrl: './evaluation-circle-component.html',
   styleUrl: './evaluation-circle-component.css',
 })
-export class EvaluationCircleComponent {
+export class EvaluationCircleComponent implements OnChanges {
   @Input() obtained!: number;
   @Input() max!: number;
   @Input() label: string = '';
   @Input() title: boolean = false;
   @Input() small: boolean = false;
 
-  percentage = 0;
+  thresholdConfig: Record<string, { color: string }> = { '0': { color: 'red' } };
 
-  ngOnInit(): void {
-    this.percentage = this.calculatePercentage();
+  ngOnChanges(changes: SimpleChanges): void {
+    if ('max' in changes || 'obtained' in changes) {
+      this.thresholdConfig = this.generateThresholds(this.max);
+    }
   }
 
-  private calculatePercentage(): number {
-    if (!this.max || this.max <= 0) return 0;
-    const p = (this.obtained / this.max) * 100;
-    return Math.max(0, Math.min(100, Math.round(p)));
+  private generateThresholds(max: number) {
+    if (!max || max <= 0) {
+      return { '0': { color: 'red' } };
+    }
+
+    const redStart = 0;
+    const orangeStart = max * 0.5;
+    const greenStart = max * 0.8;
+
+    return {
+      [String(redStart)]: { color: 'red' },
+      [String(orangeStart)]: { color: 'orange' },
+      [String(greenStart)]: { color: 'green' },
+    };
   }
 }

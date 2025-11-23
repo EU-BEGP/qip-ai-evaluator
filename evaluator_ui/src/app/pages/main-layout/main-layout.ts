@@ -3,6 +3,8 @@ import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from '../../components/header-component/header-component';
 import { interval, Subject, switchMap, takeUntil } from 'rxjs';
 import { NotificationService } from '../../services/notification-service';
+import { ToastrService } from 'ngx-toastr';
+import config from '../../config.json'
 
 @Component({
   selector: 'app-main-layout',
@@ -14,11 +16,14 @@ import { NotificationService } from '../../services/notification-service';
   styleUrl: './main-layout.css',
 })
 export class MainLayout {
+  private notificationsInterval = config.time.notificationPolling * 1000;
   private destroy$ = new Subject<void>();
+  
   unreadCount: number = 0;
   email: string = '';
 
   constructor (
+    private toastr: ToastrService,
     private notificationsService: NotificationService
   ) {}
 
@@ -28,7 +33,7 @@ export class MainLayout {
   }
 
   startNotificationPolling() {
-    interval(4000)
+    interval(this.notificationsInterval)
       .pipe(
         takeUntil(this.destroy$),
         switchMap(() =>
@@ -42,6 +47,10 @@ export class MainLayout {
 
           if (newValue !== currentValue) {
             this.notificationsService.setUnreadCount(newValue);
+
+            if (newValue > currentValue) {
+              this.toastr.info('New activity detected in your evaluations. Please review your notifications for the latest updates.');
+            }
           }
         },
         error: (error) => {

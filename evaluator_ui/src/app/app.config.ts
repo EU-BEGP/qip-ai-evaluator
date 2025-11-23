@@ -4,7 +4,6 @@ import { routes } from './app.routes';
 import { provideHttpClient, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
 import { provideToastr } from 'ngx-toastr';
-import { NgCircleProgressModule } from 'ng-circle-progress';
 import { provideAnimations } from '@angular/platform-browser/animations';
 
 export const appConfig: ApplicationConfig = {
@@ -19,7 +18,6 @@ export const appConfig: ApplicationConfig = {
       positionClass: 'toast-top-right',
       preventDuplicates: true
     }),
-    importProvidersFrom(NgCircleProgressModule.forRoot({})) ,
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,

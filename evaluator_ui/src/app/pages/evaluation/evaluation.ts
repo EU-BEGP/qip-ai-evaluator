@@ -12,7 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SearchComponent } from '../../components/search-component/search-component';
 import { Subject, takeUntil } from 'rxjs';
-import { ToastrService } from 'ngx-toastr';
+//import { ToastrService } from 'ngx-toastr';
 import { StorageService } from '../../services/storage-service';
 import { ActivatedRoute } from '@angular/router';
 import { Scan } from '../../interfaces/scan';
@@ -48,7 +48,7 @@ export class EvaluationComponent {
   scansList: Scan[] = [];
 
   constructor (
-    private toastr: ToastrService,
+    //private toastr: ToastrService,
     private evaluationService: EvaluationService,
     private storageService: StorageService,
     private route: ActivatedRoute,
@@ -101,11 +101,11 @@ export class EvaluationComponent {
           if (response.evaluation_id === this.evaluationId) {
             this.finishEvaluation();
           }
-          this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
+          //this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
           this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
         }
         else if (response.status === 'Failed') {
-          this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
+          //this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
           this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
         }
       },

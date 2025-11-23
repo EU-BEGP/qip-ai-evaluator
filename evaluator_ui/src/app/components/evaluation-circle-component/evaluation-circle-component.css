@@ -7,7 +7,7 @@
 }
 
 .circle-text {
-  margin-top: 8px;
+  margin-top: -16px;
   font-size: 20px;
   color: #333;
 }
@@ -15,4 +15,14 @@
 .circle-title {
   font-size: 24px;
   color: #333;
+}
+
+.small {
+  margin-top: 0px;
+}
+
+@media screen and (max-width: 500px) {
+  .small {
+    margin-top: 16px;
+  }
 }
