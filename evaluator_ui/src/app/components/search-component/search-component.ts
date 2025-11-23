@@ -63,9 +63,9 @@ export class SearchComponent implements OnInit, DoCheck {
   }
 
   ngDoCheck(): void {
-    if (this.scanInformation?.updatedData && this.lastUpdatedData !== this.scanInformation.updatedData) {
-      this.data = this.scanInformation.updatedData;
-      this.lastUpdatedData = this.scanInformation.updatedData;
+    if (this.scanInformation?.updated_data && this.lastUpdatedData !== this.scanInformation.updated_data) {
+      this.data = this.scanInformation.updated_data;
+      this.lastUpdatedData = this.scanInformation.updated_data;
     }
   }
 
