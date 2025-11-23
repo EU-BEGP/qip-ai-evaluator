@@ -77,9 +77,10 @@ class GeminiWrapper(BaseLLMWrapper):
             top_p=self.top_p
         )
         
+        # --- FORCE JSON MODE (ANY) ---
         tool_config = {
             "function_calling_config": {
-                "mode": "ANY",
+                "mode": "ANY", 
                 "allowed_function_names": [output_model.__name__] if output_model else []
             }
         }
@@ -93,7 +94,7 @@ class GeminiWrapper(BaseLLMWrapper):
         
         gemini_history.append({"role": "user", "parts": [prompt]})
 
-        text = "" # Define text in the outer scope
+        text = "" 
         try:
             response = self.model.generate_content(
                 gemini_history,
@@ -105,59 +106,61 @@ class GeminiWrapper(BaseLLMWrapper):
             if not response.candidates:
                  raise ValueError("No candidates returned from Gemini.")
             
-            if not response.candidates[0].content.parts or not response.candidates[0].content.parts[0].function_call:
-                # The model returned raw text instead of a tool call
-                text = response.text if response.text else "API Error: Model did not use the required tool."
-                raise ValueError(text) # Jump to 'except'
+            # Check if blocked by safety/recitation (Finish Reason 10)
+            if response.candidates[0].finish_reason == 10: 
+                 raise ValueError(f"Gemini refused: Recitation/Safety check failed.")
 
-            func_call = response.candidates[0].content.parts[0].function_call
-            args_dict = type(func_call).to_dict(func_call)['args']
-            
-            text = json.dumps(args_dict) # This is the successful JSON string
+            if output_model:
+                # Check for function call existence safely
+                if not response.candidates[0].content.parts or not response.candidates[0].content.parts[0].function_call:
+                    raw_text = ""
+                    try:
+                        if response.candidates[0].content.parts:
+                            raw_text = response.candidates[0].content.parts[0].text
+                    except: pass
+                    raise ValueError(f"Model did not use required tool. Raw: {raw_text}")
+
+                func_call = response.candidates[0].content.parts[0].function_call
+                args_dict = type(func_call).to_dict(func_call)['args']
+                text = json.dumps(args_dict)
+            else:
+                # Normal text mode
+                if response.candidates[0].content.parts:
+                    text = response.candidates[0].content.parts[0].text
 
         except Exception as e:
             print(f"Error calling Gemini API or parsing tool call: {e}")
             
-            # --- YOUR SUGGESTED FIX ---
-            # The error 'e' is a ValueError containing the raw text. Try to parse it.
-            error_text = str(e) 
+            # --- FALLBACK LOGIC ---
+            # Intentamos recuperar JSON del mensaje de error o del texto crudo si existe
+            error_str = str(e)
+            recovered = False
+            
             if output_model:
+                # 1. Buscar JSON dentro del mensaje de error (común en Valid Head/Toxic Tail)
+                if "{" in error_str and "}" in error_str:
+                    try:
+                        start = error_str.find("{")
+                        end = error_str.rfind("}") + 1
+                        json_candidate = error_str[start:end]
+                        
+                        # Validar si es el JSON correcto
+                        validated = output_model.model_validate_json(json_candidate)
+                        
+                        # Si pasamos aqui, se recuperó con éxito
+                        print("--- [INFO] Successfully recovered JSON from error message. ---")
+                        text = json_candidate
+                        recovered = True
+                    except:
+                        pass
+            
+            if not recovered:
+                # Fallback final para errores reales de API
                 try:
-                    # Try to parse the error text as JSON
-                    validated = output_model.model_validate_json(error_text)
-                    
-                    # It worked! The error was just the model returning text
-                    print("--- [INFO] Successfully recovered JSON from raw text output. ---")
-
-                    # Print the raw output
-                    print("-------------------- Raw Model Output (Gemini Text Fallback) --------------------")
-                    print(error_text)
-                    print("-----------------------------------------------------------------------------")
-
-                    # Manage session
-                    if remember:
-                        self.session_messages.append({"role": "user", "content": prompt})
-                        self.session_messages.append({"role": "assistant", "content": error_text})
-
-                    # Now, return the correct format
-                    if mode == "snapshot":
-                        return validated.model_dump_json(indent=2)
-                    return validated # Return the Pydantic OBJECT
-
-                except (ValidationError, json.JSONDecodeError):
-                    # It wasn't valid JSON, so it's a real error.
-                    print("--- [ERROR] Raw text output was not valid JSON. ---")
-                    # Fall through to returning the error string
-                    text = error_text # This will be the string that causes the crash
-                    return text
-            # --- END OF FIX ---
-
-            # Fallback for real API errors
-            try:
-                text = f"API Error: {response.prompt_feedback}"
-            except Exception:
-                text = f"API Error: {error_text}"
-            return text # This is the STRING that causes the crash
+                    text = f"API Error: {response.prompt_feedback}"
+                except Exception:
+                    text = f"API Error: {error_str}"
+                return text # Retorna el error string (que causará fallo controlado en el evaluador)
 
         
         print("-------------------- Raw Model Output (Gemini Tool Call) --------------------")
@@ -182,6 +185,6 @@ class GeminiWrapper(BaseLLMWrapper):
             except ValidationError as e:
                 print(f"Validation error ({mode}):", e)
                 print("Raw output:", text)
-                return text # This is the STRING that causes the crash
+                return text
 
         return text
