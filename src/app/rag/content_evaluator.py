@@ -304,11 +304,12 @@ class ContentEvaluator:
             print(f"[INFO] Starting evaluation for scan: {current_scan_name}")
 
             for c in criteria:
+                rubric_description = self.criteria_manager.get_criterion_description(current_scan_name, c["name"])
                 crit = {
                     "key": f"{current_scan_name}:{c['name']}",
                     "name": c["name"],
                     "text": self.criteria_manager.get_criterion_text(current_scan_name, c["name"]),
-                    "description": self.criteria_manager.get_criterion_description(current_scan_name, c["name"])
+                    "description": rubric_description
                 }
 
                 search_query = f"{crit['name']}: {crit['description']}"
@@ -328,7 +329,7 @@ class ContentEvaluator:
                     ]
 
                     self.results.setdefault(current_scan_name, {})[crit["name"]] = {
-                        "description": eval_obj.Description,
+                        "description": rubric_description,
                         "llm_response": eval_obj.model_dump_json(indent=2),
                         "retrieved_chunks": [d.page_content for d in doc_chunks + kb_chunks],
                         "score": max(0.0, 5.0 + sum(eval_obj.Deductions)),
