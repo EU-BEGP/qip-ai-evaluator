@@ -34,6 +34,7 @@ services:
     env_file: .env.prod
     environment:
       - TOKENIZERS_PARALLELISM=false
+      - PYTHONUNBUFFERED=1
     depends_on:
       - broker
     extra_hosts:
