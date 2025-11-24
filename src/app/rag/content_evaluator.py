@@ -280,6 +280,7 @@ class ContentEvaluator:
         If 'interim_callback' is provided, it will be called after EACH criterion
         is evaluated with the full, growing JSON for the current scan.
         """
+        self.results = {}
         self.document_chunks = document_chunks
         benchmark_results = []
         
