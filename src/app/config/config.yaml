@@ -23,7 +23,6 @@ vector_store:
 
 llm_settings:
    wrapper: "gemini"
-   api_key: "${GEMINI_API_KEY}"
    processing_llm:
      model: "gemini-2.5-flash"
      temperature: 0.0

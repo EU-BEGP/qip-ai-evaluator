@@ -40,4 +40,6 @@ USER django_user
 EXPOSE 8000
 
 # 11. Start Gunicorn (Workers=4, Timeout=120)
-CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120"]
+COPY --chown=django_user:django_user entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+CMD ["/app/entrypoint.sh"]

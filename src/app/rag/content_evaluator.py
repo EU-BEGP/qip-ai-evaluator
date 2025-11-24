@@ -37,9 +37,7 @@ class ContentEvaluator:
         with open(config_path, "r", encoding="utf-8") as f:
             content = f.read()
         
-        content = content.replace("${HF_TOKEN}", os.environ.get("HF_TOKEN", ""))
-        content = content.replace("${GEMINI_API_KEY}", os.environ.get("GEMINI_API_KEY", ""))
-        
+        content = content.replace("${HF_TOKEN}", os.environ.get("HF_TOKEN", ""))        
         return yaml.safe_load(content)
 
     def set_documents_for_rag(self, documents: List[Document], existing_snapshot: Optional[str] = None):

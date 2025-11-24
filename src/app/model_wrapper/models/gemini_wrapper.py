@@ -1,8 +1,11 @@
 import google.generativeai as genai
 from pydantic import BaseModel, Field, ValidationError, model_validator
-from typing import List, Dict, Union, Optional
+from typing import Union, Optional
 from ..base import BaseLLMWrapper
-import json  # <-- Import json
+import json
+import os
+import random
+import threading
 
 # ---- Pydantic Model for Criterion Evaluation ----
 class CriterionEvaluation(BaseModel):
@@ -40,25 +43,41 @@ class GeminiWrapper(BaseLLMWrapper):
         llm_cfg = (cfg.get("llm_settings") or {})
         gemini_cfg = llm_cfg.get("processing_llm", {})
         
-        # 1. Configure API Key
-        api_key = llm_cfg.get("api_key")
-        if not api_key:
-            raise ValueError("Gemini API key not found in 'llm_settings.api_key'")
-        genai.configure(api_key=api_key)
+        # --- KEY ROTATION SETUP ---
+        keys_str = os.environ.get("GEMINI_API_KEYS")
+        if keys_str:
+            # Format: "KEY1,KEY2,KEY3"
+            self.api_keys = [k.strip() for k in keys_str.split(",") if k.strip()]
+        else:
+            # Fallback to single key
+            single_key = llm_cfg.get("api_key")
+            self.api_keys = [single_key] if single_key else []
 
-        # 2. Set Model and Temperature
+        if not self.api_keys:
+            raise ValueError("Gemini API key not found (checked GEMINI_API_KEYS and config)")
+            
+        # Shuffle once at startup so workers don't all start on Key 1
+        random.shuffle(self.api_keys)
+        self.current_key_index = 0
+        self.lock = threading.Lock()
+        # --------------------------
+
         self.model_name = gemini_cfg.get("model", "gemini-1.5-flash")
         self.temperature = float(gemini_cfg.get("temperature", 0.0))
         self.top_p = float(gemini_cfg.get("top_p", 1.0))
         
-        # 3. Initialize Model
-        self.model = genai.GenerativeModel(self.model_name)
-        
-        # 4. Session History
+        # Model is initialized per-request now
         self.session_messages: list[dict] = []
 
     def reset_session(self):
         self.session_messages = []
+
+    def _get_ordered_keys(self):
+        """Get keys starting from current index (Round Robin)."""
+        with self.lock:
+            ordered = self.api_keys[self.current_key_index:] + self.api_keys[:self.current_key_index]
+            self.current_key_index = (self.current_key_index + 1) % len(self.api_keys)
+            return ordered
 
     def run_prompt(self, prompt: str, mode: Optional[str] = None, remember: bool = True) -> Union[str, BaseModel]:
         
@@ -94,88 +113,99 @@ class GeminiWrapper(BaseLLMWrapper):
         
         gemini_history.append({"role": "user", "parts": [prompt]})
 
-        text = "" 
-        try:
-            response = self.model.generate_content(
-                gemini_history,
-                generation_config=generation_config,
-                tools=tools_list, 
-                tool_config=tool_config
-            )
-            
-            if not response.candidates:
-                 raise ValueError("No candidates returned from Gemini.")
-            
-            # Check if blocked by safety/recitation (Finish Reason 10)
-            if response.candidates[0].finish_reason == 10: 
-                 raise ValueError(f"Gemini refused: Recitation/Safety check failed.")
+        text_result = ""
+        last_error = None
+        success = False
+        
+        # --- KEY ROTATION LOOP ---
+        keys_to_try = self._get_ordered_keys()
 
-            if output_model:
-                # Check for function call existence safely
-                if not response.candidates[0].content.parts or not response.candidates[0].content.parts[0].function_call:
-                    raw_text = ""
-                    try:
-                        if response.candidates[0].content.parts:
-                            raw_text = response.candidates[0].content.parts[0].text
-                    except: pass
-                    raise ValueError(f"Model did not use required tool. Raw: {raw_text}")
+        for api_key in keys_to_try:
+            try:
+                genai.configure(api_key=api_key)
+                model = genai.GenerativeModel(self.model_name)
 
-                func_call = response.candidates[0].content.parts[0].function_call
-                args_dict = type(func_call).to_dict(func_call)['args']
-                text = json.dumps(args_dict)
-            else:
-                # Normal text mode
-                if response.candidates[0].content.parts:
-                    text = response.candidates[0].content.parts[0].text
+                response = model.generate_content(
+                    gemini_history,
+                    generation_config=generation_config,
+                    tools=tools_list, 
+                    tool_config=tool_config
+                )
+                
+                if not response.candidates:
+                     raise ValueError("No candidates returned from Gemini.")
+                
+                # Check if blocked by safety/recitation (Finish Reason 10)
+                if response.candidates[0].finish_reason == 10: 
+                     raise ValueError(f"Gemini refused: Recitation/Safety check failed.")
 
-        except Exception as e:
-            print(f"Error calling Gemini API or parsing tool call: {e}")
+                if output_model:
+                    if not response.candidates[0].content.parts or not response.candidates[0].content.parts[0].function_call:
+                        # Try grabbing text for debug/fallback
+                        raw = ""
+                        try: raw = response.candidates[0].content.parts[0].text 
+                        except: pass
+                        raise ValueError(f"Model did not use required tool. Raw: {raw}")
+
+                    func_call = response.candidates[0].content.parts[0].function_call
+                    args_dict = type(func_call).to_dict(func_call)['args']
+                    text_result = json.dumps(args_dict)
+                else:
+                    if response.candidates[0].content.parts:
+                        text_result = response.candidates[0].content.parts[0].text
+                
+                success = True
+                break # Exit loop on success
+
+            except Exception as e:
+                last_error = e
+                error_str = str(e)
+                # If safety error, rotation won't help. Stop.
+                if "Recitation" in error_str or "Safety" in error_str:
+                    break
+                # If other error (Quota/Network), continue to next key
+                continue
+        
+        # --- END ROTATION LOOP ---
+
+        if not success:
+            print(f"All keys failed. Last error: {last_error}")
             
-            # --- FALLBACK LOGIC ---
-            # Intentamos recuperar JSON del mensaje de error o del texto crudo si existe
-            error_str = str(e)
+            # --- FALLBACK LOGIC (Recover JSON from error) ---
+            error_str = str(last_error)
             recovered = False
             
             if output_model:
-                # 1. Buscar JSON dentro del mensaje de error (común en Valid Head/Toxic Tail)
                 if "{" in error_str and "}" in error_str:
                     try:
                         start = error_str.find("{")
                         end = error_str.rfind("}") + 1
                         json_candidate = error_str[start:end]
-                        
-                        # Validar si es el JSON correcto
                         validated = output_model.model_validate_json(json_candidate)
-                        
-                        # Si pasamos aqui, se recuperó con éxito
                         print("--- [INFO] Successfully recovered JSON from error message. ---")
-                        text = json_candidate
+                        text_result = json_candidate
                         recovered = True
                     except:
                         pass
             
             if not recovered:
-                # Fallback final para errores reales de API
-                try:
-                    text = f"API Error: {response.prompt_feedback}"
-                except Exception:
-                    text = f"API Error: {error_str}"
-                return text # Retorna el error string (que causará fallo controlado en el evaluador)
+                # Return error string to let evaluator fail gracefully
+                return f"API Error: {last_error}"
 
         
         print("-------------------- Raw Model Output (Gemini Tool Call) --------------------")
-        print(text)
+        print(text_result)
         print("-------------------------------------------------------------------------")
 
         # 6. Manage session
         if remember:
             self.session_messages.append({"role": "user", "content": prompt})
-            self.session_messages.append({"role": "assistant", "content": text})
+            self.session_messages.append({"role": "assistant", "content": text_result})
 
         # 7. Validate output
         if output_model:
             try:
-                validated = output_model.model_validate_json(text)
+                validated = output_model.model_validate_json(text_result)
                 
                 if mode == "snapshot":
                     return validated.model_dump_json(indent=2)
@@ -184,7 +214,7 @@ class GeminiWrapper(BaseLLMWrapper):
             
             except ValidationError as e:
                 print(f"Validation error ({mode}):", e)
-                print("Raw output:", text)
-                return text
+                print("Raw output:", text_result)
+                return text_result
 
-        return text
+        return text_result
