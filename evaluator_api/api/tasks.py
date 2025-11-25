@@ -39,50 +39,29 @@ def check_and_merge_evaluation(evaluation_id):
                 logger.warning(f"Evaluation {evaluation_id} marked as FAILED due to a failed scan.")
                 return
             
-            # --- 2. Check if the current batch is still in progress ---
-            # If any requested scans are still PENDING or IN_PROGRESS,
-            # the batch isn't finished. Do nothing.
-            in_progress_scans = evaluation.scans.filter(
-                scan_type__in=requested_scan_types,
-                status__in=[Scan.Status.PENDING, Scan.Status.IN_PROGRESS]
-            ).exists()
-
-            if in_progress_scans:
-                logger.info(f"Evaluation {evaluation_id}: The current batch is still in progress.")
-                return
+            # --- 3. Merge JSON (Smart Merge: Completed + In Progress) ---
             
-            # --- 3. Merge JSON (Batch finished and did not fail) ---
-            # Get *ALL* completed scans for this Evaluation,
-            # not just the ones from this batch.
-            
-            all_completed_scans = evaluation.scans.filter(
-                status=Scan.Status.COMPLETED
-            ).order_by('scan_type')
-            
-            completed_scan_types = set(s.scan_type for s in all_completed_scans)
+            all_relevant_scans = evaluation.scans.filter(
+                status__in=[Scan.Status.COMPLETED, Scan.Status.IN_PROGRESS]
+            ).exclude(result_json__isnull=True).order_by('scan_type')
             
             final_content_list = []
-            final_title = "" # Default title
+            final_title = evaluation.title or "" # Use existing title as fallback
 
-            if all_completed_scans.exists():
+            # Iteramos sobre todos los scans relevantes
+            for scan in all_relevant_scans:
                 # 3a. Get the real title from the first valid scan
-                for scan in all_completed_scans:
-                    if scan.result_json and 'title' in scan.result_json:
-                        final_title = scan.result_json['title']
-                        if final_title:
-                            break # Found a title, stop looping
+                if not final_title and scan.result_json and 'title' in scan.result_json:
+                    final_title = scan.result_json['title']
 
                 # 3b. Merge the *inner* content from EACH scan
-                for scan in all_completed_scans:
-                    if (scan.result_json and 
-                        'content' in scan.result_json and 
-                        isinstance(scan.result_json['content'], list)):
-                        
-                        # THE KEY LOGIC:
-                        # Extend the main list with the *items* from the inner list
-                        final_content_list.extend(scan.result_json['content'])
-                    else:
-                        logger.warning(f"Scan {scan.id} (type {scan.scan_type}) has malformed JSON, skipping from merge.")
+                if (scan.result_json and 
+                    'content' in scan.result_json and 
+                    isinstance(scan.result_json['content'], list)):
+                    
+                    # THE KEY LOGIC:
+                    # Extend the main list with the *items* from the inner list
+                    final_content_list.extend(scan.result_json['content'])
             
             # 3c. Build the final JSON
             final_json = {
@@ -93,7 +72,9 @@ def check_and_merge_evaluation(evaluation_id):
             
             # --- 4. Set Final Status (COMPLETED or IN_PROGRESS) ---
             
-            # Compare the set of completed scans against *all* possible types
+            completed_scan_types = set(
+                s.scan_type for s in all_relevant_scans if s.status == Scan.Status.COMPLETED
+            )
             all_possible_scan_types = set(Scan.ScanType.values)
             
             if completed_scan_types == all_possible_scan_types:
@@ -101,28 +82,10 @@ def check_and_merge_evaluation(evaluation_id):
                 evaluation.status = Evaluation.Status.COMPLETED
                 logger.info(f"Evaluation {evaluation_id} marked as COMPLETED (6/6 scans) and merged.")
             else:
-                # Partial case. The batch finished, but more scans are missing.
-                # It stays IN_PROGRESS so more scans can be added later.
+                # Partial case.
                 evaluation.status = Evaluation.Status.IN_PROGRESS
                 logger.info(f"Partial Evaluation merge {evaluation_id} complete. Stays IN_PROGRESS ({len(completed_scan_types)}/6).")
-            
-            # --- Create Notification Message if requested batch is done ---
-            if requested_scan_types.issubset(completed_scan_types):
-                module_title = final_title if final_title else evaluation.module.course_key
-                
-                if len(requested_scan_types) == len(all_possible_scan_types):
-                     scan_text = "Full Evaluation"
-                else:
-                     scan_text = ", ".join(list(requested_scan_types))
-
-                Message.objects.create(
-                    user=evaluation.module.user,
-                    evaluation=evaluation, # <--- ADD THIS
-                    title="Evaluation Completed",
-                    content=f"The evaluation of module '{module_title}' for scan(s): {scan_text} has been completed.",
-                    is_read=False
-                )
-            
+                        
             # --- 5. Save Changes ---
             # Save the merged JSON and the new status.
             evaluation.save()

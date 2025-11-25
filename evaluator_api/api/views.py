@@ -892,6 +892,21 @@ def evaluation_callback(request):
                         'result_json': scan_specific_json
                     }
                 )
+
+                already_notified = Message.objects.filter(
+                    evaluation=evaluation,
+                    title=f"{scan_type} Completed"
+                ).exists()
+
+                if not already_notified:
+                    Message.objects.create(
+                        user=evaluation.module.user,
+                        evaluation=evaluation,
+                        title=f"{scan_type} Completed",
+                        content=f"The {scan_type} for module '{callback_title}' has been completed.",
+                        is_read=False
+                    )
+
             else:
                 logger.warning(f"Unknown scan type received: {scan_type}")
         

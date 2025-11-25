@@ -18,17 +18,27 @@ logger = logging.getLogger(__name__)
 class ContentEvaluator:
     """Evaluates documents against academic criteria using LLMs with structured JSON output."""
 
-    def __init__(self, cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"):
-        """Initialize evaluator: load config, vector manager, criteria manager, LLM, and CrossEncoderRAG."""
+    def __init__(self, cross_encoder_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2", 
+                 vector_manager=None, rag_model=None):
+        """Initialize evaluator."""
         self.cfg = self._load_config()
-        self.vector_manager = VectorStoreManager()
+        
+        if vector_manager:
+            self.vector_manager = vector_manager
+        else:
+            self.vector_manager = VectorStoreManager()
+
         self.criteria_manager = CriteriaManager(Path(__file__).parents[1] / "config" / "config.yaml")
+        
         self.results: Dict[str, Dict[str, Dict]] = {}
         self.document_chunks: List[Document] = []
-        self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
-        
-        # Model wrapper setup
         self.document_snapshot = ""
+        
+        if rag_model:
+            self.rag = rag_model
+        else:
+            self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
+        
         self.llm = get_llm_wrapper(self.cfg)
 
     def _load_config(self) -> Dict:

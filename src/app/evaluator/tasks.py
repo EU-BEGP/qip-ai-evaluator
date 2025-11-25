@@ -11,31 +11,32 @@ sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
 from rag.content_evaluator import ContentEvaluator
 from .init_knowledge import build_knowledge_base_auto, load_criteria_auto
+from retrievers.cross_encoder import CrossEncoderRAG
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# --- SHARED WORKER INSTANCES (Runs ONCE per worker start) ---
-# This section now correctly matches views.py
-logger.info("Initializing shared Celery worker instances...")
+# --- SHARED HEAVY RESOURCES (Runs ONCE per worker start) ---
+logger.info("Initializing shared AI models (Heavy resources)...")
 
-# 2. Create the vector_manager ONCE
-vector_manager = build_knowledge_base_auto()
+# 1. Vector Database (Heavy)
+GLOBAL_VECTOR_MANAGER = build_knowledge_base_auto()
 
-# 3. Load the criteria ONCE
-criteria_data = load_criteria_auto()
+# 2. Criteria (Lightweight but cached)
+load_criteria_auto()
 
-# 4. Create the ContentEvaluator ONCE
-evaluator_instance = ContentEvaluator()
+# 3. RAG Neural Network (Very Heavy - PyTorch)
+# We load this once globally to share memory across tasks
+GLOBAL_RAG_MODEL = CrossEncoderRAG(model_name="cross-encoder/ms-marco-MiniLM-L6-v2", use_memory_only=True)
 
-# 5. Inject the shared vector_manager into the shared evaluator
-evaluator_instance.vector_manager = vector_manager
-
-logger.info("Shared Celery worker instances are ready.")
+logger.info("✅ Shared AI models ready.")
 # --- END OF SHARED SETUP ---
 
 @shared_task(bind=True)
-def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: str, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None, existing_snapshot: Optional[str] = None):
+def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: str, 
+                        scan_names: Optional[List[str]] = None, 
+                        previous_evaluation: Optional[Dict] = None, 
+                        existing_snapshot: Optional[str] = None):
     """
     Celery background task to run a full module evaluation.
     This runs in a separate "worker" process.
@@ -46,11 +47,17 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
         logger.info(f"[{evaluation_id}] Using previous evaluation data.")
 
     try:
-        # 1. Use the SHARED evaluator instance
-        evaluator = evaluator_instance
+        # We create a NEW evaluator instance for this specific task to ensure
+        # clean state (self.results = {}), preventing data leakage between concurrent tasks.
+        # We inject the global heavy models to save RAM.
+        evaluator = ContentEvaluator(
+            vector_manager=GLOBAL_VECTOR_MANAGER,
+            rag_model=GLOBAL_RAG_MODEL
+        )
+        # --------------------------------------------
 
-        # 2. Load module content (uses the evaluator's shared vector_manager)
-        docs = evaluator.vector_manager.load_documents([course_key]) # This uses the VM we already set
+        # 2. Load module content (uses the shared vector_manager)
+        docs = evaluator.vector_manager.load_documents([course_key])
         if not docs:
             logger.error(f"[{evaluation_id}] No documents found for course_key '{course_key}'.")
             send_callback(evaluation_id, course_key, qip_user_id, status="FAILED", error="No documents found", results=None)
@@ -59,8 +66,10 @@ def run_evaluation_task(self, evaluation_id: str, course_key: str, qip_user_id: 
         for i, doc in enumerate(docs):
             doc.metadata["chunk_index"] = i + 1
 
+        # This modifies only the local 'evaluator' instance state
         evaluator.set_documents_for_rag(docs, existing_snapshot=existing_snapshot)
 
+        # If a NEW snapshot was generated (not provided), send it back immediately
         if not existing_snapshot and evaluator.document_snapshot:
             send_snapshot_callback(evaluation_id, evaluator.document_snapshot)
 
