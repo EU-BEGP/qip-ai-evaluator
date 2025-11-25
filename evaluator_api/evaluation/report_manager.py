@@ -61,10 +61,13 @@ class MyDocTemplate(SimpleDocTemplate):
             pass
 
 class ReportManager:
-    def __init__(self, evaluation_data_path: str):
+    def __init__(self, evaluation_data_path: str, module_data_path: str):
         with open(evaluation_data_path, 'r', encoding='utf-8') as file:
             self.evaluation_data = json.load(file)
         EvaluationUtils().fill_aditional_data(self.evaluation_data)
+
+        with open(module_data_path, 'r', encoding='utf-8') as file:
+            self.module_data = json.load(file)
         
     def set_table_style(self, table: Table) -> None:
         """Apply consistent table styling with support for long content."""
@@ -95,7 +98,7 @@ class ReportManager:
         table.keepWithNext = False  # Allow splitting
 
     def get_eu_class_style(self, eu_class: str, styles) -> ParagraphStyle:
-        """Get styled paragraph for EU Classification."""
+        """Get styled paragraph for EDDA Classification."""
         colors_map = {
             'No Issues': ('#E8F5E9', '#2E7D32'),
             'Minor Shortcoming': ('#FFF3E0', '#E65100'),
@@ -200,7 +203,7 @@ class ReportManager:
             total_width * 0.10,  # Criterion (10%)
             total_width * 0.17,  # Description (17%)
             total_width * 0.07,  # Score (7%)
-            total_width * 0.16,  # EU Classification (16%)
+            total_width * 0.16,  # EEDA Classification (16%)
             total_width * 0.25,  # Shortcomings (25%)
             total_width * 0.25   # Recommendations (25%)
         ]
@@ -236,15 +239,29 @@ class ReportManager:
         story = []
         percentage = (self.evaluation_data["total_score"] / self.evaluation_data["total_max_score"] * 100) if self.evaluation_data["total_max_score"] > 0 else 0
 
+        story.append(Paragraph("1. Executive Summary", styles['Section']))
+
+        story.append(Paragraph("Module Overview", styles['SubSection']))
+
+        story.append(Paragraph(f"<b>Title:</b> {self.module_data['title']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>Abstract:</b> {self.module_data['abstract']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>Uniqueness:</b> {self.module_data['uniqueness']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>Societal Relevance:</b> {self.module_data['societal_relevance']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>ELH:</b> {self.module_data['elh']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>EQF:</b> {self.module_data['eqf']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>SMCTS:</b> {self.module_data['smcts']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>Teachers:</b> {self.module_data['teachers']}", styles['ReportBody']))
+        story.append(Paragraph(f"<b>Keywords:</b> {self.module_data['keywords']}", styles['ReportBody']))
+
+        story.append(Spacer(1, 12))
+
+        story.append(Paragraph("Performance Overview", styles['SubSection']))
+
         summary_text = f"""
         This comprehensive evaluation report analyzes the unit outline across multiple dimensions.
         The document achieved an overall score of {percentage:.1f}%.
         """
-
-        story.append(Paragraph("1. Executive Summary", styles['Section']))
         story.append(Paragraph(summary_text, styles['ReportBody']))
-
-        story.append(Paragraph("Performance Overview", styles['SubSection']))
 
         if self.evaluation_data["content"]:
             data = [['Scan', 'Criteria count' , 'Score', 'Maximum Score', 'Average Score', 'Percentage']]
@@ -291,8 +308,8 @@ class ReportManager:
         story = []
         story.append(Paragraph("2. Detailed Analysis", styles['Section']))
 
-        # EU Classification Table
-        story.append(Paragraph("EU Classification System", styles['SubSection']))
+        # EEDA Classification Table
+        story.append(Paragraph("EEDA Classification System (EEDA Class.)", styles['SubSection']))
         legend_data = [
             ['Classification', 'Score Range', 'Description'],
             ['No Issues', '5.0', 'Meets all requirements perfectly'],
@@ -346,7 +363,7 @@ class ReportManager:
             
             # Criteria Table
             if scan.get('criteria'):
-                criteria_data = [['Criterion', 'Description', 'Score', 'EU Classification', 'Shortcomings', 'Recommendations']]
+                criteria_data = [['Criterion', 'Description', 'Score', 'EEDA Class.', 'Shortcomings', 'Recommendations']]
                 for criterion in scan['criteria']:
                     score = criterion.get('score', 0)
                     max_score = criterion.get('max_score', 5)
@@ -417,6 +434,11 @@ class ReportManager:
         return story
     
     def add_page_number(self, canvas, doc) -> None:
+        """Add footer text."""
+        footer_text = "Evaluation done by EEDA QIP V2.0 Reviewer"
+        canvas.setFont("Helvetica", 9)
+        canvas.drawString(50, 25, footer_text) 
+
         """Add page numbers to the PDF."""
         page_num = canvas.getPageNumber()
         text = f"Page {page_num}"
