@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ScanRequest } from '../../interfaces/scan-request';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ScanItem } from '../../interfaces/scan-item';
 
 @Component({
@@ -27,7 +28,8 @@ import { ScanItem } from '../../interfaces/scan-item';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTabsModule,
-    EvaluationCircleComponent
+    EvaluationCircleComponent,
+    MatProgressBarModule
   ],
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',
@@ -48,6 +50,8 @@ export class SearchComponent implements OnInit, DoCheck {
   evaluationList: any[] = [];
   selectedTabIndex = 0;
   download: boolean = false;
+  isEvaluating: boolean = false;
+  isFinished: boolean = false;
 
   constructor (
     private evaluationService: EvaluationService
@@ -59,7 +63,9 @@ export class SearchComponent implements OnInit, DoCheck {
       this.loadData();
     }
 
-    this.download = this.scanInformation.status === 'Completed' && this.scanInformation.name === 'All Scans'
+    this.isEvaluating = (this.scanInformation.status === 'Creating' || this.scanInformation.status === 'In Progress') && this.scanInformation.evaluable === false;
+    this.isFinished = this.scanInformation.status === 'Completed';
+    this.download = this.scanInformation.status === 'Completed' && this.scanInformation.name === 'All Scans';
   }
 
   ngDoCheck(): void {
@@ -80,6 +86,7 @@ export class SearchComponent implements OnInit, DoCheck {
       next: (response) => {
         this.startPolling.emit({ "scan_id": response.body.scan_id, "scan_name": scanRequest.scan_name });
         this.scanInformation.evaluable = false;
+        this.isEvaluating = true;
       },
       error: (error) => {
         console.error('Evaluation error:', error);
@@ -89,30 +96,21 @@ export class SearchComponent implements OnInit, DoCheck {
 
   loadData(): void {
     this.isLoading = true;
-    if (this.tab === 'All Scans') {
-      this.evaluationService.getEvaluationDetailModule(this.scanInformation.id).subscribe({
-        next: (response) => {
-          this.data = response;
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading evaluation detail:', error);
-          this.isLoading = false;
-        }
-      });
-    }
-    else {
-      this.evaluationService.getEvaluationDetailScan(this.scanInformation.id).subscribe({
-        next: (response) => {
-          this.data = response;
-          this.isLoading = false;
-        },
-        error: (error) => {
-          console.error('Error loading evaluation detail:', error);
-          this.isLoading = false;
-        }
-      });
-    }
+
+    const request$ = this.tab === 'All Scans'
+      ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id, true)
+      : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id, true);
+
+    request$.subscribe({
+      next: (response) => {
+        this.data = response;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading evaluation detail:', error);
+        this.isLoading = false;
+      }
+    });
   }
 
   downloadPDF(): void {

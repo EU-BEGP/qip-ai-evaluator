@@ -4,6 +4,7 @@ import { AccountCredentials } from '../interfaces/account-credentials';
 import { catchError, Observable, tap } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import config from '../config.json';
+import { LoaderService } from './loader-service';
 
 @Injectable({
   providedIn: 'root',
@@ -13,7 +14,8 @@ export class AuthService {
 
   constructor(
     private http: HttpClient,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private loaderService: LoaderService
   ) {
     this.httpOptions = {
       headers: new HttpHeaders({
@@ -25,6 +27,7 @@ export class AuthService {
 
   login(account: AccountCredentials): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.users.login}`;
+    this.loaderService.show();
     return this.http
       .post(URL, account, this.httpOptions)
       .pipe(
@@ -33,12 +36,14 @@ export class AuthService {
           localStorage.setItem('accountEmail', account.email);
           localStorage.setItem('token', token);
           this.toastr.success(`Welcome ${account.email}`);
+          this.loaderService.hide();
         }),
         catchError((err) => { 
           this.toastr.error(
             'Please make sure the credentials are correct.',
             'Wrong credentials'
           );
+          this.loaderService.hide();
           throw err; 
         })
       );

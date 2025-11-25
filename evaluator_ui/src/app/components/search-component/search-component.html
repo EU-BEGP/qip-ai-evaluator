@@ -2,7 +2,12 @@
   <button class="text-center space-top" mat-raised-button color="primary" [disabled]="disableEvaluateButton" *ngIf="scanInformation.evaluable" (click)="evaluate()">Evaluate</button>
   <button class="text-center space-top" mat-raised-button color="primary" *ngIf="download" (click)="downloadPDF()">Download PDF</button>
 
-  <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="scanInformation.scan_average !== null"></app-evaluation-circle-component>
+  <div class="ai-container" *ngIf="isEvaluating">
+    <mat-progress-bar mode="indeterminate" color="accent" class="space-top"></mat-progress-bar>
+    <p class="ai-text">Evaluating with AI...</p>
+  </div>
+  
+  <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="isFinished"></app-evaluation-circle-component>
 
   <div class="mb-5 mt-4 p-0">
     <div *ngIf="data !== null && !isLoading" class="m-0">

@@ -1,10 +1,11 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { catchError, interval, Observable, scan, switchMap, takeWhile, tap, throwError } from 'rxjs';
+import { catchError, finalize, interval, Observable, scan, switchMap, takeWhile, tap, throwError } from 'rxjs';
 import config from '../config.json';
 import { ToastrService } from 'ngx-toastr';
 import { ScanRequest } from '../interfaces/scan-request';
 import { StorageService } from './storage-service';
+import { LoaderService } from './loader-service';
 
 @Injectable({
   providedIn: 'root',
@@ -17,7 +18,8 @@ export class EvaluationService {
   constructor(
     private http: HttpClient,
     private toastr: ToastrService,
-    private storageService: StorageService
+    private storageService: StorageService,
+    private loaderService: LoaderService
   ) { 
     this.httpOptions = {
       headers: new HttpHeaders({
@@ -31,14 +33,17 @@ export class EvaluationService {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
     if (scanRequest.scan_name === 'All Scans') {scanRequest.scan_name = '' }
     const body = scanRequest;
+    this.loaderService.show();
 
     return this.http.post(URL, body, this.httpOptions).pipe(
       tap((response: any) => {
         this.storageService.addEvaluation(response.body.scan_id, body.scan_name);
         this.toastr.success('Evaluation request successfully submitted.', 'Success');
+        this.loaderService.hide();
       }),
       catchError((err) => {
         this.toastr.error('Please try again later.', 'Error');
+        this.loaderService.hide();
         return throwError(() => err);
       })
     );
@@ -47,35 +52,57 @@ export class EvaluationService {
   getEvaluationList(scanRequest: ScanRequest): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.list}`;
     const body = scanRequest;
+    this.loaderService.show();
 
     return this.http.post(URL, body, this.httpOptions).pipe(
       catchError((err) => {
         this.toastr.error('Could not load history.', 'Error');
         return throwError(() => err);
+      }),
+      finalize(() => {
+        this.loaderService.hide();
       })
     );
   }
 
-  getEvaluationDetailModule(id: number): Observable<any> {
+  getEvaluationDetailModule(id: number, loader: boolean = false): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.detailModule}`;
     URL = URL.replace('{id}', String(id));
+    
+    if (loader) {
+      this.loaderService.show();
+    }
 
     return this.http.get<any>(URL).pipe(
       catchError((err) => {
         this.toastr.error('Could not load evaluation detail.', 'Error');
         return throwError(() => err);
+      }),
+      finalize(() => {
+        if (loader) {
+          this.loaderService.hide();
+        }
       })
     );
   }
 
-  getEvaluationDetailScan(id: number): Observable<any> {
+  getEvaluationDetailScan(id: number, loader: boolean = false): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.detailScan}`;
     URL = URL.replace('{id}', String(id));
 
+    if (loader) {
+      this.loaderService.show();
+    }
+
     return this.http.get<any>(URL).pipe(
       catchError((err) => {
         this.toastr.error('Could not load evaluation detail.', 'Error');
         return throwError(() => err);
+      }),
+      finalize(() => {
+        if (loader) {
+          this.loaderService.hide();
+        }
       })
     );
   }
@@ -101,12 +128,17 @@ export class EvaluationService {
   }
 
   getIdsList(id: string): Observable<any> {
+    this.loaderService.show();
     let URL = `${config.api.baseUrl}${config.api.evaluation.idsList}`;
     URL = URL.replace('{id}', String(id));
+    
 
     return this.http.get<any>(URL).pipe(
       catchError((err) => {
         return throwError(() => err);
+      }),
+      finalize(() => {
+        this.loaderService.hide();
       })
     );
   }
@@ -114,10 +146,14 @@ export class EvaluationService {
   getLinkModule(id: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.linkModule}`;
     URL = URL.replace('{id}', String(id));
+    this.loaderService.show();
     
     return this.http.get<any>(URL).pipe(
       catchError((err) => {
         return throwError(() => err);
+      }),
+      finalize(() => {
+        //this.loaderService.hide();
       })
     );
   }
@@ -125,9 +161,13 @@ export class EvaluationService {
   getModules(email: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.modulesList}`;
     URL = URL.replace('{email}', email);
+    this.loaderService.show();
 
     return this.http.get<any>(URL).pipe(
-      catchError((err) => throwError(() => err))
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      })
     );
   }
 }
