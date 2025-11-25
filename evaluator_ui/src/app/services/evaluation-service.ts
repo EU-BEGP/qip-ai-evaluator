@@ -31,7 +31,6 @@ export class EvaluationService {
 
   evaluate(scanRequest: ScanRequest): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
-    if (scanRequest.scan_name === 'All Scans') {scanRequest.scan_name = '' }
     const body = scanRequest;
     this.loaderService.show();
 

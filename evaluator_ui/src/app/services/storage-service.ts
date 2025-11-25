@@ -5,12 +5,11 @@ import { ScanItem } from '../interfaces/scan-item';
   providedIn: 'root',
 })
 export class StorageService {
-  private readonly storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
-
   constructor() {}
 
   addEvaluation(scanId: string, scanName: string): void {
-    const list = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+    const storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
+    const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
 
     const exists = list.some(
       (item: ScanItem) =>
@@ -20,12 +19,13 @@ export class StorageService {
     if (!exists) {
       const item = { "scan_id": scanId, "scan_name": scanName }
       list.push(item);
-      localStorage.setItem(this.storageKey, JSON.stringify(list));
+      localStorage.setItem(storageKey, JSON.stringify(list));
     }
   }
 
   removeEvaluation(scanId: string, scanName: string): void {
-    const list = JSON.parse(localStorage.getItem(this.storageKey) || '[]');
+    const storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
+    const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
 
     const updatedList = list.filter(
       (item: ScanItem) =>
@@ -33,9 +33,9 @@ export class StorageService {
     );
 
     if (updatedList.length === 0) {
-      localStorage.removeItem(this.storageKey);
+      localStorage.removeItem(storageKey);
     } else {
-      localStorage.setItem(this.storageKey, JSON.stringify(updatedList));
+      localStorage.setItem(storageKey, JSON.stringify(updatedList));
     }
   }
 }
