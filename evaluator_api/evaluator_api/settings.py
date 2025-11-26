@@ -144,6 +144,7 @@ EXTERNAL_LOGIN_API_URL = config('EXTERNAL_LOGIN_API_URL')
 RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
 RAG_API_EVALUATE_URL = config('RAG_API_EVALUATE_URL')
 RAG_API_MODULE_MODIFIED_URL = config('RAG_API_MODULE_MODIFIED_URL')
+RAG_API_METADATA_URL = os.environ.get("RAG_API_METADATA_URL")
 
 # --- CORS Configuration ---
 # Read allowed origins from environment variable
