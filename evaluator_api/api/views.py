@@ -12,6 +12,7 @@ import tempfile
 import os
 import json
 from django.http import HttpResponse
+from django.urls import reverse
 
 from .models import User, Module, Evaluation, Scan, Message
 from .security import verify_rag_callback
@@ -210,10 +211,12 @@ def start_new_evaluation(request):
     # --- Call the RAG API ---
     last_completed_eval = Evaluation.objects.filter(module=module, status=Evaluation.Status.COMPLETED).order_by('-created_at').first()
     previous_evaluation_json = last_completed_eval.result_json if last_completed_eval else None
-    
+    callback_url = request.build_absolute_uri(reverse('evaluation_callback'))
+
     rag_payload = {
         "evaluation_id": evaluation_to_run.id,
         "course_key": module.course_key,
+        "callback_url": callback_url,
         "qip_user_id": str(request.user.id),
         "scan_names": scans_to_run_now, 
         "previous_evaluation": previous_evaluation_json,
@@ -792,10 +795,13 @@ def evaluation_callback(request):
         return Response({"message": "Evaluation already finished"}, status=status.HTTP_200_OK)
 
     callback_status = data.get('status')
-    results_json = data.get('results')
+    
+    # CHANGE 3: Standardized reading from the 'result' field
+    unified_result = data.get('result') 
 
     if callback_status == 'SNAPSHOT_CREATED':
-        snapshot_text = data.get('snapshot')
+        # Now reading from unified_result
+        snapshot_text = unified_result
         if snapshot_text:
             evaluation.document_snapshot = snapshot_text
             evaluation.save()
@@ -804,11 +810,12 @@ def evaluation_callback(request):
     
     # --- Handle Interim Updates ---
     if callback_status == 'CRITERION_COMPLETE':
-        interim_result_json = data.get('interim_result')
+        # Now reading from unified_result
+        interim_result_json = unified_result
         
         # Validate the received JSON
         if not interim_result_json or 'content' not in interim_result_json or not interim_result_json['content']:
-            logger.warning(f"[{evaluation_id}] Invalid interim callback: missing or malformed 'interim_result'")
+            logger.warning(f"[{evaluation_id}] Invalid interim callback: missing or malformed 'result'")
             return Response({"error": "Invalid interim_result"}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
@@ -877,7 +884,9 @@ def evaluation_callback(request):
             status__in=[Scan.Status.IN_PROGRESS, Scan.Status.PENDING]
         ).update(status=Scan.Status.FAILED)
         
-    elif callback_status == 'COMPLETE' and results_json:
+    elif callback_status == 'COMPLETE' and unified_result:
+        # Now reading from unified_result
+        results_json = unified_result
         all_possible_scans = set(Scan.ScanType.values)
         
         # This logic is the same as before

@@ -42,10 +42,14 @@ def evaluate_module(request):
     """ Endpoint to START an evaluation. """
     # 1. Receive input (Evaluator API sends the FULL LINK)
     course_link_input = request.data.get("course_key")
+    callback_url = request.data.get("callback_url") # Now Mandatory
+    
+    # Optional fields
     qip_user_id = request.data.get("qip_user_id")
+    evaluation_id = request.data.get("evaluation_id")
+    
     scan_names = request.data.get("scan_names")
     previous_evaluation = request.data.get("previous_evaluation")
-    evaluation_id = request.data.get("evaluation_id")
     existing_snapshot = request.data.get("existing_snapshot")
 
     # --- Validation ---
@@ -54,11 +58,12 @@ def evaluate_module(request):
             {"error": "Missing 'course_key' (link) in request body"}, 
             status=status.HTTP_400_BAD_REQUEST
         )
-    if not qip_user_id:
+    if not callback_url:
         return Response(
-            {"error": "Missing 'qip_user_id' in request body"}, 
+            {"error": "Missing 'callback_url' in request body"}, 
             status=status.HTTP_400_BAD_REQUEST
         )
+
     if scan_names is not None and not isinstance(scan_names, list):
         return Response(
             {"error": "'scan_names' must be a list of strings"}, 
@@ -69,11 +74,12 @@ def evaluate_module(request):
     clean_course_code = extract_learnify_code(course_link_input)
     
     # Log using the LINK (Context)
-    logger.info(f"Received request {evaluation_id}. Link: '{course_link_input}'. Extracted Code for RAG: '{clean_course_code}'")
+    logger.info(f"Received request {evaluation_id if evaluation_id else 'No-ID'}. Link: '{course_link_input}'. Extracted Code for RAG: '{clean_course_code}'")
 
     # 3. Check Last Modified
     try:
-        last_modified_date = base_evaluator.get_module_last_modified(clean_course_code)
+        # We still need this check internally, but we won't return the date in the response
+        _ = base_evaluator.get_module_last_modified(clean_course_code)
     except Exception as e:
         logger.error(f"Error getting module_last_modified for link '{course_link_input}': {e}")
         return Response({"error": "Could not determine module date (Invalid Link/Code?)"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -81,23 +87,29 @@ def evaluate_module(request):
     # 4. Schedule the background task
     run_evaluation_task.delay(
         evaluation_id=evaluation_id,
-        course_key=clean_course_code,
+        course_key=clean_course_code, # Passing clean code for processing
+        original_link=course_link_input, # Passing original link for callbacks
         qip_user_id=qip_user_id,
+        callback_url=callback_url, # Pass mandatory callback
         scan_names=scan_names,
         previous_evaluation=previous_evaluation,
         existing_snapshot=existing_snapshot
     )
 
-    # 5. Return Response
-    return Response(
-        {
-            "message": "Evaluation has been started.",
-            "evaluation_id": evaluation_id,
-            "course_key": course_link_input,
-            "last_modified_date": last_modified_date
-        },
-        status=status.HTTP_202_ACCEPTED
-    )
+    # 5. Return Response (Unified Standard)
+    response_payload = {
+        "status": "RECEIVED",
+        "result": {}, # Empty for initial receipt
+        "course_key": course_link_input
+    }
+    
+    # Optional fields logic
+    if evaluation_id:
+        response_payload["evaluation_id"] = evaluation_id
+    if qip_user_id:
+        response_payload["user_id"] = qip_user_id
+
+    return Response(response_payload, status=status.HTTP_202_ACCEPTED)
 
 @api_view(['GET'])
 def module_last_modified(request):
