@@ -211,7 +211,9 @@ def start_new_evaluation(request):
     # --- Call the RAG API ---
     last_completed_eval = Evaluation.objects.filter(module=module, status=Evaluation.Status.COMPLETED).order_by('-created_at').first()
     previous_evaluation_json = last_completed_eval.result_json if last_completed_eval else None
-    callback_url = request.build_absolute_uri(reverse('evaluation_callback'))
+    base_url = settings.SERVER_PUBLIC_URL.rstrip('/')
+    relative_path = reverse('evaluation_callback')
+    callback_url = f"{base_url}{relative_path}"
 
     rag_payload = {
         "evaluation_id": evaluation_to_run.id,

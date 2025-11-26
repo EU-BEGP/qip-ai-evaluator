@@ -145,6 +145,7 @@ RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
 RAG_API_EVALUATE_URL = config('RAG_API_EVALUATE_URL')
 RAG_API_MODULE_MODIFIED_URL = config('RAG_API_MODULE_MODIFIED_URL')
 RAG_API_METADATA_URL = os.environ.get("RAG_API_METADATA_URL")
+SERVER_PUBLIC_URL = os.environ.get('SERVER_PUBLIC_URL', 'http://127.0.0.1:8000')
 
 # --- CORS Configuration ---
 # Read allowed origins from environment variable
