@@ -37,6 +37,18 @@ class DocumentSnapshot(BaseModel):
     Outline: list[str] = Field(..., description="Ordered list of major sections/headings")
     ImportantInformation: list[str] = Field(..., description="10-15 bullets covering main learning goals, scope, methods, and assessments")
 
+class ModuleMetadata(BaseModel):
+    """Model for extracting specific module metadata."""
+    title: str = Field(..., description="The official title of the module")
+    abstract: str = Field(..., description="Summary of the module content")
+    uniqueness: str = Field(..., description="Explanation of what makes this module unique")
+    societal_relevance: str = Field(..., description="How this module impacts society")
+    elh: str = Field(..., description="Estimated Learning Hours (ELH) value")
+    eqf: str = Field(..., description="European Qualification Framework (EQF) level")
+    smcts: str = Field(..., description="SMCTS credit value")
+    teachers: str = Field(..., description="Names and details of teachers/authors")
+    keywords: str = Field(..., description="Comma-separated keywords")
+
 # ---- Gemini Wrapper ----
 class GeminiWrapper(BaseLLMWrapper):
     def __init__(self, cfg: dict):
@@ -90,6 +102,9 @@ class GeminiWrapper(BaseLLMWrapper):
         elif mode == "snapshot":
             output_model = DocumentSnapshot
             tools_list = [DocumentSnapshot]
+        elif mode == "metadata": 
+            output_model = ModuleMetadata
+            tools_list = [ModuleMetadata]
 
         generation_config = genai.types.GenerationConfig(
             temperature=self.temperature,

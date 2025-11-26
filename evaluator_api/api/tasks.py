@@ -1,9 +1,34 @@
 from celery import shared_task
 from django.db import transaction
 import logging
+import requests
+from django.conf import settings
 from .models import Evaluation, Scan, Message
 
 logger = logging.getLogger(__name__)
+
+def fetch_and_update_metadata(evaluation):
+    """
+    Fetches metadata from the AI endpoint if it doesn't exist.
+    """
+    if evaluation.metadata_json:
+        return 
+
+    try:
+        url = settings.RAG_API_METADATA_URL 
+        response = requests.post(
+            url,
+            json={'course_key': evaluation.module.course_key},
+            timeout=300
+        )
+        response.raise_for_status()
+        
+        evaluation.metadata_json = response.json()
+        evaluation.save(update_fields=['metadata_json'])
+        logger.info(f"Metadata saved for evaluation {evaluation.id}")
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch metadata for evaluation {evaluation.id}: {e}")
 
 @shared_task
 def check_and_merge_evaluation(evaluation_id):
@@ -81,6 +106,9 @@ def check_and_merge_evaluation(evaluation_id):
                 # Success case! All 6 scans are done.
                 evaluation.status = Evaluation.Status.COMPLETED
                 logger.info(f"Evaluation {evaluation_id} marked as COMPLETED (6/6 scans) and merged.")
+                
+                # Condition 1: All scans finished -> Generate metadata
+                fetch_and_update_metadata(evaluation)
             else:
                 # Partial case.
                 evaluation.status = Evaluation.Status.IN_PROGRESS

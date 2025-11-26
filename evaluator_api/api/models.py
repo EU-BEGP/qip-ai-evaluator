@@ -69,10 +69,9 @@ class Evaluation(models.Model):
     
     # Stores the final *merged* JSON file
     result_json = models.JSONField(null=True, blank=True)
-
     title = models.CharField(max_length=255, blank=True, null=True)
-
     document_snapshot = models.TextField(null=True, blank=True)
+    metadata_json = models.JSONField(null=True, blank=True)
 
     @property
     def formatted_date(self):

@@ -121,3 +121,26 @@ def module_last_modified(request):
     except Exception as e:
         logger.error(f"Error getting module_last_modified for link '{course_link_input}': {e}")
         return Response({"error": "Could not determine module date"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+@api_view(['POST'])
+def get_module_metadata(request):
+    """
+    Retrieves structured metadata (Abstract, EQF, ELH, etc.) for a given course.
+    """
+    course_link_input = request.data.get("course_key")
+    
+    if not course_link_input:
+        return Response({"error": "Missing 'course_key'"}, status=status.HTTP_400_BAD_REQUEST)
+
+    clean_course_code = extract_learnify_code(course_link_input)
+    
+    logger.info(f"Metadata request for: {clean_course_code}")
+
+    try:
+        metadata_json = base_evaluator.extract_metadata(clean_course_code)
+        
+        return Response(metadata_json, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.error(f"Error in get_module_metadata: {e}", exc_info=True)
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

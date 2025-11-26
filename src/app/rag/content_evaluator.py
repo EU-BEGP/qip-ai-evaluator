@@ -248,7 +248,72 @@ class ContentEvaluator:
         eval_obj = self.llm.run_prompt(prompt, mode="criterion", remember=False)
         elapsed = time.time() - start_time
         return {"evaluation": eval_obj, "elapsed": elapsed}
-    
+
+    def extract_metadata(self, course_key: str) -> Dict:
+        """
+        Extracts structured metadata using AI directly on the first 50% of the document.
+        """
+        docs = self.vector_manager.load_documents([course_key])
+        
+        if not docs:
+            logger.error(f"No documents found for {course_key}")
+            return {}
+
+        total_chunks = len(docs)
+        if total_chunks > 0:
+            # Analyze at least 10 chunks, or 50% of the doc, whichever is larger.
+            # If doc is smaller than 10 chunks, python slicing [:10] safely handles it.
+            limit = max(10, int(total_chunks * 0.5))
+            
+            header_docs = docs[:limit]
+            logger.info(f"Extracting metadata from {len(header_docs)}/{total_chunks} chunks.")
+        else:
+            header_docs = []
+
+        context_text = "\n\n".join([d.page_content for d in header_docs])
+
+        prompt = (
+            "You are a strict metadata extractor. Extract educational attributes from the document text below.\n"
+            "Map the content to the following JSON keys exactly.\n\n"
+            "### RULES:\n"
+            "1. Search for specific fields in the content.\n"
+            "2. If a field is found, extract it exactly.\n"
+            "3. If a field is NOT found, try to infer it from context ONLY if obvious. "
+            "If you infer it, you MUST append ' (AI GENERATED)' to the end of that string.\n"
+            "4. If absolutely not found and cannot be inferred, return 'N/A'.\n\n"
+            "### REQUIRED JSON KEYS & DESCRIPTIONS:\n"
+            "- title: The main title of the module.\n"
+            "- abstract: The Abstract section.\n"
+            "- uniqueness: The Uniqueness section.\n"
+            "- societal_relevance: The Societal Relevance section.\n"
+            "- elh: Estimated Learning Hours (e.g., '4').\n"
+            "- eqf: European Qualification Framework level (e.g., '5').\n"
+            "- smcts: Stackable Master Credit value (e.g., '0.14').\n"
+            "- teachers: Authors, Teachers, or Instructors mentioned.\n"
+            "- keywords: The Keywords section.\n\n"
+            "### DOCUMENT CONTENT:\n"
+            f"{context_text}\n\n"
+            "RETURN ONLY THE JSON OBJECT matching the ModuleMetadata schema."
+        )
+
+        try:
+            metadata_obj = self.llm.run_prompt(prompt, mode="metadata", remember=False)
+            return metadata_obj.model_dump()
+            
+        except Exception as e:
+            logger.error(f"Metadata extraction failed: {e}")
+            return {
+                "title": "Error extracting metadata",
+                "abstract": "",
+                "uniqueness": "",
+                "societal_relevance": "",
+                "elh": "",
+                "eqf": "",
+                "smcts": "",
+                "teachers": "",
+                "keywords": ""
+            }
+
     def get_module_last_modified(self, course_key: str) -> Optional[str]:
         """
         Returns the "last modified" date of the module

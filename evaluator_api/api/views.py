@@ -15,7 +15,7 @@ from django.http import HttpResponse
 
 from .models import User, Module, Evaluation, Scan, Message
 from .security import verify_rag_callback
-from .tasks import check_and_merge_evaluation
+from .tasks import check_and_merge_evaluation, fetch_and_update_metadata
 from rest_framework_simplejwt.tokens import RefreshToken
 from evaluation.report_manager import ReportManager
 
@@ -714,28 +714,44 @@ def download_evaluation_pdf(request, pk):
             status=status.HTTP_404_NOT_FOUND
         )
 
-    # 1. Create a temporary JSON file (ReportManager expects a file path)
-    # delete=False allows us to close it and let ReportManager open it by name
-    with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False, encoding='utf-8') as tmp_json:
-        json.dump(evaluation.result_json, tmp_json)
-        tmp_json_path = tmp_json.name
-    
-    # Define a temp path for the output PDF
-    tmp_pdf_path = f"{tmp_json_path}.pdf"
+    # --- Condition 2: PDF Generation requested -> Ensure metadata exists ---
+    if not evaluation.metadata_json:
+        logger.info(f"Metadata missing for PDF (Eval {pk}). Fetching...")
+        fetch_and_update_metadata(evaluation)
+        evaluation.refresh_from_db() 
+
+    # Paths
+    tmp_json_path = ""
+    tmp_meta_path = ""
 
     try:
-        # 2. Generate PDF using your existing logic
-        report_manager = ReportManager(tmp_json_path)
+        # 1. Create a temporary JSON file (ReportManager expects a file path)
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False, encoding='utf-8') as tmp_json:
+            json.dump(evaluation.result_json, tmp_json)
+            tmp_json_path = tmp_json.name
+        
+        # 2. Metadata JSON
+        meta_content = evaluation.metadata_json if evaluation.metadata_json else {}
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='_meta.json', delete=False, encoding='utf-8') as tmp_meta:
+            json.dump(meta_content, tmp_meta)
+            tmp_meta_path = tmp_meta.name
+
+        # Define a temp path for the output PDF
+        tmp_pdf_path = f"{tmp_json_path}.pdf"
+
+        # 3. Generate PDF using existing logic
+        # Passed both paths to ReportManager
+        report_manager = ReportManager(tmp_json_path, tmp_meta_path)
         report_manager.generate_pdf_report(tmp_pdf_path)
         
-        # 3. Read PDF bytes into memory
+        # 4. Read PDF bytes into memory
         if not os.path.exists(tmp_pdf_path):
              raise FileNotFoundError("PDF generator did not create the file.")
 
         with open(tmp_pdf_path, 'rb') as f:
             pdf_data = f.read()
             
-        # 4. Return as Blob (Binary)
+        # 5. Return as Blob (Binary)
         filename = f"Evaluation_{evaluation.module.course_key}_{pk}.pdf"
         response = HttpResponse(pdf_data, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -747,10 +763,12 @@ def download_evaluation_pdf(request, pk):
         return Response({"error": "Failed to generate PDF on server."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     finally:
-        # 5. Cleanup temporary files
-        if os.path.exists(tmp_json_path):
+        # 6. Cleanup temporary files
+        if tmp_json_path and os.path.exists(tmp_json_path):
             os.remove(tmp_json_path)
-        if os.path.exists(tmp_pdf_path):
+        if tmp_meta_path and os.path.exists(tmp_meta_path):
+            os.remove(tmp_meta_path)
+        if 'tmp_pdf_path' in locals() and os.path.exists(tmp_pdf_path):
             os.remove(tmp_pdf_path)
 
 # --- RAG API CALLBACK ---
