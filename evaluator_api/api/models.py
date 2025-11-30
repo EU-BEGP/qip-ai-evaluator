@@ -124,6 +124,8 @@ class Message(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
 
+    scan_type = models.CharField(max_length=100, null=True, blank=True)
+
     evaluation = models.ForeignKey(
         'Evaluation',
         on_delete=models.CASCADE, # If eval is deleted, delete the message

@@ -1,7 +1,7 @@
 document_processing:
   text_splitter:
-    chunk_size: 400
-    chunk_overlap: 0
+    chunk_size: 250
+    chunk_overlap: 125
     max_chunks: null
     separators:
       - "\n\n"

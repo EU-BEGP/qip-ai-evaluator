@@ -489,7 +489,8 @@ def get_evaluation_ids(request, pk):
     all_scans_evaluable = (
         is_local_recent and 
         not is_remote_outdated and 
-        evaluation.status != Evaluation.Status.COMPLETED
+        evaluation.status != Evaluation.Status.COMPLETED and
+        evaluation.status != Evaluation.Status.IN_PROGRESS
     )
 
     # A. "All Scans" (Module Level) entry
@@ -644,7 +645,8 @@ def get_user_mailbox(request, email):
                 "content": msg.content,
                 "read": msg.is_read,
                 "created_at": msg.created_at,
-                "evaluation_id": msg.evaluation_id if msg.evaluation_id else None 
+                "evaluation_id": msg.evaluation_id if msg.evaluation_id else None,
+                "scan_name": msg.scan_type
             }
             for msg in messages
         ]
@@ -798,7 +800,7 @@ def evaluation_callback(request):
 
     callback_status = data.get('status')
     
-    # CHANGE 3: Standardized reading from the 'result' field
+    # Standardized reading from the 'result' field
     unified_result = data.get('result') 
 
     if callback_status == 'SNAPSHOT_CREATED':
@@ -933,7 +935,8 @@ def evaluation_callback(request):
                         evaluation=evaluation,
                         title=f"{scan_type} Completed",
                         content=f"The {scan_type} for module '{callback_title}' has been completed.",
-                        is_read=False
+                        is_read=False,
+                        scan_type=scan_type
                     )
 
             else:
