@@ -484,13 +484,17 @@ def get_evaluation_ids(request, pk):
     # 5. Build Final Response List
     all_possible_types = set(Scan.ScanType.values)
     response_list = []
+    
+    is_running_all_scans = False
+    if evaluation.status == Evaluation.Status.IN_PROGRESS:
+        if set(evaluation.requested_scans) == all_possible_types:
+            is_running_all_scans = True
 
-    # Logic for 'All Scans' evaluability
     all_scans_evaluable = (
         is_local_recent and 
         not is_remote_outdated and 
         evaluation.status != Evaluation.Status.COMPLETED and
-        evaluation.status != Evaluation.Status.IN_PROGRESS
+        not is_running_all_scans 
     )
 
     # A. "All Scans" (Module Level) entry
