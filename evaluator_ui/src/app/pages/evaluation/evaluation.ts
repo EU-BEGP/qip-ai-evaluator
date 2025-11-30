@@ -12,7 +12,6 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { SearchComponent } from '../../components/search-component/search-component';
 import { Subject, takeUntil } from 'rxjs';
-//import { ToastrService } from 'ngx-toastr';
 import { StorageService } from '../../services/storage-service';
 import { ActivatedRoute } from '@angular/router';
 import { Scan } from '../../interfaces/scan';
@@ -46,9 +45,9 @@ export class EvaluationComponent {
   evaluationId?: string;
   loaded: boolean = false;
   scansList: Scan[] = [];
+  selectedIndex?: number;
 
   constructor (
-    //private toastr: ToastrService,
     private evaluationService: EvaluationService,
     private storageService: StorageService,
     private route: ActivatedRoute,
@@ -56,8 +55,8 @@ export class EvaluationComponent {
   ) {}
 
   ngOnInit() {
-    const params = this.route.snapshot.paramMap;
-    this.evaluationId = params.get('id') || undefined;
+    this.evaluationId = this.route.snapshot.paramMap.get('id') || undefined;
+    const scanNameSelected = this.route.snapshot.queryParamMap.get('scan') || 'All Scans';
 
     if (this.evaluationId !== undefined) {
       this.evaluationService.getLinkModule(this.evaluationId).subscribe({
@@ -66,6 +65,7 @@ export class EvaluationComponent {
           this.evaluationService.getIdsList(this.evaluationId!).subscribe({
             next: (response) => {
               this.scansList = response;
+              this.selectedIndex = this.getScanIndexByName(scanNameSelected);
               this.loaded = true;
             }
           });
@@ -85,6 +85,11 @@ export class EvaluationComponent {
   }
 
   startPolling(scanItem: ScanItem): void {
+    const index = this.getScanIndexByName(scanItem.scan_name);
+    if (this.scansList[index].status !== 'Creating' && this.scansList[index].status !== 'In Progress') {
+      this.scansList[index].status = 'Creating';
+    }
+
     const obs = scanItem.scan_name === 'All Scans'
       ? this.evaluationService.getStatusModule(scanItem.scan_id)
       : this.evaluationService.getStatusScan(scanItem.scan_id);

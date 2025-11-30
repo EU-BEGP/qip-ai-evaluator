@@ -6,6 +6,10 @@
   color: rgb(5, 185, 5) !important;
 }
 
+.icon-evaluation {
+  color: rgb(255, 204, 0) !important;
+}
+
 :host ::ng-deep .mat-mdc-tab-header {
   width: 84%;
   margin-left: auto;

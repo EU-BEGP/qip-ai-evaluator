@@ -56,7 +56,9 @@ export class Notifications {
     this.selectedNotification = null;
   }
 
-  goToEvaluation(id: number): void {
-    this.router.navigate(['/evaluation', id]);
+  goToEvaluation(id: number, scanName: string): void {
+    this.router.navigate(['/evaluation', id], {
+      queryParams: { scan: scanName }
+    });
   }
 }

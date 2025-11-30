@@ -5,4 +5,5 @@ export interface Notification {
   content: string;
   read: boolean;
   evaluation_id: number;
+  scan_name: string;
 }

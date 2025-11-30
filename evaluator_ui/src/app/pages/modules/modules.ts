@@ -99,7 +99,9 @@ export class Modules {
   onSelectEvaluation(item: any, index: number) {
     if (!item) return;
     this.openCardIndex = null;
-    this.router.navigate(['/evaluation', item.id]);
+    this.router.navigate(['/evaluation', item.id], {
+      queryParams: { scan: 'All Scans' }
+    });
   }
 
   evaluate(): void {
@@ -111,7 +113,9 @@ export class Modules {
 
     this.evaluationService.evaluate(scanRequest).subscribe({
       next: (response) => {
-        this.router.navigate(['/evaluation', response.body.evaluation_id]);
+        this.router.navigate(['/evaluation', response.body.evaluation_id], {
+          queryParams: { scan: scanRequest.scan_name }
+        });
       },
       error: (error) => {
         console.error('Evaluation error:', error);
