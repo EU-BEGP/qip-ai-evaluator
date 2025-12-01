@@ -1,14 +1,14 @@
-<mat-tab-group class="mt-2" [selectedIndex]="selectedIndex">
+<mat-tab-group class="mt-2" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
   <mat-tab *ngFor="let scan of scansList; let i = index">
     <ng-template mat-tab-label>
       {{ getNameShort(scan.name) }}
       <mat-icon *ngIf="scan.status === 'Completed'" class="icon-completed ms-1">
         check
       </mat-icon>
-      <mat-icon *ngIf="scan.status === 'Creating' || scan.status === 'In Progress'" class="material-symbols-outlined icon-evaluation ms-1">
+      <mat-icon *ngIf="isInProgress(scan)" class="material-symbols-outlined icon-evaluation ms-1">
         emoji_objects
       </mat-icon>
-      <mat-icon *ngIf="!(scan.status === 'Completed' || scan.status === 'Creating' || scan.status === 'In Progress')" class="icon-progress ms-1">
+      <mat-icon *ngIf="!(scan.status === 'Completed' || isInProgress(scan))" class="icon-progress ms-1">
         close
       </mat-icon>
     </ng-template>

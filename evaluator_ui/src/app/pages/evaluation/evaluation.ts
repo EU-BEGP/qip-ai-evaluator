@@ -13,7 +13,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { SearchComponent } from '../../components/search-component/search-component';
 import { Subject, takeUntil } from 'rxjs';
 import { StorageService } from '../../services/storage-service';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Scan } from '../../interfaces/scan';
 import { UtilsService } from '../../services/utils-service';
 import { ScanItem } from '../../interfaces/scan-item';
@@ -51,12 +51,15 @@ export class EvaluationComponent {
     private evaluationService: EvaluationService,
     private storageService: StorageService,
     private route: ActivatedRoute,
-    private utilsService: UtilsService
+    private utilsService: UtilsService,
+    private router: Router,
   ) {}
 
   ngOnInit() {
     this.evaluationId = this.route.snapshot.paramMap.get('id') || undefined;
     const scanNameSelected = this.route.snapshot.queryParamMap.get('scan') || 'All Scans';
+    const storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
+    const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
 
     if (this.evaluationId !== undefined) {
       this.evaluationService.getLinkModule(this.evaluationId).subscribe({
@@ -67,6 +70,10 @@ export class EvaluationComponent {
               this.scansList = response;
               this.selectedIndex = this.getScanIndexByName(scanNameSelected);
               this.loaded = true;
+
+              list.forEach((item: ScanItem) => {
+                this.startPolling(item);
+              });
             }
           });
         }
@@ -75,13 +82,6 @@ export class EvaluationComponent {
     else {
       this.loaded = true;
     }
-
-    const storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
-    const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
-
-    list.forEach((item: ScanItem) => {
-      this.startPolling(item);
-    });
   }
 
   startPolling(scanItem: ScanItem): void {
@@ -106,11 +106,9 @@ export class EvaluationComponent {
           if (response.evaluation_id === this.evaluationId) {
             this.finishEvaluation();
           }
-          //this.toastr.success('The evaluation related to the scan: “' + response.scan_name + '” and the course key: “' + response.course_key +'” was finished.', 'Evaluation completed');
           this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
         }
         else if (response.status === 'Failed') {
-          //this.toastr.error('Something went wrong during the evaluation. Please try again.', 'Error');
           this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
         }
       },
@@ -161,7 +159,7 @@ export class EvaluationComponent {
     return this.scansList.findIndex(scan => scan.name === name);
   }
 
-  download() {
+  download(): void {
     this.utilsService.downloadPDF(this.evaluationId!).subscribe((data: Blob) => {
       const pdfUrl = window.URL.createObjectURL(data);
       const link = document.createElement('a');
@@ -174,7 +172,26 @@ export class EvaluationComponent {
     });
   }
 
-  ngOnDestroy() {
+  isInProgress(scan: Scan): boolean {
+    if ((scan.status === 'Creating' || scan.status === 'In Progress') && scan.evaluable === false) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  onTabChange(index: number): void {
+    const scanName = this.scansList[index].name;
+
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { scan: scanName },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
