@@ -17,6 +17,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Scan } from '../../interfaces/scan';
 import { UtilsService } from '../../services/utils-service';
 import { ScanItem } from '../../interfaces/scan-item';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-evaluation',
@@ -53,6 +54,7 @@ export class EvaluationComponent {
     private route: ActivatedRoute,
     private utilsService: UtilsService,
     private router: Router,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit() {
@@ -72,7 +74,7 @@ export class EvaluationComponent {
               this.loaded = true;
 
               list.forEach((item: ScanItem) => {
-                this.startPolling(item);
+                this.startPolling({ scan: item, refresh: false});
               });
             }
           });
@@ -84,35 +86,40 @@ export class EvaluationComponent {
     }
   }
 
-  startPolling(scanItem: ScanItem): void {
-    const index = this.getScanIndexByName(scanItem.scan_name);
-    if (this.scansList[index].status !== 'Creating' && this.scansList[index].status !== 'In Progress') {
-      this.scansList[index].status = 'Creating';
+  startPolling({ scan, refresh }: { scan: ScanItem; refresh: boolean }): void {
+    if (refresh) {
+      this.evaluationService.getIdsList(this.evaluationId!).subscribe({
+        next: (response) => {
+          this.scansList = response;
+        }
+      });
     }
 
-    const obs = scanItem.scan_name === 'All Scans'
-      ? this.evaluationService.getStatusModule(scanItem.scan_id)
-      : this.evaluationService.getStatusScan(scanItem.scan_id);
+    const obs = scan.scan_name === 'All Scans'
+      ? this.evaluationService.getStatusModule(scan.scan_id)
+      : this.evaluationService.getStatusScan(scan.scan_id);
 
     obs.pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         if (response.status === 'In Progress') {
           if (response.evaluation_id === this.evaluationId) {
             const index = this.getScanIndexByName(response.scan_name);
-            this.updateData(index, response.scan_name, scanItem.scan_id);
+            this.updateData(index, response.scan_name, scan.scan_id);
           }
         }
         else if (response.status === 'Completed') {
           if (response.evaluation_id === this.evaluationId) {
             this.finishEvaluation();
           }
-          this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
+          this.storageService.removeEvaluation(scan.scan_id, response.scan_name);
         }
         else if (response.status === 'Failed') {
-          this.storageService.removeEvaluation(scanItem.scan_id, response.scan_name);
+          this.storageService.removeEvaluation(scan.scan_id, response.scan_name);
         }
       },
       error: (err) => {
+        this.toastr.error('Something went wrong with the streaming.', 'Error');
+        this.storageService.removeEvaluation(scan.scan_id, scan.scan_name);
         console.error('Error checking status:', err);
       }
     });

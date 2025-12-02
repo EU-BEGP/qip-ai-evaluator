@@ -149,6 +149,7 @@ export class EvaluationService {
     
     return this.http.get<any>(URL).pipe(
       catchError((err) => {
+        this.loaderService.hide();
         return throwError(() => err);
       }),
       finalize(() => {
