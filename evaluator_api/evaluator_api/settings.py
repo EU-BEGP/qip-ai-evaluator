@@ -44,6 +44,9 @@ INSTALLED_APPS = [
     'api.apps.ApiConfig',
     'rest_framework_simplejwt',
     'corsheaders',
+    'apps.users',
+    'apps.evaluations',
+    'apps.notifications',
 ]
 
 MIDDLEWARE = [
