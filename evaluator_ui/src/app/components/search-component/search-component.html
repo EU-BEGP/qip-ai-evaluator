@@ -4,12 +4,12 @@
 
   <div class="ai-container" *ngIf="isEvaluating">
     <mat-progress-bar mode="indeterminate" color="accent" class="space-top"></mat-progress-bar>
-    <p class="ai-text">Evaluating with AI...</p>
+    <p class="ai-text">Evaluating with AI</p>
   </div>
   
   <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="isFinished"></app-evaluation-circle-component>
 
-  <div class="mb-5 mt-4 p-0">
+  <div class="mb-2 mt-4 p-0">
     <div *ngIf="data !== null && !isLoading" class="m-0">
       <h3 class="text-center module-title">{{ data.title }}</h3>
 
@@ -55,5 +55,13 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="ai-container mb-5" *ngIf="isEvaluating">
+    <p class="ai-text">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </p>
   </div>
 </div>
