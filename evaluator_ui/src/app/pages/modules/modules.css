@@ -45,6 +45,11 @@ app-module-card-component {
   margin: 48px;
 }
 
+.icon {
+  vertical-align: -20%;
+}
+
+
 @media screen and (max-width: 768px) {
   .modules-container > div {
     max-width: 90vw; 
@@ -60,5 +65,11 @@ app-module-card-component {
 
   .space {
     margin-top: 24px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .item-container {
+    flex-direction: column;
   }
 }

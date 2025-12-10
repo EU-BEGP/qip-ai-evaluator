@@ -37,7 +37,16 @@
         <li *ngFor="let item of (evaluationListByIndex[i] || [])" 
             class="list-group-item list-group-item-action evaluation-item"
             (click)="onSelectEvaluation(item, i)">
-          Date: {{ item.date }} (ID: {{ item.id }})
+          <div class="item-container d-flex">
+            <div class="me-2 date-description">
+              <mat-icon class="icon">calendar_month</mat-icon>
+              {{ item.date }}
+            </div>
+            <div>
+              <mat-icon class="icon user-description">person</mat-icon>
+              {{ item.user }}
+            </div>
+          </div>
         </li>
       </ul>
     </div>

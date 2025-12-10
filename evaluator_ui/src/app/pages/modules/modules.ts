@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { StorageService } from '../../services/storage-service';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-modules',
@@ -20,7 +21,8 @@ import { StorageService } from '../../services/storage-service';
     MatFormFieldModule,
     FormsModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',
