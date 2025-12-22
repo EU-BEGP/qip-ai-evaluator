@@ -1,7 +1,7 @@
 document_processing:
   text_splitter:
     chunk_size: 250
-    chunk_overlap: 125
+    chunk_overlap: 100
     max_chunks: null
     separators:
       - "\n\n"
@@ -22,9 +22,9 @@ vector_store:
   path: "db/vector_store"
 
 llm_settings:
-   wrapper: "gemini"
+   wrapper: "groq"
    processing_llm:
-     model: "gemini-2.5-flash"
+     model: "moonshotai/kimi-k2-instruct-0905"
      temperature: 0.0
      top_p: 0.1
 
