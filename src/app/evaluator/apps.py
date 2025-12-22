@@ -19,12 +19,12 @@ class EvaluatorConfig(AppConfig):
             try:
                 from .init_knowledge import build_knowledge_base_auto, load_criteria_auto
                 
-                logger.info("🚀 [PRE-LOAD] Initializing Shared AI Memory...")
+                logger.info("[PRE-LOAD] Initializing Shared AI Memory...")
                 
                 # This triggers the Singletons
                 build_knowledge_base_auto()
                 load_criteria_auto()
                 
-                logger.info("✅ [PRE-LOAD] AI Models loaded.")
+                logger.info("[PRE-LOAD] AI Models loaded.")
             except ImportError as e:
                 logger.error(f"Failed to pre-load AI models: {e}")

@@ -12,26 +12,19 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 from datetime import timedelta
-# --- ADDED IMPORTS ---
 import os
 from decouple import config
 import dj_database_url
-# --- END ADDED IMPORTS ---
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
+ENVIRONMENT = config('ENVIRONMENT', default='production')
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
 
+# Debug is True ONLY if ENVIRONMENT is development
+DEBUG = (ENVIRONMENT == 'development')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -41,15 +34,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'api.apps.ApiConfig',
     'rest_framework_simplejwt',
     'corsheaders',
+    'apps.users.apps.UsersConfig',
+    'apps.evaluations.apps.EvaluationsConfig',
+    'apps.notifications.apps.NotificationsConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -78,15 +73,20 @@ WSGI_APPLICATION = 'evaluator_api.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+DB_NAME = config('POSTGRES_DB')
+DB_USER = config('POSTGRES_USER')
+DB_PASSWORD = config('POSTGRES_PASSWORD')
+DB_HOST = config('DB_HOST', default='db')
+DB_PORT = config('DB_PORT', default='5432')
+
 DATABASES = {
-    'default': dj_database_url.config('DATABASE_URL')
+    'default': dj_database_url.parse(
+        f"postgres://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}",
+        conn_max_age=600
+    )
 }
 
-
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -102,7 +102,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_USER_MODEL = 'api.User'
+AUTH_USER_MODEL = 'users.User'
 
 # --- DRF & JWT (Token) Settings ---
 REST_FRAMEWORK = {
@@ -112,49 +112,60 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=120),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-STATIC_URL = '/evaluator/api/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_URL = config('STATIC_URL', default='/evaluator/api/static/')
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # --- API Endpoints ---
-# --- FOR PRODUCTION ---
 EXTERNAL_LOGIN_API_URL = config('EXTERNAL_LOGIN_API_URL')
+
+# RAG Construction
+RAG_BASE_URL = config('RAG_BASE_URL').rstrip('/')
+RAG_API_MODULE_MODIFIED_URL = f"{RAG_BASE_URL}/module_last_modified/"
+RAG_API_EVALUATE_URL = f"{RAG_BASE_URL}/evaluate/"
+RAG_API_METADATA_URL = f"{RAG_BASE_URL}/extract_metadata/"
+
 RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
-RAG_API_EVALUATE_URL = config('RAG_API_EVALUATE_URL')
-RAG_API_MODULE_MODIFIED_URL = config('RAG_API_MODULE_MODIFIED_URL')
-RAG_API_METADATA_URL = os.environ.get("RAG_API_METADATA_URL")
-SERVER_PUBLIC_URL = os.environ.get('SERVER_PUBLIC_URL', 'http://127.0.0.1:8000')
+SERVER_PUBLIC_URL = config('SERVER_PUBLIC_URL', default="http://host.docker.internal:8004/")
 
 # --- CORS Configuration ---
-# Read allowed origins from environment variable
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
-CSRF_TRUSTED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
 
-# --- MCelery Configuration ---
-CELERY_BROKER_URL = config('CELERY_BROKER_URL')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
+# Base Trusted Origins
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+    "http://localhost:8004",
+    "http://127.0.0.1:8004",
+    "http://host.docker.internal:8004",
+]
+
+# Add extra origins from .env
+raw_cors = config('CORS_ALLOWED_ORIGINS', default='')
+if raw_cors:
+    origins = [u.strip() for u in raw_cors.split(',') if u.strip()]
+    CSRF_TRUSTED_ORIGINS.extend(origins)
+    if not CORS_ALLOW_ALL_ORIGINS:
+        CORS_ALLOWED_ORIGINS = origins
+
+# --- Celery Configuration ---
+CELERY_BROKER_URL = "redis://broker:6379/0"
+CELERY_RESULT_BACKEND = "redis://broker:6379/0"
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'

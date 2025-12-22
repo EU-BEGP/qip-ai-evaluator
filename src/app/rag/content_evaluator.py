@@ -136,7 +136,7 @@ class ContentEvaluator:
             '  "IntendedLearningOutcomesSkills": "...",\n'
             '  "IntendedLearningOutcomesResponsibility": "...",\n'
             '  "Outline": ["Title 1", "Subtitle 1.1", "Subtitle 1.2", "..."],\n'
-            '  "ImportantInformation": ["Point 1", "Point 2", "...", "Point 20"]\n'
+            '  "ImportantInformation": ["Point 1", "Point 2", "...", "Point 7"]\n'
             "}\n\n"
             "DO NOT ADD ANY TEXT THAT IS NOT DIRECTLY FOUND IN THE DOCUMENT CONTENT ABOVE."
         )
@@ -203,11 +203,16 @@ class ContentEvaluator:
         prompt = (
             "You are an EXPERT AND CONFIDENT academic evaluator.\n"
             "DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON AND DO NOT TAKE STRONG DEDUCTIONS.\n"
+            "Do not deduct points for minor issues or slight ambiguities if the core concept is present.\n"
             "Evaluate the DOCUMENT against the criterion STRICTLY and ONLY using the RUBRIC.\n"
             "Rely on the KNOWLEDGE BASE for additional context if needed.\n"
-            "### Instructions:\n"
+            "### CONTEXT INTERPRETATION:\n"
+            "- The 'DOCUMENT SNAPSHOT' is provided ONLY as a silent helper to aid your understanding (e.g., if the text is OCR'd or fragmented).\n"
+            "- **NEVER** mention the word 'Snapshot' or 'Knowledge Base' in your output.\n"
+            "- If you find information in the Snapshot, treat it as if you found it directly in the 'Document' or 'Module'.\n"
+            "### INSTRUCTIONS:\n"
             "1. Carefully read the CRITERION and the DOCUMENT provided. Search the DOCUMENT for the relevant section for the CRITERION.\n"
-            "2. You may consult the KNOWLEDGE BASE for additional context, but primary evaluation should focus on DOCUMENT.\n"
+            "2. You may consult the KNOWLEDGE BASE and DOCUMENT SNAPSHOT for additional context, but primary evaluation should focus on DOCUMENT.\n"
             "3. Start from 5.0 and subtract partial points for shortcomings.\n"
             "4. For EACH Shortcoming:\n"
             "   - Provide exactly ONE Recommendation.\n"
@@ -325,7 +330,7 @@ class ContentEvaluator:
         logger.info(f"🔄 Fetching module modified date for key: {course_key}")
         
         try:
-            response = requests.get(structure_url, timeout=10) # 10 second timeout
+            response = requests.get(structure_url, timeout=60) # 10 second timeout
             response.raise_for_status() # Raises an error for 4xx/5xx codes
             
             root_data = response.json()
@@ -348,7 +353,7 @@ class ContentEvaluator:
             logger.error(f"An unexpected error occurred in get_module_last_modified: {e}")
             return None
         
-    def evaluate(self, document_chunks: List[Document], k_doc: int = 10, k_kb: int = 5, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None,        interim_callback: Optional[Callable[[dict], None]] = None):
+    def evaluate(self, document_chunks: List[Document], k_doc: int = 8, k_kb: int = 2, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None,        interim_callback: Optional[Callable[[dict], None]] = None):
         """
         Evaluate documents against criteria.
         
@@ -402,11 +407,14 @@ class ContentEvaluator:
                         f"{s} {d:.1f}" for s, d in zip(eval_obj.Shortcomings, eval_obj.Deductions)
                     ]
 
+                    final_score_raw = max(0.0, 5.0 + sum(eval_obj.Deductions))
+                    final_score_rounded = round(final_score_raw, 2)
+
                     self.results.setdefault(current_scan_name, {})[crit["name"]] = {
                         "description": rubric_description,
                         "llm_response": eval_obj.model_dump_json(indent=2),
                         "retrieved_chunks": [d.page_content for d in doc_chunks + kb_chunks],
-                        "score": max(0.0, 5.0 + sum(eval_obj.Deductions)),
+                        "score": final_score_rounded,
                         "shortcomings": shortcomings_with_deductions,
                         "recommendations": eval_obj.Recommendations,
                         "max_score": 5.0,

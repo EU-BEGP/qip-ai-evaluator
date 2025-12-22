@@ -1,37 +1,44 @@
-version: '3.8'
-
 services:
-  # 1. The Redis Broker for Celery
+  # 1. Redis Broker
   broker:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # 2. The Django App (running Gunicorn)
+  # 2. Django RAG API
   app:
     build: .
     ports:
       - "127.0.0.1:8005:8000"
     volumes:
-      - ./staticfiles:/app/static
       - sqlite_db:/app/db
-    env_file: .env.prod
+    env_file: .env
     environment:
       - TOKENIZERS_PARALLELISM=false
     depends_on:
       - broker
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
-  # 4. The Celery Worker
+  # 3. Celery Worker
   celery_worker:
     build: .
     command: celery -A app worker --loglevel=info --pool=threads --concurrency=10
     volumes:
       - sqlite_db:/app/db
-    env_file: .env.prod
+    env_file: .env
     environment:
       - TOKENIZERS_PARALLELISM=false
       - PYTHONUNBUFFERED=1
@@ -39,7 +46,12 @@ services:
       - broker
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    restart: unless-stopped
+    restart: ${RESTART_POLICY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   sqlite_db:

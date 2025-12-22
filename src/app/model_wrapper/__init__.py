@@ -1,6 +1,7 @@
 from .base import BaseLLMWrapper
 from .models.ollama_wrapper import OllamaWrapper
 from .models.gemini_wrapper import GeminiWrapper
+from .models.groq_wrapper import GroqWrapper
 from typing import Dict
 
 def get_llm_wrapper(cfg: Dict) -> BaseLLMWrapper:
@@ -17,6 +18,10 @@ def get_llm_wrapper(cfg: Dict) -> BaseLLMWrapper:
     elif wrapper_name == "gemini":
         print("-> Loading Gemini Wrapper")
         return GeminiWrapper(cfg)
+
+    elif wrapper_name == "groq":
+        print("-> Loading Groq Wrapper")
+        return GroqWrapper(cfg)
         
     else:
         # Default or error

@@ -4,7 +4,7 @@
 set -e
 
 echo "============================================"
-echo "🚀 Starting Deployment: RAG API (Local)"
+echo "Starting Deployment: RAG API"
 echo "============================================"
 
 # 1. Clean up old containers

@@ -11,61 +11,37 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-import os
 from decouple import config
-import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
+ENVIRONMENT = config('ENVIRONMENT', default='production')
 SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='').split(',')
 
-# --- CELERY CONFIGURATION ---
-CELERY_BROKER_URL = config('CELERY_BROKER_URL')
-CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
-
-# --- CORRECTED CALLBACK URL ---
-# This MUST point to your Web Page API's callback endpoint
-QIP_CALLBACK_URL = config('QIP_CALLBACK_URL')
-QIP_CALLBACK_SECRET = config('QIP_CALLBACK_SECRET')
+# Debug is True ONLY if ENVIRONMENT is development
+DEBUG = (ENVIRONMENT == 'development')
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
 # Application definition
-
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'evaluator',
     'rest_framework',
-    'corsheaders'
+    'corsheaders',
+    'evaluator',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'corsheaders.middleware.CorsMiddleware'
 ]
-
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
-CSRF_TRUSTED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='').split(',')
 
 ROOT_URLCONF = 'app.urls'
 
@@ -86,10 +62,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'app.wsgi.application'
 
-
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -97,10 +70,7 @@ DATABASES = {
     }
 }
 
-
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -116,26 +86,44 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = '/qip-rag-api/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-
 # Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# --- RAG Specific Configuration ---
+QIP_CALLBACK_URL = config('QIP_CALLBACK_URL')
+QIP_CALLBACK_SECRET = config('QIP_CALLBACK_SECRET')
+
+# --- CORS Configuration ---
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = config('CORS_ALLOW_ALL_ORIGINS', default=False, cast=bool)
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+    "http://localhost:8004",
+    "http://127.0.0.1:8004",
+    "http://host.docker.internal:8004",
+    "http://localhost:8005",
+    "http://127.0.0.1:8005",
+]
+
+raw_cors = config('CORS_ALLOWED_ORIGINS', default='')
+if raw_cors:
+    origins = [u.strip() for u in raw_cors.split(',') if u.strip()]
+    CSRF_TRUSTED_ORIGINS.extend(origins)
+    if not CORS_ALLOW_ALL_ORIGINS:
+        CORS_ALLOWED_ORIGINS = origins
+
+# --- Celery Configuration ---
+CELERY_BROKER_URL = "redis://broker:6379/2"
+CELERY_RESULT_BACKEND = "redis://broker:6379/2"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'

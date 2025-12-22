@@ -20,10 +20,14 @@ WORKDIR /app
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. COPY CRITICAL: Copy local 'src/app' to container '/app'
+# 6. Copy local 'app' to container '/app'
 COPY ./app /app/
 
-# 7. Create directories for volumes
+COPY ./scripts /scripts
+RUN sed -i 's/\r$//' /scripts/entrypoint.sh && \
+    chmod +x /scripts/entrypoint.sh
+
+# 7. Create directories
 RUN mkdir -p /app/static
 RUN mkdir -p /app/db 
 RUN mkdir -p /app/cache/huggingface
@@ -39,7 +43,5 @@ USER django_user
 # 10. Expose port
 EXPOSE 8000
 
-# 11. Start Gunicorn (Workers=4, Timeout=120)
-COPY --chown=django_user:django_user entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-CMD ["/app/entrypoint.sh"]
+# 11. Start via Script
+CMD ["/scripts/entrypoint.sh"]

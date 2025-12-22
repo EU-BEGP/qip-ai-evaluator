@@ -139,7 +139,7 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
     headers = {"Content-Type": "application/json", "X-Callback-Secret": secret_key}
 
     try:
-        requests.post(callback_url, json=payload, headers=headers, timeout=5)
+        requests.post(callback_url, json=payload, headers=headers, timeout=60)
         logger.info(f"[{evaluation_id}] Snapshot callback sent.")
     except Exception as e:
         logger.warning(f"[{evaluation_id}] Failed to send snapshot callback: {e}")
@@ -163,7 +163,7 @@ def send_interim_callback(callback_url: str, interim_json: dict, course_key: str
     }
 
     try:
-        requests.post(callback_url, json=payload, headers=headers, timeout=5)
+        requests.post(callback_url, json=payload, headers=headers, timeout=60)
         logger.info(f"[{evaluation_id}] Interim callback sent.")
     
     except requests.exceptions.RequestException as e:
@@ -191,7 +191,7 @@ def send_callback(callback_url: str, course_key: str, status: str, results: Opti
     }
 
     try:
-        response = requests.post(callback_url, json=payload, headers=headers, timeout=10)
+        response = requests.post(callback_url, json=payload, headers=headers, timeout=60)
         response.raise_for_status() 
         logger.info(f"[{evaluation_id}] FINAL callback sent successfully to {callback_url}.")
     

@@ -20,6 +20,7 @@ sentence-transformers==5.1.0
 torch==2.9.0
 chromadb==1.0.21
 google-generativeai==0.8.5
+groq==0.37.1
 
 # Ollama
 ollama==0.5.3
