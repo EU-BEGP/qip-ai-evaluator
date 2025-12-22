@@ -330,7 +330,7 @@ class ContentEvaluator:
         logger.info(f"🔄 Fetching module modified date for key: {course_key}")
         
         try:
-            response = requests.get(structure_url, timeout=10) # 10 second timeout
+            response = requests.get(structure_url, timeout=60) # 10 second timeout
             response.raise_for_status() # Raises an error for 4xx/5xx codes
             
             root_data = response.json()
