@@ -20,12 +20,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 6. Copy your project code into the container
 COPY . /app/
 
+# Setup Entrypoint script
+COPY ./scripts /scripts
+RUN sed -i 's/\r$//' /scripts/entrypoint.sh && \
+    chmod +x /scripts/entrypoint.sh
+
 # 7. Create a non-root user for security
 RUN adduser --system --no-create-home django_user
 USER django_user
 
-# 8. Expose the port Gunicorn will run on
+# 8. Expose the port
 EXPOSE 8000
 
-# 9. Start Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--timeout", "900", "evaluator_api.wsgi:application"]
+# 9. Start using the entrypoint script
+CMD ["/scripts/entrypoint.sh"]
