@@ -55,8 +55,7 @@ class GeminiWrapper(BaseLLMWrapper):
         llm_cfg = (cfg.get("llm_settings") or {})
         gemini_cfg = llm_cfg.get("processing_llm", {})
         
-        # --- KEY ROTATION SETUP ---
-        keys_str = os.environ.get("GEMINI_API_KEYS")
+        keys_str = os.environ.get("API_KEYS")
         if keys_str:
             # Format: "KEY1,KEY2,KEY3"
             self.api_keys = [k.strip() for k in keys_str.split(",") if k.strip()]
@@ -66,19 +65,15 @@ class GeminiWrapper(BaseLLMWrapper):
             self.api_keys = [single_key] if single_key else []
 
         if not self.api_keys:
-            raise ValueError("Gemini API key not found (checked GEMINI_API_KEYS and config)")
+            raise ValueError("Gemini API key not found (checked API_KEYS and config)")
             
-        # Shuffle once at startup so workers don't all start on Key 1
         random.shuffle(self.api_keys)
         self.current_key_index = 0
         self.lock = threading.Lock()
-        # --------------------------
-
         self.model_name = gemini_cfg.get("model", "gemini-1.5-flash")
         self.temperature = float(gemini_cfg.get("temperature", 0.0))
         self.top_p = float(gemini_cfg.get("top_p", 1.0))
         
-        # Model is initialized per-request now
         self.session_messages: list[dict] = []
 
     def reset_session(self):
@@ -111,7 +106,6 @@ class GeminiWrapper(BaseLLMWrapper):
             top_p=self.top_p
         )
         
-        # --- FORCE JSON MODE (ANY) ---
         tool_config = {
             "function_calling_config": {
                 "mode": "ANY", 
@@ -132,7 +126,6 @@ class GeminiWrapper(BaseLLMWrapper):
         last_error = None
         success = False
         
-        # --- KEY ROTATION LOOP ---
         keys_to_try = self._get_ordered_keys()
 
         for api_key in keys_to_try:
@@ -170,23 +163,17 @@ class GeminiWrapper(BaseLLMWrapper):
                         text_result = response.candidates[0].content.parts[0].text
                 
                 success = True
-                break # Exit loop on success
+                break
 
             except Exception as e:
                 last_error = e
                 error_str = str(e)
-                # If safety error, rotation won't help. Stop.
                 if "Recitation" in error_str or "Safety" in error_str:
                     break
-                # If other error (Quota/Network), continue to next key
                 continue
         
-        # --- END ROTATION LOOP ---
-
         if not success:
             print(f"All keys failed. Last error: {last_error}")
-            
-            # --- FALLBACK LOGIC (Recover JSON from error) ---
             error_str = str(last_error)
             recovered = False
             
@@ -204,20 +191,12 @@ class GeminiWrapper(BaseLLMWrapper):
                         pass
             
             if not recovered:
-                # Return error string to let evaluator fail gracefully
                 return f"API Error: {last_error}"
 
-        
-        print("-------------------- Raw Model Output (Gemini Tool Call) --------------------")
-        print(text_result)
-        print("-------------------------------------------------------------------------")
-
-        # 6. Manage session
         if remember:
             self.session_messages.append({"role": "user", "content": prompt})
             self.session_messages.append({"role": "assistant", "content": text_result})
 
-        # 7. Validate output
         if output_model:
             try:
                 validated = output_model.model_validate_json(text_result)
