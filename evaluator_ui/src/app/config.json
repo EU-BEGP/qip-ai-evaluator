@@ -7,26 +7,26 @@
   "api": {
     "baseUrl": "https://eu-begp.upb.edu/evaluator/api/",
     "users": {
-      "login": "auth/login/"
+      "login": "users/auth/login/"
     },
     "evaluation": {
-      "evaluate": "evaluate/",
-      "list": "list_evaluations/",
-      "detailModule": "evaluation_detail/module/{id}/",
-      "detailScan": "evaluation_detail/scan/{id}/",
-      "statusModule": "evaluation_status/module/{id}/",
-      "statusScan": "evaluation_status/scan/{id}/",
-      "idsList": "evaluation_ids/{id}/",
-      "linkModule": "link_module/{id}/",
-      "modulesList": "modules/{email}/"
+      "evaluate": "evaluations/evaluate/",
+      "list": "evaluations/list_evaluations/",
+      "detailModule": "evaluations/evaluation_detail/module/{id}/",
+      "detailScan": "evaluations/evaluation_detail/scan/{id}/",
+      "statusModule": "evaluations/evaluation_status/module/{id}/",
+      "statusScan": "evaluations/evaluation_status/scan/{id}/",
+      "idsList": "evaluations/evaluation_ids/{id}/",
+      "linkModule": "evaluations/link_module/{id}/",
+      "modulesList": "evaluations/modules/{email}/"
     },
     "notifications": {
-      "read": "read_message/",
-      "mailbox": "user_mailbox/{email}/",
-      "unreadQuantity": "notifications_unread/{email}/ "
+      "read": "notifications/read_message/",
+      "mailbox": "notifications/user_mailbox/{email}/",
+      "unreadQuantity": "notifications/notifications_unread/{email}/"
     },
     "extra": {
-      "download": "download_pdf/{id}/"
+      "download": "evaluations/download_pdf/{id}/"
     }
   }
 }
