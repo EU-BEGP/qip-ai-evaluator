@@ -31,7 +31,7 @@ services:
       - "127.0.0.1:8004:8000"
     volumes:
       - .:/app
-      - /files/eval_api_staticfiles:/app/staticfiles
+      - ${STATIC_VOLUME_PATH}:/app/staticfiles
     env_file: .env
     depends_on:
       - db
