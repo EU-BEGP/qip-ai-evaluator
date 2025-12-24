@@ -14,6 +14,7 @@ import { ScanRequest } from '../../interfaces/scan-request';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ScanItem } from '../../interfaces/scan-item';
+import { AlertComponent } from '../alert-component/alert-component';
 
 @Component({
   selector: 'app-search-component',
@@ -29,7 +30,8 @@ import { ScanItem } from '../../interfaces/scan-item';
     MatSelectModule,
     MatTabsModule,
     EvaluationCircleComponent,
-    MatProgressBarModule
+    MatProgressBarModule,
+    AlertComponent
   ],
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',
@@ -52,6 +54,7 @@ export class SearchComponent implements OnInit, DoCheck {
   download: boolean = false;
   isEvaluating: boolean = false;
   isFinished: boolean = false;
+  message: string = 'This evaluation belongs to a previous module version. Please start a new evaluation to continue.';
 
   constructor (
     private evaluationService: EvaluationService

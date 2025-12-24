@@ -167,15 +167,20 @@ export class EvaluationComponent {
   }
 
   download(): void {
-    this.utilsService.downloadPDF(this.evaluationId!).subscribe((data: Blob) => {
-      const pdfUrl = window.URL.createObjectURL(data);
-      const link = document.createElement('a');
+    this.utilsService.downloadPDF(this.evaluationId!).subscribe({
+      next: (data: Blob) => {
+        const pdfUrl = window.URL.createObjectURL(data);
+        const link = document.createElement('a');
 
-      link.href = pdfUrl;
-      link.download = 'report.pdf';
-      link.click();
+        link.href = pdfUrl;
+        link.download = 'report.pdf';
+        link.click();
 
-      window.URL.revokeObjectURL(pdfUrl);
+        window.URL.revokeObjectURL(pdfUrl);
+      },
+      error: (err) => {
+        this.toastr.error('Error downloading PDF.', 'Error');
+      }
     });
   }
 

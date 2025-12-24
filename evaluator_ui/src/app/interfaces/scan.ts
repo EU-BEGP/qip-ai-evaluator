@@ -6,4 +6,5 @@ export interface Scan {
   scan_max: number;
   scan_average: number | null;
   status: string;
+  outdated: boolean;
 }
