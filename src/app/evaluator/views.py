@@ -17,25 +17,31 @@ def extract_learnify_code(input_str):
     
     Scenarios handled:
     1. "https://time.learnify.se/l/show.html#att/OYJPG" -> "OYJPG"
-    2. "https://time.learnify.se/l/show.html#att/OYJPG?lang=en" -> "OYJPG"
-    3. "OYJPG" -> "OYJPG"
+    2. "https://time.learnify.se/l/show.html#qx5Ay"     -> "qx5Ay"
+    3. "https://time.learnify.se/l/show.html#att/OYJPG?lang=en" -> "OYJPG"
+    4. "OYJPG" -> "OYJPG"
     """
     if not input_str:
         return None
     
     input_str = input_str.strip()
     
-    # 1. Isolate the part after '#att/'
-    if "#att/" in input_str:
-        code_part = input_str.split("#att/")[-1]
+    # 1. Isolate the fragment (everything after the last '#')
+    if "#" in input_str:
+        code_part = input_str.split("#")[-1]
     else:
         code_part = input_str
+    
+    # 2. If it starts with 'att/', remove it (Legacy/Standard links)
+    if code_part.startswith("att/"):
+        code_part = code_part[4:]
         
-    # 2. Remove query parameters (everything after '?')
+    # 3. Remove query parameters (everything after '?')
     if "?" in code_part:
         code_part = code_part.split("?")[0]
     
-    return code_part.strip()
+    # 4. Final cleanup (whitespace and trailing slashes)
+    return code_part.strip().strip('/')
 
 @api_view(['POST'])
 def evaluate_module(request):
