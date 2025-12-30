@@ -28,6 +28,7 @@ class Evaluation(models.Model):
         NOT_STARTED = 'Not Started', 'Not Started'
         IN_PROGRESS = 'In Progress', 'In Progress'
         COMPLETED = 'Completed', 'Completed'
+        INCOMPLETED = 'Incompleted', 'Incompleted'
         FAILED = 'Failed', 'Failed'
 
     id = models.AutoField(primary_key=True)
@@ -60,8 +61,10 @@ class Evaluation(models.Model):
             return False
             
         if self.status == self.Status.IN_PROGRESS:
-            if len(self.requested_scans) >= len(Scan.ScanType.values): 
-                return False
+            return False
+            
+        if self.status == self.Status.INCOMPLETED:
+            return True
 
         return True
 

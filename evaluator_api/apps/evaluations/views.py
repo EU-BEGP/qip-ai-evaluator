@@ -20,6 +20,7 @@ from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer
 from .services import EvaluationService, RagService
 from evaluation.report_manager import ReportManager 
 from .security import verify_rag_callback 
+from .tasks import fetch_and_update_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def start_evaluation(request):
     try:
         RagService.trigger_evaluation(payload)
     except Exception as e:
-        evaluation.status = Evaluation.Status.FAILED
+        # Only fail specific scans, do NOT set evaluation to FAILED
         evaluation.save()
         Scan.objects.filter(evaluation=evaluation, scan_type__in=scans_to_run).update(status=Scan.Status.FAILED)
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -86,12 +87,18 @@ def start_evaluation(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_evaluation_ids(request, pk):
-    # Returns status/evaluability of all scans; checks for outdated content [cite: 11]
+    # Returns status/evaluability of all scans; checks for outdated content
     evaluation = get_object_or_404(Evaluation, pk=pk)
     
     rag_date_str = RagService.get_last_modified(evaluation.module.course_key)
     is_outdated = False
-    if rag_date_str:
+
+    # 1. Check if this evaluation is the most recent one in the DB
+    latest_local = Evaluation.objects.filter(module=evaluation.module).order_by('-created_at').first()
+    if latest_local and latest_local.id != evaluation.id:
+        is_outdated = True
+    # 2. If it is the latest, check if the module content in Learnify is newer
+    elif rag_date_str:
         try:
             rag_date = isoparse(rag_date_str)
             if rag_date.tzinfo is None: rag_date = rag_date.replace(tzinfo=datetime.timezone.utc)
@@ -120,12 +127,25 @@ def get_evaluation_ids(request, pk):
                     global_total += total; global_count += count
         
         if is_outdated: s_evaluable = False
-        scans_data.append({"name": s_type, "id": s_id, "evaluable": s_evaluable, "scan_max": 5.0, "scan_average": s_avg, "status": s_status})
+        scans_data.append({
+            "name": s_type, 
+            "id": s_id, 
+            "evaluable": s_evaluable, 
+            "scan_max": 5.0, 
+            "scan_average": s_avg, 
+            "status": s_status, 
+            "outdated": is_outdated
+        })
 
     global_avg = round(global_total/global_count, 2) if global_count > 0 else None
     response_list.append({
-        "name": "All Scans", "id": evaluation.id, "evaluable": (len(missing_scans) > 0 and not is_outdated),
-        "scan_max": 5.0, "scan_average": global_avg, "status": evaluation.status
+        "name": "All Scans", 
+        "id": evaluation.id, 
+        "evaluable": (len(missing_scans) > 0 and not is_outdated),
+        "scan_max": 5.0, 
+        "scan_average": global_avg, 
+        "status": evaluation.status,
+        "outdated": is_outdated
     })
     response_list.extend(scans_data)
     return Response(response_list, status=status.HTTP_200_OK)
@@ -147,7 +167,7 @@ def get_module_link(request, pk):
 def evaluation_detail_module(request, pk):
     # Returns full evaluation JSON; supports polling
     evaluation = get_object_or_404(Evaluation, pk=pk)
-    if evaluation.status not in [Evaluation.Status.IN_PROGRESS, Evaluation.Status.COMPLETED]:
+    if evaluation.status not in [Evaluation.Status.IN_PROGRESS, Evaluation.Status.INCOMPLETED, Evaluation.Status.COMPLETED]:
         return Response(status=status.HTTP_404_NOT_FOUND)
     if evaluation.result_json: return Response(evaluation.result_json)
     return Response({"status": "IN_PROGRESS"}, status=status.HTTP_202_ACCEPTED)
@@ -241,27 +261,79 @@ def get_user_modules(request, email):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def download_evaluation_pdf(request, pk):
-    # Generates and downloads PDF report
+    # Generates and returns a PDF report for a specific evaluation.
+   
     evaluation = get_object_or_404(Evaluation, pk=pk)
-    if not evaluation.result_json: return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    # 1. Access Control (Matches get_module_link logic)
+    has_access = (evaluation.triggered_by == request.user) or \
+                 UserModule.objects.filter(user=request.user, module=evaluation.module).exists()
+
+    if not has_access:
+        return Response({"error": "Access denied."}, status=status.HTTP_403_FORBIDDEN)
+
+    if not evaluation.result_json:
+        return Response(
+            {"error": "Evaluation incomplete or missing results. Cannot generate PDF."}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # 2. Ensure Metadata exists (Critical for PDF header)
+    if not evaluation.metadata_json:
+        logger.info(f"Metadata missing for PDF (Eval {pk}). Fetching...")
+        try:
+            fetch_and_update_metadata(evaluation)
+            evaluation.refresh_from_db()
+        except Exception as e:
+            logger.error(f"Failed to fetch metadata during PDF generation: {e}")
+
+    # Paths
+    tmp_json_path = ""
+    tmp_meta_path = ""
+    tmp_pdf_path = ""
+
     try:
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as t_json:
-            json.dump(evaluation.result_json, t_json)
-            t_json_path = t_json.name
+        # 3. Create a temporary JSON file for Results
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False, encoding='utf-8') as tmp_json:
+            json.dump(evaluation.result_json, tmp_json)
+            tmp_json_path = tmp_json.name
         
-        t_pdf = f"{t_json_path}.pdf"
-        ReportManager(t_json_path, None).generate_pdf_report(t_pdf)
+        # 4. Create a temporary JSON file for Metadata
+        meta_content = evaluation.metadata_json if evaluation.metadata_json else {}
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='_meta.json', delete=False, encoding='utf-8') as tmp_meta:
+            json.dump(meta_content, tmp_meta)
+            tmp_meta_path = tmp_meta.name
+
+        tmp_pdf_path = f"{tmp_json_path}.pdf"
+
+        # 5. Generate PDF passing BOTH paths
+        report_manager = ReportManager(tmp_json_path, tmp_meta_path)
+        report_manager.generate_pdf_report(tmp_pdf_path)
         
-        with open(t_pdf, 'rb') as f: data = f.read()
-        response = HttpResponse(data, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="Evaluation_{pk}.pdf"'
+        # 6. Read and Return
+        if not os.path.exists(tmp_pdf_path):
+             raise FileNotFoundError("PDF generator did not create the file.")
+
+        with open(tmp_pdf_path, 'rb') as f:
+            pdf_data = f.read()
+
+        filename = f"Evaluation_{evaluation.module.course_key}_{pk}.pdf"
+        response = HttpResponse(pdf_data, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         return response
+
     except Exception as e:
-        logger.error(f"PDF Error: {e}")
-        return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error generating PDF for evaluation {pk}: {e}")
+        return Response({"error": "Failed to generate PDF on server."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     finally:
-        if os.path.exists(t_json_path): os.remove(t_json_path)
-        if 't_pdf' in locals() and os.path.exists(t_pdf): os.remove(t_pdf)
+        # 7. Cleanup
+        if tmp_json_path and os.path.exists(tmp_json_path):
+            os.remove(tmp_json_path)
+        if tmp_meta_path and os.path.exists(tmp_meta_path):
+            os.remove(tmp_meta_path)
+        if tmp_pdf_path and os.path.exists(tmp_pdf_path):
+            os.remove(tmp_pdf_path)
 
 @api_view(['POST'])
 @verify_rag_callback
@@ -332,13 +404,15 @@ def evaluation_callback(request):
             )
 
             if evaluation.triggered_by:
+                title_text = evaluation.title or evaluation.module.title or "Module"
+                
                 Message.objects.get_or_create(
                     user=evaluation.triggered_by, 
                     evaluation=evaluation, 
                     scan_type=s_name,
                     defaults={
-                        "title": f"{s_name} Finished: {evaluation.module.course_key}", 
-                        "content": f"The {s_name} has finished successfully for {evaluation.title}.", 
+                        "title": f"{s_name} Finished: {title_text}", 
+                        "content": f"The {s_name} has finished successfully for {title_text}.", 
                         "is_read": False
                     }
                 )
@@ -359,16 +433,33 @@ def evaluation_callback(request):
         }
 
         completed_types = set(evaluation.scans.filter(status=Scan.Status.COMPLETED).values_list('scan_type', flat=True))
-        evaluation.status = Evaluation.Status.COMPLETED if set(Scan.ScanType.values).issubset(completed_types) else Evaluation.Status.IN_PROGRESS
+        all_types = set(Scan.ScanType.values)
+        
+        if all_types.issubset(completed_types):
+            evaluation.status = Evaluation.Status.COMPLETED
+        else:
+            # Check if it was meant to be a Full Run (intent)
+            req_set = set(evaluation.requested_scans)
+            if req_set == all_types:
+                evaluation.status = Evaluation.Status.IN_PROGRESS
+            else:
+                evaluation.status = Evaluation.Status.INCOMPLETED
+
         evaluation.save()
         return Response({"message": "Completed processed and merged"}, status=status.HTTP_200_OK)
 
-    # Scenario D: Failure
+    # Scenario D: Failure (Granular)
     elif status_cb == 'FAILED':
-        evaluation.status = Evaluation.Status.FAILED
+        failed_scans = data.get('scan_names', [])
+        
+        if failed_scans:
+            Scan.objects.filter(evaluation=evaluation, scan_type__in=failed_scans).update(status=Scan.Status.FAILED)
+        else:
+            Scan.objects.filter(evaluation=evaluation, status=Scan.Status.IN_PROGRESS).update(status=Scan.Status.FAILED)
+
         evaluation.error_message = data.get('error', "Unknown error")
         evaluation.save()
-        evaluation.scans.update(status=Scan.Status.FAILED)
-        return Response({"message": "Failure processed"}, status=status.HTTP_200_OK)
+        # Keep evaluation active (IN_PROGRESS/INCOMPLETED) for retries
+        return Response({"message": "Failure processed (Partial)"}, status=status.HTTP_200_OK)
 
     return Response(status=status.HTTP_400_BAD_REQUEST)

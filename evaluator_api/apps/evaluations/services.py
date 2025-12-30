@@ -150,7 +150,13 @@ class EvaluationService:
         current_requested.update(scans_to_run)
         evaluation.requested_scans = list(current_requested)
         evaluation.triggered_by = user 
-        evaluation.status = Evaluation.Status.IN_PROGRESS
+        
+        # Set Correct Status based on Scope
+        if is_all_scans:
+            evaluation.status = Evaluation.Status.IN_PROGRESS
+        else:
+            evaluation.status = Evaluation.Status.INCOMPLETED
+            
         evaluation.save()
 
         created_objs = []

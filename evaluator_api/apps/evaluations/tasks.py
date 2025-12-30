@@ -33,18 +33,6 @@ def check_and_merge_evaluation(evaluation_id):
 
             if evaluation.status == Evaluation.Status.COMPLETED:
                 return
-
-            # Check for failures in requested scans
-            requested_scan_types = set(evaluation.requested_scans)
-            failed_scans = evaluation.scans.filter(status=Scan.Status.FAILED)
-            failed_scan_types = set(s.scan_type for s in failed_scans)
-
-            # If a requested scan failed, the batch fails
-            if not requested_scan_types.isdisjoint(failed_scan_types):
-                evaluation.status = Evaluation.Status.FAILED
-                evaluation.error_message = "One or more scans failed."
-                evaluation.save()
-                return
             
             # Merge content
             all_relevant_scans = evaluation.scans.filter(
@@ -78,7 +66,11 @@ def check_and_merge_evaluation(evaluation_id):
                 evaluation.status = Evaluation.Status.COMPLETED
                 fetch_and_update_metadata(evaluation)
             else:
-                evaluation.status = Evaluation.Status.IN_PROGRESS
+                requested_set = set(evaluation.requested_scans)
+                if requested_set == all_possible_scans:
+                    evaluation.status = Evaluation.Status.IN_PROGRESS
+                else:
+                    evaluation.status = Evaluation.Status.INCOMPLETED
                         
             evaluation.save()
 
