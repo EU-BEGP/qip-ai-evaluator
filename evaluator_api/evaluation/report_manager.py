@@ -97,7 +97,7 @@ class ReportManager:
         table.repeatRows = 1  # Repeat header row on each page
         table.keepWithNext = False  # Allow splitting
 
-    def get_eu_class_style(self, eu_class: str, styles) -> ParagraphStyle:
+    def get_eu_class_style(self, eu_class: str, styles: dict) -> ParagraphStyle:
         """Get styled paragraph for EDDA Classification."""
         colors_map = {
             'No Issues': ('#E8F5E9', '#2E7D32'),
@@ -195,24 +195,106 @@ class ReportManager:
 
         return styles
     
-    def create_criteria_table(self, criteria_data: List[List], styles: dict) -> Table:
-        """Create a table with proper formatting for criteria data"""
-        # Calculate optimal column widths based on content
-        total_width = 580  # Total available width
-        col_widths = [
-            total_width * 0.10,  # Criterion (10%)
-            total_width * 0.17,  # Description (17%)
-            total_width * 0.07,  # Score (7%)
-            total_width * 0.16,  # EEDA Classification (16%)
-            total_width * 0.25,  # Shortcomings (25%)
-            total_width * 0.25   # Recommendations (25%)
-        ]
-        
+    def create_criteria_table(self, criteria_data: List[List], styles: dict, total_table_width: int, col_widths: List[float]) -> Table:
+        """Create a table with proper formatting for criteria data.""" 
         table = LongTable(criteria_data, colWidths=col_widths, repeatRows=1)
         self.set_table_style(table)
         return table
+    
+    def split_paragraph_by_height(self, text: str, style: ParagraphStyle, col_width: float, max_height: float) -> list[str]:
+        """Split text into chunks such that each chunk, when rendered as a Paragraph, does not exceed max_height."""
+        if not text:
+            return [""]
 
-    def build_first_page(self, styles) -> List:
+        chunks = []
+        current = ""
+
+        # Preserve explicit line breaks
+        words = text.replace("<br/>", " <br/> ").split()
+
+        for word in words:
+            candidate = current + (" " if current else "") + word
+            p = Paragraph(candidate, style)
+            _, h = p.wrap(col_width, max_height)
+
+            if h <= max_height:
+                current = candidate
+            else:
+                if current:
+                    chunks.append(current)
+                current = word
+
+        if current:
+            chunks.append(current)
+
+        return chunks
+    
+    def criterion_to_rows(self, criterion: dict, styles: dict, col_widths: list[float], max_cell_height: float) -> list[list]:
+        """Converts a criterion into table rows that fit within cell height limits."""
+        score = criterion.get('score', 0)
+        max_score = criterion.get('max_score', 5)
+        eu_class = criterion.get('eu_classification', '')
+
+        base_style = styles['TableCell']
+
+        name_chunks = self.split_paragraph_by_height(
+            criterion.get('name', ''),
+            base_style,
+            col_widths[0],
+            max_cell_height
+        )
+
+        desc_chunks = self.split_paragraph_by_height(
+            criterion.get('description', ''),
+            base_style,
+            col_widths[1],
+            max_cell_height
+        )
+
+        shortcomings_text = "<br/>".join(
+            f"• {s}" for s in criterion.get("shortcomings", [])
+        )
+
+        short_chunks = self.split_paragraph_by_height(
+            shortcomings_text,
+            base_style,
+            col_widths[4],
+            max_cell_height
+        )
+
+        recommendations_text = "<br/>".join(
+            f"• {r}" for r in criterion.get("recommendations", [])
+        )
+
+        rec_chunks = self.split_paragraph_by_height(
+            recommendations_text,
+            base_style,
+            col_widths[5],
+            max_cell_height
+        )
+
+        max_rows = max(
+            len(name_chunks),
+            len(desc_chunks),
+            len(short_chunks),
+            len(rec_chunks)
+        )
+
+        rows = []
+
+        for i in range(max_rows):
+            rows.append([
+                Paragraph(name_chunks[i], base_style) if i < len(name_chunks) else "",
+                Paragraph(desc_chunks[i], base_style) if i < len(desc_chunks) else "",
+                f"{score:.1f}/{max_score:.1f}" if i == 0 else "",
+                Paragraph(eu_class, self.get_eu_class_style(eu_class, styles)) if i == 0 else "",
+                Paragraph(short_chunks[i], base_style) if i < len(short_chunks) else "",
+                Paragraph(rec_chunks[i], base_style) if i < len(rec_chunks) else "",
+            ])
+
+        return rows
+
+    def build_first_page(self, styles: dict) -> List:
         """Build the first page with report title and table of contents."""
         story = []
 
@@ -234,7 +316,7 @@ class ReportManager:
 
         return story
     
-    def build_executive_summary(self, styles) -> List:
+    def build_executive_summary(self, styles: dict) -> List:
         """Build the executive summary section."""
         story = []
         percentage = (self.evaluation_data["total_score"] / self.evaluation_data["total_max_score"] * 100) if self.evaluation_data["total_max_score"] > 0 else 0
@@ -302,8 +384,8 @@ class ReportManager:
 
         story.append(PageBreak())
         return story
-    
-    def build_detailed_analysis(self, styles) -> List:
+
+    def build_detailed_analysis(self, styles: dict, max_cell_height: float, col_widths: List[float], total_table_width: float) -> List:
         """Build the detailed analysis section with criteria tables."""
         story = []
         story.append(Paragraph("2. Detailed Analysis", styles['Section']))
@@ -365,66 +447,15 @@ class ReportManager:
             if scan.get('criteria'):
                 criteria_data = [['Criterion', 'Description', 'Score', 'EEDA Class.', 'Shortcomings', 'Recommendations']]
                 for criterion in scan['criteria']:
-                    score = criterion.get('score', 0)
-                    max_score = criterion.get('max_score', 5)
-                    eu_class = criterion.get('eu_classification', 5)
-                    
-                    criterion_text = Paragraph(
-                        criterion.get('name', ''),
-                        ParagraphStyle(
-                            'CriterionStyle',
-                            parent=styles['TableCell'],
-                            wordWrap='CJK',
-                            leading=12
-                        )
+                    rows = self.criterion_to_rows(
+                        criterion,
+                        styles,
+                        col_widths,
+                        max_cell_height
                     )
-                    
-                    description_text = Paragraph(
-                        criterion.get('description', ''),
-                        ParagraphStyle(
-                            'JustificationStyle',
-                            parent=styles['TableCell'],
-                            wordWrap='CJK',
-                            leading=12
-                        )
-                    )
-                    
-                    shortcomings = criterion.get("shortcomings", [])
-                    shortcomings_text_value = "<br/>".join([f"• {item}" for item in shortcomings]) if shortcomings else ""
-
-                    shortcoming_text = Paragraph(
-                        shortcomings_text_value,
-                        ParagraphStyle(
-                            'ShortcomingStyle',
-                            parent=styles['TableCell'],
-                            wordWrap='CJK',
-                            leading=12
-                        )
-                    )
-
-                    recommendations = criterion.get("recommendations", [])
-                    recommendations_text_value = "<br/>".join([f"• {item}" for item in recommendations]) if recommendations else ""
-
-                    recommendations_text = Paragraph(
-                        recommendations_text_value,
-                        ParagraphStyle(
-                            'RecommendationsStyle',
-                            parent=styles['TableCell'],
-                            wordWrap='CJK',
-                            leading=12
-                        )
-                    )
-
-                    criteria_data.append([
-                        criterion_text,
-                        description_text,
-                        f"{score:.1f}/{max_score:.1f}",
-                        Paragraph(eu_class, self.get_eu_class_style(eu_class, styles)),
-                        shortcoming_text,
-                        recommendations_text
-                    ])
+                    criteria_data.extend(rows)
                 
-                criteria_table = self.create_criteria_table(criteria_data, styles)
+                criteria_table = self.create_criteria_table(criteria_data, styles, total_table_width, col_widths)
                 criteria_table.splitByRow = True
                 story.append(criteria_table)
                 story.append(Spacer(1, 20))
@@ -447,6 +478,22 @@ class ReportManager:
     
     def generate_pdf_report(self, output_path: str) -> None:
         """Generate a PDF report from the evaluation data."""
+        # Determine max cell height for table generation
+        page_height = legal[1]
+        frame_height = page_height - 110
+        max_cell_height = frame_height * 0.80
+
+        # Calculate optimal column widths based on content
+        total_table_width = 560  # Total available width
+        col_widths = [
+            total_table_width * 0.10,  # Criterion (10%)
+            total_table_width * 0.17,  # Description (17%)
+            total_table_width * 0.07,  # Score (7%)
+            total_table_width * 0.16,  # EEDA Classification (16%)
+            total_table_width * 0.25,  # Shortcomings (25%)
+            total_table_width * 0.25   # Recommendations (25%)
+        ]
+
         buffer = BytesIO()
         doc = MyDocTemplate(
             buffer,
@@ -462,7 +509,7 @@ class ReportManager:
         story = []
         story.extend(self.build_first_page(styles))
         story.extend(self.build_executive_summary(styles))
-        story.extend(self.build_detailed_analysis(styles))
+        story.extend(self.build_detailed_analysis(styles, max_cell_height, col_widths, total_table_width))
 
         doc.multiBuild(story, onFirstPage=self.add_page_number, onLaterPages=self.add_page_number)
         buffer.seek(0)

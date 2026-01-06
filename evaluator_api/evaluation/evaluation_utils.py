@@ -45,6 +45,3 @@ class EvaluationUtils:
 
         evaluation_data["total_max_score"] = total_max_score
         evaluation_data["total_score"] = total_score
-        
-        #with open("output.json", "w", encoding="utf-8") as file:
-        #    json.dump(evaluation_data, file, indent=2, ensure_ascii=False)
