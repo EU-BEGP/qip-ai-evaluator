@@ -32,7 +32,7 @@ export class Modules {
   email: string = '';
   openCardIndex: number | null = null;
   evaluationListByIndex: { [key: number]: any[] } = {};
-  disableEvaluateButton = false;
+  disableCourseLink = false;
   
   showNewEvalModal = false;
   newEvalCourseLink: string = '';
@@ -78,10 +78,15 @@ export class Modules {
     });
   }
 
-  openNewEvalModal() {
+  onClickEvaluateUpdated(link: string) {
+    this.openNewEvalModal(link);
+  }
+
+  openNewEvalModal(courseLink: string = '', scan: string = '') {
+    this.disableCourseLink = courseLink ? true : false;
     this.showNewEvalModal = true;
-    this.newEvalCourseLink = '';
-    this.newEvalScan = '';
+    this.newEvalCourseLink = courseLink;
+    this.newEvalScan = scan;
   }
 
   closeNewEvalModal() {

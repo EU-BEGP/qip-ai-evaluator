@@ -47,6 +47,7 @@ export class EvaluationComponent {
   loaded: boolean = false;
   scansList: Scan[] = [];
   selectedIndex?: number;
+  scanNameSelected: string = 'All Scans';
 
   constructor (
     private evaluationService: EvaluationService,
@@ -59,7 +60,16 @@ export class EvaluationComponent {
 
   ngOnInit() {
     this.evaluationId = this.route.snapshot.paramMap.get('id') || undefined;
-    const scanNameSelected = this.route.snapshot.queryParamMap.get('scan') || 'All Scans';
+
+    this.route.queryParamMap
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(queryParams => {
+      this.scanNameSelected = queryParams.get('scan') || 'All Scans';
+      if (this.scansList.length > 0) {
+        this.selectedIndex = this.getScanIndexByName(this.scanNameSelected);
+      }
+    });
+
     const storageKey = 'evaluationList' + localStorage.getItem('accountEmail');
     const list = JSON.parse(localStorage.getItem(storageKey) || '[]');
 
@@ -70,7 +80,7 @@ export class EvaluationComponent {
           this.evaluationService.getIdsList(this.evaluationId!).subscribe({
             next: (response) => {
               this.scansList = response;
-              this.selectedIndex = this.getScanIndexByName(scanNameSelected);
+              this.selectedIndex = this.getScanIndexByName(this.scanNameSelected);
               this.loaded = true;
 
               list.forEach((item: ScanItem) => {

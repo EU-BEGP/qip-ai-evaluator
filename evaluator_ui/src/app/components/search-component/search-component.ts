@@ -15,6 +15,7 @@ import { EvaluationCircleComponent } from '../evaluation-circle-component/evalua
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ScanItem } from '../../interfaces/scan-item';
 import { AlertComponent } from '../alert-component/alert-component';
+import { EvaluationResultComponent } from '../evaluation-result/evaluation-result';
 
 @Component({
   selector: 'app-search-component',
@@ -31,7 +32,8 @@ import { AlertComponent } from '../alert-component/alert-component';
     MatTabsModule,
     EvaluationCircleComponent,
     MatProgressBarModule,
-    AlertComponent
+    AlertComponent,
+    EvaluationResultComponent
   ],
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',

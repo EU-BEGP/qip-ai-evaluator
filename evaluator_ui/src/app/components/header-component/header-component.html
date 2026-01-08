@@ -1,22 +1,22 @@
 <mat-toolbar color="primary">
-    <div id="main-label" (click)="navigateToHome()" style="cursor: pointer;">
-        <div id="logo-title-group">
-            <img id="logo" src="logo.png" alt="logo" width="28px" class="me-2 pb-1"/>
-            <span id="navbar-title">QIP AI Evaluator</span>
-        </div>
+  <div id="main-label" (click)="navigateToHome()" style="cursor: pointer;">
+    <div id="logo-title-group">
+      <img id="logo" src="logo.png" alt="logo" width="28px" class="me-2 pb-1"/>
+      <span id="navbar-title">QIP AI Evaluator</span>
     </div>
+  </div>
 
-    <span class="spacer"></span>
+  <span class="spacer"></span>
 
-    <button mat-icon-button aria-label="Notifications" class="me-1 notifications-button" (click)="navigateToNotifications()">
-        <mat-icon class="bell">notifications</mat-icon>
-        <span class="badge" *ngIf="notificationService.unreadCount() > 0">
-            {{ notificationService.unreadCount() }}
-        </span>
-    </button>
+  <button mat-icon-button aria-label="Notifications" class="me-1 notifications-button" (click)="navigateToNotifications()">
+    <mat-icon class="bell">notifications</mat-icon>
+    <span class="badge" *ngIf="notificationService.unreadCount() > 0">
+      {{ notificationService.unreadCount() }}
+    </span>
+  </button>
 
-    <button mat-button aria-label="Logout icon" (click)="logout()">
-        <mat-icon class="icon">logout</mat-icon>
-        <span class="logout-text">Logout</span>
-    </button>
+  <button mat-button aria-label="Logout icon" (click)="logout()">
+    <mat-icon class="icon">logout</mat-icon>
+    <span class="logout-text">Logout</span>
+  </button>
 </mat-toolbar>

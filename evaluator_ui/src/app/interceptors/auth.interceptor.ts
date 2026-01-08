@@ -31,7 +31,8 @@ export class AuthInterceptor implements HttpInterceptor {
   }
 
   private handleAuthError(err: any) {
-    if (err instanceof HttpErrorResponse && err.status === 401) {
+    const token = localStorage.getItem('token');
+    if (err instanceof HttpErrorResponse && err.status === 401 && token) {
       this.toastr.error('Your session has expired. Please log in again.', 'Session Expired');
       localStorage.removeItem('token');
       localStorage.removeItem('accountEmail');

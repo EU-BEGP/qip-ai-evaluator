@@ -1,10 +1,10 @@
-<mat-card class="card bg-light px-4 pt-4 pb-0 clickable" (click)="onClickCard(data.link)">
-    <p><b class="me-2">Title:</b>{{ data.title }}</p>
-    <p><b class="me-2">Link:</b>{{ data.link }}</p>
-    <p><b class="me-2">Last Modify:</b>{{ data.last_modify }}</p>
-    <p><b class="me-2">Last Evaluation:</b>{{ data.last_evaluation }}</p>
-    <p><b>Last Average:</b> {{ data.last_average }}/{{ data.last_max }}
-        <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
-    </p>
-    
+<mat-card class="card bg-light px-4 pt-4 pb-2 clickable" (click)="onClickCard(data.link)">
+  <p><b class="me-2">Title:</b>{{ data.title }}</p>
+  <p><b class="me-2">Link:</b>{{ data.link }}</p>
+  <p><b class="me-2">Last Modify:</b>{{ data.last_modify }}</p>
+  <p><b class="me-2">Last Evaluation:</b>{{ data.last_evaluation }}</p>
+  <p class="mb-0"><b>Last Average:</b> {{ data.last_average }}/{{ data.last_max }}
+    <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
+  </p>
+  <button mat-flat-button color="primary" class="mb-2" *ngIf="showEvaluateUpdatedButton" (click)="onClickEvaluateUpdatedVersion(data.link, $event)">Evaluate Updated Version</button>
 </mat-card>
