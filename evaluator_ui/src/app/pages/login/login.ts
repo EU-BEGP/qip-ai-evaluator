@@ -30,14 +30,7 @@ import { ToastrService } from 'ngx-toastr';
 })
 export class LoginComponent {
   hide: boolean = true;
-
-  loginForm = new FormGroup({
-    email: new FormControl('', [Validators.required, Validators.email]),
-    password: new FormControl('', [
-      Validators.required,
-      Validators.minLength(8),
-    ]),
-  });
+  loginForm!: FormGroup;
 
   constructor(
     private authService: AuthService,
@@ -49,6 +42,11 @@ export class LoginComponent {
     if (localStorage.getItem('token')) {
       this.router.navigateByUrl('modules');
     }
+
+    this.loginForm = new FormGroup({
+      email: new FormControl('', [Validators.required, Validators.email]),
+      password: new FormControl('', [Validators.required, Validators.minLength(8)])
+    });
   }
 
   get emailControl() {
@@ -71,10 +69,7 @@ export class LoginComponent {
         }
       });
     } else {
-      this.toastr.error(
-        'Please, complete correctly the information.',
-        'Invalid action'
-      );
+      this.toastr.error('Please, complete correctly the information.', 'Invalid action');
     }
   }
 

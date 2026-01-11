@@ -1,0 +1,31 @@
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Router } from '@angular/router';
+import { Notification } from '../../interfaces/notification';
+import { MatButtonModule } from '@angular/material/button';
+
+@Component({
+  selector: 'app-notification-modal-component',
+  imports: [
+    MatButtonModule
+  ],
+  templateUrl: './notification-modal-component.html',
+  styleUrl: './notification-modal-component.css',
+})
+export class NotificationModalComponent {
+  @Input() selectedNotification: Notification | null = null;
+  @Output() close = new EventEmitter<void>();
+
+  constructor (
+    private router: Router
+  ) {}
+
+  goToEvaluation(id: number, scanName: string): void {
+    this.router.navigate(['/evaluation', id], {
+      queryParams: { scan: scanName }
+    });
+  }
+
+  closeNotificationModal(): void {
+    this.close.emit();
+  }
+}

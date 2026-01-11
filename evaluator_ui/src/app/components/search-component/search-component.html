@@ -4,23 +4,13 @@
   <button class="text-center space-top" mat-raised-button color="primary" *ngIf="download" (click)="downloadPDF()">Download PDF</button>
 
   <div class="ai-container" *ngIf="isEvaluating">
-    <mat-progress-bar mode="indeterminate" color="accent" class="space-top"></mat-progress-bar>
-    <p class="ai-text">Evaluating with AI</p>
+    <app-evaluation-progress-bar-component></app-evaluation-progress-bar-component>
   </div>
   
   <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="isFinished"></app-evaluation-circle-component>
-
-  <div class="mb-2 mt-4 p-0">
-    <div *ngIf="data !== null && !isLoading" class="m-0">
-      <app-evaluation-result-component [data]="data"></app-evaluation-result-component>
-    </div>
-  </div>
+  <app-evaluation-result-component [data]="data" *ngIf="data !== null && !isLoading" class="m-0"></app-evaluation-result-component>
 
   <div class="ai-container mb-5" *ngIf="isEvaluating">
-    <p class="ai-text">
-      <span class="dot"></span>
-      <span class="dot"></span>
-      <span class="dot"></span>
-    </p>
+    <app-evaluation-progress-dots-component></app-evaluation-progress-dots-component>
   </div>
 </div>

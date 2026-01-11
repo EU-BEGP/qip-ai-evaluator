@@ -1,0 +1,39 @@
+.ai-text {
+  margin-top: 12px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background-color: #364598;
+  border-radius: 50%;
+  animation: bounce 0.9s infinite alternate;
+}
+
+.dot:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.dot:nth-child(2) {
+  margin-left: 6px;
+  animation-delay: 0.2s;
+}
+
+.dot:nth-child(3) {
+  margin-left: 6px;
+  animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}

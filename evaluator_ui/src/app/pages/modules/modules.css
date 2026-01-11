@@ -7,10 +7,6 @@
   z-index: 1000;
 }
 
-.evaluation-item {
-  cursor: pointer;
-}
-
 .modules-container {
   display: flex;
   flex-wrap: wrap;
@@ -24,15 +20,6 @@
   flex: 0 0 540px; 
 }
 
-app-module-card-component {
-  display: block;
-  height: auto
-}
-
-.history-list {
-  width: 100%;
-}
-
 .new-eval-button {
   justify-content: flex-end;
 }
@@ -44,11 +31,6 @@ app-module-card-component {
 .space {
   margin: 48px;
 }
-
-.icon {
-  vertical-align: -20%;
-}
-
 
 @media screen and (max-width: 768px) {
   .modules-container > div {
@@ -65,11 +47,5 @@ app-module-card-component {
 
   .space {
     margin-top: 24px;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .item-container {
-    flex-direction: column;
   }
 }

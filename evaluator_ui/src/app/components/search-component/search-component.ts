@@ -12,10 +12,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ScanRequest } from '../../interfaces/scan-request';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ScanItem } from '../../interfaces/scan-item';
 import { AlertComponent } from '../alert-component/alert-component';
 import { EvaluationResultComponent } from '../evaluation-result/evaluation-result';
+import { EvaluationProgressBarComponent } from '../evaluation-progress-bar-component/evaluation-progress-bar-component';
+import { EvaluationProgressDotsComponent } from '../evaluation-progress-dots-component/evaluation-progress-dots-component';
 
 @Component({
   selector: 'app-search-component',
@@ -31,9 +32,10 @@ import { EvaluationResultComponent } from '../evaluation-result/evaluation-resul
     MatSelectModule,
     MatTabsModule,
     EvaluationCircleComponent,
-    MatProgressBarModule,
     AlertComponent,
-    EvaluationResultComponent
+    EvaluationResultComponent,
+    EvaluationProgressBarComponent,
+    EvaluationProgressDotsComponent
   ],
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',

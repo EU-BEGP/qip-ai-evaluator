@@ -1,0 +1,17 @@
+.history-list {
+  width: 100%;
+}
+
+.evaluation-item {
+  cursor: pointer;
+}
+
+.icon {
+  vertical-align: -20%;
+}
+
+@media screen and (max-width: 480px) {
+  .item-container {
+    flex-direction: column;
+  }
+}

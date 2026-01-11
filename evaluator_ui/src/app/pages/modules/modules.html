@@ -5,51 +5,36 @@
 <div *ngIf="showNewEvalModal" class="modal-backdrop bg-dark bg-opacity-50 evaluation-modal">
   <div class="card p-4 evaluation-card">
     <h5 class="mb-3">New Evaluation</h5>
+    <form [formGroup]="newEvalForm" (ngSubmit)="evaluateNew()" class="p-0">
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>Course Link</mat-label>
+        <input matInput formControlName="courseLink" placeholder="https://time.learnify.se/l/show.html#att/OYJPG">
+        <mat-error *ngIf="courseLinkControl.invalid">
+          You must enter a course link.
+        </mat-error>
+      </mat-form-field>
 
-    <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Course Link</mat-label>
-      <input matInput [(ngModel)]="newEvalCourseLink" placeholder="https://time.learnify.se/l/show.html#att/OYJPG" [disabled]="disableCourseLink"/>
-    </mat-form-field>
+      <mat-form-field appearance="fill" class="w-100">
+        <mat-label>Scan</mat-label>
+        <mat-select formControlName="scanName">
+          <mat-option *ngFor="let scan of scans" [value]="scan">{{ scan }}</mat-option>
+        </mat-select>
+        <mat-error *ngIf="scanNameControl.invalid">
+          You must select a scan.
+        </mat-error>
+      </mat-form-field>
 
-    <mat-form-field appearance="fill" class="w-100">
-      <mat-label>Scan</mat-label>
-      <mat-select [(ngModel)]="newEvalScan">
-        <mat-option *ngFor="let s of scans" [value]="s">{{ s }}</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <div class="d-flex justify-content-end gap-2 mt-3">
-      <button mat-stroked-button (click)="closeNewEvalModal()">Cancel</button>
-      <button mat-raised-button color="primary" [disabled]="!canEvaluate()" (click)="evaluateNew()">Evaluate</button>
-    </div>
+      <div class="d-flex justify-content-end gap-2 mt-3">
+        <button mat-stroked-button (click)="closeNewEvalModal()">Cancel</button>
+        <button mat-raised-button color="primary" type="submit">Evaluate</button>
+      </div>
+    </form>
   </div>
 </div>
 
 <div class="modules-container space d-flex flex-wrap justify-content-center gap-5">
   <div *ngFor="let module of modules; let i = index" class="position-relative">
-    <app-module-card-component 
-      [data]="module" 
-      (onClick)="onClickCard($event, i)"
-      (onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"
-    />
-
-    <div *ngIf="openCardIndex === i" class="mt-2 history-list">
-      <ul class="list-group">
-        <li *ngFor="let item of (evaluationListByIndex[i] || [])" 
-            class="list-group-item list-group-item-action evaluation-item"
-            (click)="onSelectEvaluation(item, i)">
-          <div class="item-container d-flex">
-            <div class="me-2 date-description">
-              <mat-icon class="icon">calendar_month</mat-icon>
-              {{ item.date }}
-            </div>
-            <div>
-              <mat-icon class="icon user-description">person</mat-icon>
-              {{ item.user }}
-            </div>
-          </div>
-        </li>
-      </ul>
-    </div>
+    <app-module-card-component [data]="module" (onClick)="onClickCard($event, i)"(onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"></app-module-card-component>
+    <app-evaluation-list-component [evaluationList]="evaluationListByIndex[i]" (selectEvaluation)="onSelectEvaluation($event)" *ngIf="openCardIndex === i"></app-evaluation-list-component>
   </div>
 </div>

@@ -3,15 +3,16 @@ import { Component } from '@angular/core';
 import { MatListModule } from '@angular/material/list';
 import { Notification } from '../../interfaces/notification';
 import { NotificationService } from '../../services/notification-service';
-import { MatButtonModule } from '@angular/material/button';
-import { Router } from '@angular/router';
+import { NotificationModalComponent } from '../../components/notification-modal-component/notification-modal-component';
+import { NotificationCardComponent } from '../../components/notification-card-component/notification-card-component';
 
 @Component({
   selector: 'app-notifications',
   imports: [
     MatListModule,
-    MatButtonModule,
-    CommonModule
+    CommonModule,
+    NotificationModalComponent,
+    NotificationCardComponent
   ],
   templateUrl: './notifications.html',
   styleUrl: './notifications.css',
@@ -23,8 +24,7 @@ export class Notifications {
   selectedNotification: Notification | null = null;
 
   constructor (
-    private notificationService: NotificationService,
-    private router: Router
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -54,11 +54,5 @@ export class Notifications {
   closeNotificationModal(): void {
     this.showNotificationModal = false;
     this.selectedNotification = null;
-  }
-
-  goToEvaluation(id: number, scanName: string): void {
-    this.router.navigate(['/evaluation', id], {
-      queryParams: { scan: scanName }
-    });
   }
 }

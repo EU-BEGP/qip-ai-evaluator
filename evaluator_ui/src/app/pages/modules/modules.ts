@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ModuleCardComponent } from '../../components/module-card-component/module-card-component';
 import { EvaluationService } from '../../services/evaluation-service';
 import { CommonModule } from '@angular/common';
@@ -6,11 +6,13 @@ import { ScanRequest } from '../../interfaces/scan-request';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { StorageService } from '../../services/storage-service';
 import { MatIconModule } from '@angular/material/icon';
+import { EvaluationListComponent } from '../../components/evaluation-list-component/evaluation-list-component';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-modules',
@@ -19,40 +21,52 @@ import { MatIconModule } from '@angular/material/icon';
     CommonModule,
     MatSelectModule,
     MatFormFieldModule,
+    ReactiveFormsModule,
     FormsModule,
     MatInputModule,
     MatButtonModule,
-    MatIconModule
+    EvaluationListComponent
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',
 })
-export class Modules {
+export class Modules implements OnInit {
+  newEvalForm!: FormGroup;
   modules: any[] = [];
   email: string = '';
   openCardIndex: number | null = null;
-  evaluationListByIndex: { [key: number]: any[] } = {};
+  evaluationListByIndex: any = {};
   disableCourseLink = false;
-  
   showNewEvalModal = false;
-  newEvalCourseLink: string = '';
-  newEvalScan: string = '';
   scans: string[] = ['All Scans', 'Academic Metadata Scan', 'Learning Content Scan', 'Assessment Scan', 'Multimedia Scan', 'Certificate Scan', 'Summary Scan'];
 
   constructor(
     private evaluationService: EvaluationService,
     private router: Router,
-    private storageService: StorageService,
+    private fb: FormBuilder
   ) {}
 
   ngOnInit(): void {
     this.email = localStorage.getItem('accountEmail') || '';
+
+    this.newEvalForm = this.fb.group({
+      courseLink: [{ value: '', disabled: false }, Validators.required],
+      scanName: ['', Validators.required]
+    });
 
     this.evaluationService.getModules(this.email).subscribe({
       next: (response) => {
         this.modules = response;
       }
     });
+  }
+
+  get courseLinkControl() {
+    return this.newEvalForm.controls['courseLink'];
+  }
+
+  get scanNameControl() {
+    return this.newEvalForm.controls['scanName'];
   }
 
   onClickCard(link: string, index: number) {
@@ -83,27 +97,38 @@ export class Modules {
   }
 
   openNewEvalModal(courseLink: string = '', scan: string = '') {
-    this.disableCourseLink = courseLink ? true : false;
+    this.disableCourseLink = !!courseLink;
     this.showNewEvalModal = true;
-    this.newEvalCourseLink = courseLink;
-    this.newEvalScan = scan;
+
+    const courseControl = this.newEvalForm.get('courseLink');
+    const scanControl = this.newEvalForm.get('scanName');
+
+    courseControl!.setValue(courseLink || '');
+    if (courseLink) {
+      courseControl!.disable();
+    }  
+    else {
+      courseControl!.enable();
+    }
+  
+    scanControl!.setValue(scan || '');
   }
 
   closeNewEvalModal() {
     this.showNewEvalModal = false;
-  }
-
-  canEvaluate(): boolean {
-    return !!this.newEvalCourseLink && !!this.newEvalScan;
+    const courseControl = this.newEvalForm.get('courseLink');
+    courseControl!.enable();
+    this.newEvalForm.reset();
   }
 
   evaluateNew() {
-    if (!this.canEvaluate()) return;
-    this.evaluate();
-    this.closeNewEvalModal();
+    if (this.newEvalForm.valid) {
+      this.evaluate();
+      this.closeNewEvalModal();
+    }
   }
 
-  onSelectEvaluation(item: any, index: number) {
+  onSelectEvaluation(item: any) {
     if (!item) return;
     this.openCardIndex = null;
     this.router.navigate(['/evaluation', item.id], {
@@ -112,10 +137,13 @@ export class Modules {
   }
 
   evaluate(): void {
+    const courseLink = this.newEvalForm.get('courseLink')?.value;
+    const scanName = this.newEvalForm.get('scanName')?.value;
+
     const scanRequest: ScanRequest = { 
-      course_link: this.newEvalCourseLink,
+      course_link: courseLink,
       email: this.email,
-      scan_name: this.newEvalScan
+      scan_name: scanName
     }
 
     this.evaluationService.evaluate(scanRequest).subscribe({
