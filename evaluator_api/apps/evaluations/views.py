@@ -233,14 +233,14 @@ def get_user_modules(request, email):
     response_list = []
     
     for mod in modules:
-        eval_obj = mod.evaluations.exclude(status=Evaluation.Status.NOT_STARTED).order_by('-updated_at').first()
+        eval_obj = mod.evaluations.exclude(status=Evaluation.Status.NOT_STARTED).order_by('-created_at').first()
         rag_date = RagService.get_last_modified(mod.course_key)
         
         last_date, last_avg = "N/A", 0.0
         title = eval_obj.title if (eval_obj and eval_obj.title) else (mod.title or "Pending...")
 
         if eval_obj:
-            last_date = eval_obj.updated_at.strftime("%Y-%m-%d %H:%M") 
+            last_date = eval_obj.created_at.strftime("%Y-%m-%d %H:%M") 
             s, c = EvaluationService.calculate_score_from_json(eval_obj.result_json)
             if c == 0: 
                 for sc in eval_obj.scans.all():
