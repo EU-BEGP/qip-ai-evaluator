@@ -192,12 +192,13 @@ def list_evaluations(request):
     try: module = Module.objects.get(course_key=course_key)
     except Module.DoesNotExist: return Response(status=status.HTTP_404_NOT_FOUND)
 
-    evals = Evaluation.objects.filter(module=module).order_by('-updated_at')[:20]
+    evals = Evaluation.objects.filter(module=module).order_by('-created_at')[:20]
+    
     if not evals.exists(): return Response(status=status.HTTP_404_NOT_FOUND)
 
     data = [{
         "id": e.id, 
-        "date": e.updated_at.strftime("%Y-%m-%d %H:%M"), 
+        "date": e.created_at.strftime("%Y-%m-%d %H:%M"), 
         "user": e.triggered_by.email if e.triggered_by else "System"
     } for e in evals]
     return Response(data)
@@ -239,7 +240,7 @@ def get_user_modules(request, email):
         title = eval_obj.title if (eval_obj and eval_obj.title) else (mod.title or "Pending...")
 
         if eval_obj:
-            last_date = eval_obj.updated_at.strftime("%Y-%m-%d")
+            last_date = eval_obj.updated_at.strftime("%Y-%m-%d %H:%M") 
             s, c = EvaluationService.calculate_score_from_json(eval_obj.result_json)
             if c == 0: 
                 for sc in eval_obj.scans.all():
@@ -249,7 +250,7 @@ def get_user_modules(request, email):
 
         fmt_rag = "N/A"
         if rag_date:
-            try: fmt_rag = isoparse(rag_date).strftime("%Y-%m-%d")
+            try: fmt_rag = isoparse(rag_date).strftime("%Y-%m-%d %H:%M")
             except: pass
             
         response_list.append({
@@ -432,23 +433,17 @@ def evaluation_callback(request):
             "content": merged_content
         }
 
+        # Check if ALL possible scans are done.
         completed_types = set(evaluation.scans.filter(status=Scan.Status.COMPLETED).values_list('scan_type', flat=True))
         all_types = set(Scan.ScanType.values)
         
         if all_types.issubset(completed_types):
             evaluation.status = Evaluation.Status.COMPLETED
-        else:
-            # Check if it was meant to be a Full Run (intent)
-            req_set = set(evaluation.requested_scans)
-            if req_set == all_types:
-                evaluation.status = Evaluation.Status.IN_PROGRESS
-            else:
-                evaluation.status = Evaluation.Status.INCOMPLETED
 
         evaluation.save()
         return Response({"message": "Completed processed and merged"}, status=status.HTTP_200_OK)
 
-    # Scenario D: Failure (Granular)
+    # Scenario D: Failure (Granular & CLEANUP)
     elif status_cb == 'FAILED':
         failed_scans = data.get('scan_names', [])
         
@@ -456,6 +451,13 @@ def evaluation_callback(request):
             Scan.objects.filter(evaluation=evaluation, scan_type__in=failed_scans).update(status=Scan.Status.FAILED)
         else:
             Scan.objects.filter(evaluation=evaluation, status=Scan.Status.IN_PROGRESS).update(status=Scan.Status.FAILED)
+
+        failed_scan_types = set(Scan.objects.filter(evaluation=evaluation, status=Scan.Status.FAILED).values_list('scan_type', flat=True))
+        
+        if evaluation.result_json and 'content' in evaluation.result_json:
+            current_content = evaluation.result_json.get('content', [])
+            clean_content = [item for item in current_content if item.get('scan') not in failed_scan_types]
+            evaluation.result_json['content'] = clean_content
 
         evaluation.error_message = data.get('error', "Unknown error")
         evaluation.save()

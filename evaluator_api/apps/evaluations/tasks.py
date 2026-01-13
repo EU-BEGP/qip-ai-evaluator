@@ -65,13 +65,6 @@ def check_and_merge_evaluation(evaluation_id):
             if all_possible_scans.issubset(completed_scan_types):
                 evaluation.status = Evaluation.Status.COMPLETED
                 fetch_and_update_metadata(evaluation)
-            else:
-                requested_set = set(evaluation.requested_scans)
-                if requested_set == all_possible_scans:
-                    evaluation.status = Evaluation.Status.IN_PROGRESS
-                else:
-                    evaluation.status = Evaluation.Status.INCOMPLETED
-                        
             evaluation.save()
 
     except Evaluation.DoesNotExist:
