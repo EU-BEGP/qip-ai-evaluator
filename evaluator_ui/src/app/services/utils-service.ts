@@ -29,12 +29,10 @@ export class UtilsService {
   }
 
   parseDate(date: string): Date {
-    //const [datePart, timePart] = date.split(' ');
-    //const [year, month, day] = datePart.split('-').map(Number);
-    //const [hour, minute] = timePart.split(':').map(Number);
-    const [year, month, day] = date.split('-').map(Number);
+    const [datePart, timePart] = date.split(' ');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
 
-    //return new Date(year, month - 1, day, hour, minute);
-    return new Date(year, month - 1, day);
+    return new Date(year, month - 1, day, hour, minute);
   };
 }
