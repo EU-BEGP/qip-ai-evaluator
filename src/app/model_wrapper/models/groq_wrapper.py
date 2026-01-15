@@ -19,9 +19,9 @@ class CriterionEvaluation(BaseModel):
     @model_validator(mode="after")
     def check_lengths(cls, values):
         s, r, d = values.Shortcomings, values.Recommendations, values.Deductions
-        if not (len(s) == len(r) == len(d)):
+        if len(s) != len(d):
             raise ValueError(
-                f"Mismatch in lengths: Shortcomings={len(s)}, Recommendations={len(r)}, Deductions={len(d)}"
+                f"Mismatch in lengths: Shortcomings={len(s)}, Deductions={len(d)}. They must match exactly."
             )
         return values
 
