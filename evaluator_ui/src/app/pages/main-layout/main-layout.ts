@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from '../../components/header-component/header-component';
 import { interval, Subject, switchMap, takeUntil } from 'rxjs';
 import { NotificationService } from '../../services/notification-service';
+import { FooterComponent } from '../../components/footer-component/footer-component';
 import { ToastrService } from 'ngx-toastr';
 import config from '../../config.json'
 
@@ -11,6 +12,7 @@ import config from '../../config.json'
   imports: [
     RouterOutlet,
     HeaderComponent,
+    FooterComponent
   ],
   templateUrl: './main-layout.html',
   styleUrl: './main-layout.css',

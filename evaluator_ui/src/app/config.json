@@ -1,5 +1,9 @@
 {
   "version": "1.9.0",
+  "organizationData": {
+    "acronym": "UPB",
+    "name": "Universidad Privada Boliviana"
+  },
   "time": {
     "notificationPolling": 3,
     "evaluationPolling": 5

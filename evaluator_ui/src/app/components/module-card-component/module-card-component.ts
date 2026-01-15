@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { CommonModule } from '@angular/common';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
@@ -16,7 +16,7 @@ import { UtilsService } from '../../services/utils-service';
   templateUrl: './module-card-component.html',
   styleUrl: './module-card-component.css',
 })
-export class ModuleCardComponent {
+export class ModuleCardComponent implements OnInit {
   @Output() onClick = new EventEmitter<string>();
   @Output() onClickEvaluateUpdated = new EventEmitter<string>();
   @Input() data!: any;

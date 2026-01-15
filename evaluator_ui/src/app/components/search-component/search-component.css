@@ -5,6 +5,10 @@
   border-collapse: collapse;
 }
 
+.evaluation-container {
+  min-height: 100px;
+}
+
 .evaluation-table th,
 .evaluation-table td {
   border-left: 1px solid #dee2e6;
