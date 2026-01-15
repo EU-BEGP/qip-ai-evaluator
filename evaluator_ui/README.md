@@ -1,59 +1,67 @@
 # EvaluatorUi
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.5.
+This is an Angular project that provides an User Interface for the QIP AI Evaluator.
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Usage
+With the repository already cloned in your system navigate to the *evaluator_ui* directory:
 
 ```bash
-ng generate component component-name
+cd Book4RLab/evaluator_ui/
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Environment Setup
+To ensure proper configuration of the Evaluator UI, create an environment file named `.env` in the project root with the following variables:
+
+#### `.env` File Template
+
+```env
+###DOCKER
+RESTART_POLICY={no_or_always}
+```
+
+#### Environment Variables Reference
+| Variable            | Description                          | Valid Values         |
+|---------------------|--------------------------------------|----------------------|
+| `RESTART_POLICY`    | Container restart behavior           | `no` for development<br>`always` for production |
+
+### Additional Configuration
+#### The `config.json` file
+This file holds the UI configuration. Update the `baseUrl` field according to your environment:
+
+| Environment  | Configuration Example                |
+|--------------|--------------------------------------|
+| Development  | `"baseUrl": "http://localhost:8000/"` |
+| Production   | `"baseUrl": "https://<domain>/evaluator/api/"` |
+
+#### The Dockerfile
+For **development** environment, modify this line:
 
 ```bash
-ng generate --help
+RUN npm run ng build -- --base-href /evaluator/
 ```
 
-## Building
-
-To build the project run:
+To this:
 
 ```bash
-ng build
+RUN npm run ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+### Running the Project
 
-## Running unit tests
+Once the environment setup is done you can run the project following the next steps:
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+ - Build the docker image running the following command:
 
-```bash
-ng test
-```
+  ```bash
+  docker-compose build
+  ```
 
-## Running end-to-end tests
+ - Run UI:
 
-For end-to-end (e2e) testing, run:
+  ```bash
+  docker-compose up
+  ```
 
-```bash
-ng e2e
-```
+> **Note:** The `.env` file should be created before running these commands.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The Angular project (dev) can be accessed via [http://localhost:4200](http://localhost:4200)
