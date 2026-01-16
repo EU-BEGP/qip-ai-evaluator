@@ -172,3 +172,28 @@ class EvaluationService:
             created_objs.append(scan_obj)
             
         return scans_to_run, created_objs, is_all_scans
+
+    @staticmethod
+    def check_and_update_status(evaluation):
+        """
+        Checks if all scans have finished (i.e., no scans are IN_PROGRESS).
+        Determines the final state of the Evaluation:
+           - If ALL scans are COMPLETED -> Evaluation.Status.COMPLETED
+           - If some scans FAILED or are missing -> Evaluation.Status.INCOMPLETED
+        """
+        # If there are still scans running, do not touch the status.
+        if evaluation.scans.filter(status=Scan.Status.IN_PROGRESS).exists():
+            return
+
+        # If it reach here, everything has finished (either COMPLETED or FAILED).
+        completed_types = set(
+            evaluation.scans.filter(status=Scan.Status.COMPLETED).values_list('scan_type', flat=True)
+        )
+        all_possible_types = set(Scan.ScanType.values)
+
+        if all_possible_types.issubset(completed_types):
+            evaluation.status = Evaluation.Status.COMPLETED
+        else:
+            evaluation.status = Evaluation.Status.INCOMPLETED
+        
+        evaluation.save()
