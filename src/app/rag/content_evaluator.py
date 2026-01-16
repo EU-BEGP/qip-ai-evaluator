@@ -83,20 +83,15 @@ class ContentEvaluator:
         else:
             # 3. Document is large. Implement the new strategy.
             print(f"[INFO] Snapshot: Document is large ({len(self.document_chunks)} chunks). Using {total_chunks_to_use} smart chunks (first {first_n_chunks} + top {top_k_chunks}).")
-            
             # 3a. Always get the first 5 chunks
             first_five_chunks = self.document_chunks[:first_n_chunks]
-            
             # 3b. Get the pool of remaining chunks
             remaining_chunks = self.document_chunks[first_n_chunks:]
-            
             # 3c. Define a query to find the "best" chunks for a snapshot
-            # We are looking for metadata, so we query for that.
             search_query = (
                 "Document Title, Abstract, Keywords, "
                 "Intended Learning Outcomes, Outline, Table of Contents, Main Headings"
             )
-            
             # 3d. Use RAG to find the top 20 best remaining chunks
             ranked_remaining = self.rag.rank_chunks(
                 search_query, 
@@ -104,17 +99,12 @@ class ContentEvaluator:
                 top_k=top_k_chunks
             )
             top_twenty_chunks = [doc for doc, _, _ in ranked_remaining]
-            
             # 3e. Combine them. We sort the top_twenty by their original index
-            # to keep the document in a logical order for the LLM.
             top_twenty_chunks.sort(key=lambda doc: doc.metadata.get("chunk_index", 0))
-            
             selected_chunks = first_five_chunks + top_twenty_chunks
             
         # 4. Create the final text from *only* the selected chunks
         full_text = "\n\n".join(d.page_content for d in selected_chunks)
-
-        # The prompt uses the smaller, smarter full_text
         prompt = (
             "You are an **academic text parser** — not a summarizer, writer, or analyst.\n"
             "Your ONLY task is to EXTRACT text segments from the DOCUMENT CONTENT below and place them into a JSON object that follows the DocumentSnapshot schema.\n\n"
@@ -157,7 +147,6 @@ class ContentEvaluator:
         kb_candidates = self.vector_manager.retrieve(query, k=k_kb * 4)
         if not kb_candidates:
             return []
-
         # Step 2: Filter out chunks already in the document set
         seen_texts = set(doc.page_content for doc in top_chunks)
         unique_kb_candidates = [doc for doc in kb_candidates if doc.page_content not in seen_texts]
@@ -167,7 +156,6 @@ class ContentEvaluator:
 
         # Step 3: Rerank retrieved chunks using the cross-encoder
         reranked = self.rag.rank_chunks(query, documents=unique_kb_candidates, top_k=k_kb)
-
         # Step 4: Return the top reranked chunks only (discard scores)
         return [doc for doc, _, _ in reranked]
 
@@ -240,8 +228,6 @@ class ContentEvaluator:
             f"### DOCUMENT SNAPSHOT:\n{self.document_snapshot}\n\n"
             f"{previous_eval_section}"
         )
-        print("-------------------- Prompt to LLM --------------------")
-        print(prompt)
         return prompt
 
     def _evaluate_criterion(self, criterion: Dict, doc_chunks: List[Document], kb_chunks: List[Document], course_key: str = None, scan_name: str = None, criterion_name: str = None, previous_evaluation: Optional[Dict] = None):
@@ -353,7 +339,7 @@ class ContentEvaluator:
             logger.error(f"An unexpected error occurred in get_module_last_modified: {e}")
             return None
         
-    def evaluate(self, document_chunks: List[Document], k_doc: int = 8, k_kb: int = 2, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None,        interim_callback: Optional[Callable[[dict], None]] = None):
+    def evaluate(self, document_chunks: List[Document], k_doc: int = 8, k_kb: int = 2, course_key: str = None, scan_names: Optional[List[str]] = None, previous_evaluation: Optional[Dict] = None, interim_callback: Optional[Callable[[dict], None]] = None):
         """
         Evaluate documents against criteria.
         
@@ -377,12 +363,18 @@ class ContentEvaluator:
             # Run all scans (default behavior)
             scans_to_process = self.criteria_manager.scans
 
+        failed_scans_list = []
+
         for scan in scans_to_process:
             current_scan_name = scan.get("scan")
             criteria = scan.get("criteria", [])
             print(f"[INFO] Starting evaluation for scan: {current_scan_name}")
+            scan_failed = False
 
             for c in criteria:
+                if scan_failed:
+                    break
+
                 rubric_description = self.criteria_manager.get_criterion_description(current_scan_name, c["name"])
                 crit = {
                     "key": f"{current_scan_name}:{c['name']}",
@@ -399,9 +391,33 @@ class ContentEvaluator:
                 # Retrieve KB chunks (vector store only)
                 kb_chunks = self._retrieve_knowledge_base_chunks(search_query, doc_chunks, k_kb)
 
-                # Evaluate criterion, passing course_key, scan_name, criterion_name
-                res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, current_scan_name, crit["name"], previous_evaluation=previous_evaluation)
-                if res:
+                max_retries = 3
+                attempt = 0
+                success = False
+                res = None
+
+                while attempt < max_retries and not success:
+                    attempt += 1
+                    try:
+                        res = self._evaluate_criterion(crit, doc_chunks, kb_chunks, course_key, current_scan_name, crit["name"], previous_evaluation=previous_evaluation)
+                        success = True
+                    except Exception as e:
+                        logger.warning(f"[{course_key}] Criterion '{c['name']}' failed attempt {attempt}/{max_retries}. Error: {e}")
+                        if attempt < max_retries:
+                            time.sleep(2)
+
+                if not success:
+                    logger.error(f"[{course_key}] CRITICAL FAILURE in Scan '{current_scan_name}'...")
+                    scan_failed = True
+                    
+                    failed_scans_list.append(current_scan_name)
+                    
+                    if current_scan_name in self.results:
+                        del self.results[current_scan_name]
+                    
+                    break
+                
+                if success and res:
                     eval_obj = res["evaluation"]
                     shortcomings_with_deductions = [
                         f"{s} {d:.1f}" for s, d in zip(eval_obj.Shortcomings, eval_obj.Deductions)
@@ -422,8 +438,7 @@ class ContentEvaluator:
                     }
                     benchmark_results.append((crit["name"], res["elapsed"], sum(eval_obj.Deductions)))
                 
-                # --- INTERIM CALLBACK LOGIC ---
-                    if interim_callback:
+                    if interim_callback and not scan_failed:
                         try:
                             # 1. Build the 'scan_dict' for the *current scan*
                             scan_dict = {
@@ -464,7 +479,7 @@ class ContentEvaluator:
                             logger.error(f"[{course_key}] Interim callback failed: {e}", exc_info=True)
 
         results_json = self.generate_json_output(scans_processed=scans_to_process)
-        return results_json
+        return results_json, failed_scans_list
 
     def generate_json_output(self, scans_processed: Optional[List[Dict]] = None) -> Dict:
         """Generate consolidated JSON output with evaluations for all scans and criteria."""
@@ -475,6 +490,8 @@ class ContentEvaluator:
 
         for scan in scans_to_iterate:
             scan_name = scan.get("scan")
+            if scan_name not in self.results:
+                continue
             scan_desc = scan.get("description", "")
             scan_dict = {"scan": scan_name, "description": scan_desc, "criteria": []}
 
