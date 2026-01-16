@@ -60,7 +60,6 @@ class EvaluationLifecycleTests(TestCase):
         # 2. Loop through ALL scan types sequentially
         for i, scan_name in enumerate(all_scans):
             # A. Start the scan via API
-            # CORRECCIÓN: Agregamos format='json' para que 'None' pase como 'null' válido
             resp = self.client.post(self.urls['start'], {
                 "course_link": self.module.course_key, 
                 "email": "admin@upb.edu",
@@ -95,7 +94,7 @@ class EvaluationLifecycleTests(TestCase):
         EXPECTED: Partial data removed, Scan=FAILED, Eval=INCOMPLETED.
         """
         scan_type = Scan.ScanType.ASSESSMENT
-        # Here we manually create because we specifically want to test the CALLBACK logic, not the start logic.
+        # Create context manually
         eval_obj = Evaluation.objects.create(
             module=self.module, status=Evaluation.Status.INCOMPLETED, 
             requested_scans=[scan_type], created_at=timezone.now()
@@ -114,7 +113,9 @@ class EvaluationLifecycleTests(TestCase):
         
         # Checks
         self.assertEqual(eval_obj.scans.get(scan_type=scan_type).status, Scan.Status.FAILED)
-        self.assertNotEqual(eval_obj.status, Evaluation.Status.FAILED)
+        
+        # Logic check: Evaluation status should be INCOMPLETED (finished with failures)
+        self.assertEqual(eval_obj.status, Evaluation.Status.INCOMPLETED)
         
         # Check Cleanup
         scans_in_json = [x['scan'] for x in eval_obj.result_json.get('content', []) or []]
@@ -123,7 +124,8 @@ class EvaluationLifecycleTests(TestCase):
     def test_all_scans_mixed_results(self):
         """
         SCENARIO: 'All Scans' requested. A succeeds, B fails.
-        EXPECTED: A=COMPLETED, B=FAILED. Evaluation=IN_PROGRESS.
+        EXPECTED: A=COMPLETED, B=FAILED. 
+        Evaluation should pass from IN_PROGRESS -> INCOMPLETED (because it finished, but not perfectly).
         """
         s_ok, s_fail = Scan.ScanType.ASSESSMENT, Scan.ScanType.MULTIMEDIA
         eval_obj = Evaluation.objects.create(
@@ -141,10 +143,13 @@ class EvaluationLifecycleTests(TestCase):
 
         eval_obj.refresh_from_db()
         
-        # Checks
+        # Checks Scans
         self.assertEqual(eval_obj.scans.get(scan_type=s_ok).status, Scan.Status.COMPLETED)
         self.assertEqual(eval_obj.scans.get(scan_type=s_fail).status, Scan.Status.FAILED)
-        self.assertEqual(eval_obj.status, Evaluation.Status.IN_PROGRESS)
+        
+        # Check Evaluation Status
+        self.assertEqual(eval_obj.status, Evaluation.Status.INCOMPLETED, 
+                         "Status must be INCOMPLETED because not all scans finished successfully.")
         
         # JSON Check
         json_scans = [x['scan'] for x in eval_obj.result_json['content']]
@@ -161,9 +166,13 @@ class EvaluationLifecycleTests(TestCase):
 
         self._send_callback(eval_obj.id, "FAILED", error="System OOM")
 
-        s1.refresh_from_db(); s2.refresh_from_db()
+        s1.refresh_from_db(); s2.refresh_from_db(); eval_obj.refresh_from_db()
+        
         self.assertEqual(s1.status, Scan.Status.FAILED)
         self.assertEqual(s2.status, Scan.Status.COMPLETED)
+        
+        # Since nothing is running anymore, evaluation should close as INCOMPLETED
+        self.assertEqual(eval_obj.status, Evaluation.Status.INCOMPLETED)
 
     def test_snapshot_callback(self):
         """ SCENARIO: Snapshot text is saved. """

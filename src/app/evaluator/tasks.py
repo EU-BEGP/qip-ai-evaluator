@@ -1,11 +1,10 @@
 import logging
 import requests
-import uuid
 from celery import shared_task
 from django.conf import settings
 from pathlib import Path
 import sys
-from typing import Optional, Dict, List, Callable
+from typing import Optional, Dict, List
 
 sys.path.append(str(Path(__file__).parent.parent.parent.resolve()))
 
@@ -26,7 +25,7 @@ GLOBAL_VECTOR_MANAGER = build_knowledge_base_auto()
 load_criteria_auto()
 
 # 3. RAG Neural Network (Very Heavy - PyTorch)
-# We load this once globally to share memory across tasks
+# Load this once globally to share memory across tasks
 GLOBAL_RAG_MODEL = CrossEncoderRAG(model_name="cross-encoder/ms-marco-MiniLM-L6-v2", use_memory_only=True)
 
 logger.info("✅ Shared AI models ready.")
@@ -50,15 +49,12 @@ def run_evaluation_task(self, course_key: str, original_link: str, callback_url:
         logger.info(f"[{log_id}] Using previous evaluation data.")
 
     try:
-        # We create a NEW evaluator instance for this specific task
+        # 1 Create evaluator instance
         evaluator = ContentEvaluator(
             vector_manager=GLOBAL_VECTOR_MANAGER,
             rag_model=GLOBAL_RAG_MODEL
         )
-        # --------------------------------------------
-
         # 2. Load module content (uses the shared vector_manager)
-        # course_key is the Clean Code used for RAG
         docs = evaluator.vector_manager.load_documents([course_key])
         if not docs:
             logger.error(f"[{log_id}] No documents found for course_key '{course_key}'.")
@@ -85,7 +81,7 @@ def run_evaluation_task(self, course_key: str, original_link: str, callback_url:
         )
 
         # 3. Evaluate
-        result_json = evaluator.evaluate(
+        result_json, failed_scans = evaluator.evaluate(
             document_chunks=docs,
             k_doc=10,
             k_kb=5,
@@ -96,9 +92,22 @@ def run_evaluation_task(self, course_key: str, original_link: str, callback_url:
         )
 
         # 4. Evaluation finished, send the FINAL callback
-        logger.info(f"[{log_id}] Evaluation complete. Sending FINAL callback...")
-        send_callback(callback_url, original_link, "COMPLETE", results=result_json, error=None, 
-                      evaluation_id=evaluation_id, qip_user_id=qip_user_id)
+        if result_json and result_json.get('content'):
+            send_callback(callback_url, original_link, "COMPLETE", results=result_json, error=None, 
+                          evaluation_id=evaluation_id, qip_user_id=qip_user_id)
+        if failed_scans:
+            logger.error(f"Sending FAILED callback for scans: {failed_scans}")
+            
+            send_callback(
+                callback_url, 
+                original_link, 
+                "FAILED",
+                results=None,
+                error="Max retries exceeded during processing for Scan",
+                evaluation_id=evaluation_id, 
+                qip_user_id=qip_user_id,
+                scan_names=failed_scans
+            )
         
     except Exception as e:
         logger.error(f"[{log_id}] Evaluation task failed: {e}", exc_info=True)
@@ -170,7 +179,7 @@ def send_interim_callback(callback_url: str, interim_json: dict, course_key: str
         logger.warning(f"[{evaluation_id}] FAILED to send interim callback: {e}")
 
 def send_callback(callback_url: str, course_key: str, status: str, results: Optional[dict], error: Optional[str],
-                  evaluation_id: Optional[str], qip_user_id: Optional[str]):
+                  evaluation_id: Optional[str], qip_user_id: Optional[str], scan_names: Optional[List[str]] = None):
     """
     Used for Final COMPLETE or FAILED status
     """
@@ -184,6 +193,9 @@ def send_callback(callback_url: str, course_key: str, status: str, results: Opti
         evaluation_id=evaluation_id,
         user_id=qip_user_id
     )
+    
+    if scan_names:
+        payload["scan_names"] = scan_names
     
     headers = {
         "Content-Type": "application/json",

@@ -441,6 +441,7 @@ def evaluation_callback(request):
             evaluation.status = Evaluation.Status.COMPLETED
 
         evaluation.save()
+        EvaluationService.check_and_update_status(evaluation)
         return Response({"message": "Completed processed and merged"}, status=status.HTTP_200_OK)
 
     # Scenario D: Failure (Granular & CLEANUP)
@@ -461,7 +462,7 @@ def evaluation_callback(request):
 
         evaluation.error_message = data.get('error', "Unknown error")
         evaluation.save()
-        # Keep evaluation active (IN_PROGRESS/INCOMPLETED) for retries
+        EvaluationService.check_and_update_status(evaluation)
         return Response({"message": "Failure processed (Partial)"}, status=status.HTTP_200_OK)
 
     return Response(status=status.HTTP_400_BAD_REQUEST)
