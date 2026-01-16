@@ -1,3 +1,7 @@
+# Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+# MIT License - See LICENSE file in the root directory
+# Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 from pathlib import Path
 from typing import List, Tuple, Optional
 from langchain.schema import Document

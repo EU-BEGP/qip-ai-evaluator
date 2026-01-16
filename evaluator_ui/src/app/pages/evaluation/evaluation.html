@@ -1,3 +1,7 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
 <mat-tab-group class="mt-2" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
   <mat-tab *ngFor="let scan of scansList; let i = index">
     <ng-template mat-tab-label>

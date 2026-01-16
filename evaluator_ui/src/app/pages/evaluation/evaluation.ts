@@ -1,3 +1,7 @@
+// Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+// MIT License - See LICENSE file in the root directory
+// Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';

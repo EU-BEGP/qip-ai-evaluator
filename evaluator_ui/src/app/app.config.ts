@@ -1,3 +1,7 @@
+// Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+// MIT License - See LICENSE file in the root directory
+// Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZoneChangeDetection, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';

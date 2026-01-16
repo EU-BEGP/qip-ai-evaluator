@@ -1,3 +1,7 @@
+# Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+# MIT License - See LICENSE file in the root directory
+# Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 import torch
 from sentence_transformers import SentenceTransformer
 from langchain.embeddings.base import Embeddings

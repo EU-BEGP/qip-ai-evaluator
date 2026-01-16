@@ -1,3 +1,7 @@
+// Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+// MIT License - See LICENSE file in the root directory
+// Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 import { Component, OnInit } from '@angular/core';
 import { ModuleCardComponent } from '../../components/module-card-component/module-card-component';
 import { EvaluationService } from '../../services/evaluation-service';

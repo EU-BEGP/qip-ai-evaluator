@@ -1,3 +1,7 @@
+# Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+# MIT License - See LICENSE file in the root directory
+# Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 from .base import BaseLLMWrapper
 from .models.ollama_wrapper import OllamaWrapper
 from .models.gemini_wrapper import GeminiWrapper

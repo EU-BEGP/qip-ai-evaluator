@@ -1,3 +1,7 @@
+# Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+# MIT License - See LICENSE file in the root directory
+# Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 from docling.document_converter import DocumentConverter
 from ..document_loader import DocumentLoader
 from ..text_splitter import DocumentSplitter

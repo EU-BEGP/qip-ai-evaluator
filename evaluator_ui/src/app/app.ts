@@ -1,3 +1,7 @@
+// Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+// MIT License - See LICENSE file in the root directory
+// Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { LoaderComponent } from './components/loader-component/loader-component';

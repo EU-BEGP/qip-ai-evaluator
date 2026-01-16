@@ -1,3 +1,7 @@
+// Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+// MIT License - See LICENSE file in the root directory
+// Sebastian Itamari, Santiago Almancy, Alex Villazon
+
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, finalize, interval, Observable, scan, switchMap, takeWhile, tap, throwError } from 'rxjs';
