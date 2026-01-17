@@ -1,4 +1,4 @@
-# EvaluatorUi
+# Evaluator UI
 
 This is an Angular project that provides an User Interface for the QIP AI Evaluator.
 
