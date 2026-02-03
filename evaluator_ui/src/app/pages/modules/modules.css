@@ -4,15 +4,6 @@ MIT License - See LICENSE file in the root directory
 Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
-.evaluation-modal {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
 .modules-container {
   display: flex;
   flex-wrap: wrap;
@@ -30,10 +21,6 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   justify-content: flex-end;
 }
 
-.evaluation-card {
-  width: 520px;
-}
-
 .space {
   margin: 48px;
 }
@@ -45,10 +32,6 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 
   .new-eval-button {
     justify-content: center;
-  }
-
-  .evaluation-card {
-    max-width: 90vw; 
   }
 
   .space {

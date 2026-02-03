@@ -6,9 +6,9 @@
   <button mat-raised-button color="primary" (click)="openNewEvalModal()">+ New Evaluation</button>
 </div>
 
-<div *ngIf="showNewEvalModal" class="modal-backdrop bg-dark bg-opacity-50 evaluation-modal">
-  <div class="card p-4 evaluation-card">
-    <h5 class="mb-3">New Evaluation</h5>
+
+  <!--<div class="card p-4 evaluation-card">
+    <h5 class="mb-3">Verify Metadata</h5>
     <form [formGroup]="newEvalForm" (ngSubmit)="evaluateNew()" class="p-0">
       <mat-form-field appearance="fill" class="w-100">
         <mat-label>Course Link</mat-label>
@@ -18,27 +18,19 @@
         </mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="fill" class="w-100">
-        <mat-label>Scan</mat-label>
-        <mat-select formControlName="scanName">
-          <mat-option *ngFor="let scan of scans" [value]="scan">{{ scan }}</mat-option>
-        </mat-select>
-        <mat-error *ngIf="scanNameControl.invalid">
-          You must select a scan.
-        </mat-error>
-      </mat-form-field>
+      <app-metadata-status-component *ngFor="let item of metadata" [title]="item.title" [status]="item.status" [description]="item.description" class="mb-4"></app-metadata-status-component>
 
       <div class="d-flex justify-content-end gap-2 mt-3">
-        <button mat-stroked-button (click)="closeNewEvalModal()">Cancel</button>
+        <button mat-stroked-button (click)="closeNewEvalModal()" type="button">Cancel</button>
         <button mat-raised-button color="primary" type="submit">Evaluate</button>
       </div>
     </form>
-  </div>
-</div>
+  </div>-->
+<app-new-evaluation-modal-component *ngIf="showNewEvalModal" (closeModalEvent)="closeNewEvalModal()"></app-new-evaluation-modal-component>
 
 <div class="modules-container space d-flex flex-wrap justify-content-center gap-5">
   <div *ngFor="let module of modules; let i = index" class="position-relative">
-    <app-module-card-component [data]="module" (onClick)="onClickCard($event, i)"(onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"></app-module-card-component>
+    <app-module-card-component [data]="module" (onClick)="onClickCard($event, i)" (onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"></app-module-card-component>
     <app-evaluation-list-component [evaluationList]="evaluationListByIndex[i]" (selectEvaluation)="onSelectEvaluation($event)" *ngIf="openCardIndex === i"></app-evaluation-list-component>
   </div>
 </div>

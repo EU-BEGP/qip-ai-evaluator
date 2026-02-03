@@ -1,0 +1,17 @@
+/*
+Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+MIT License - See LICENSE file in the root directory
+Sebastian Itamari, Santiago Almancy, Alex Villazon
+*/
+
+.alert-container {
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.status-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+  line-height: 18px;
+}
