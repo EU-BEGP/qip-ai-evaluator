@@ -21,6 +21,20 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   overflow-y: auto; 
 }
 
+.title {
+  font-size: 20px !important;
+}
+
+.caption {
+  font-size: 14px;
+}
+
+a {
+  color: #1933c4 !important;
+  text-decoration: none;
+}
+
+
 @media screen and (max-width: 768px) {
   .card {
     width: auto;

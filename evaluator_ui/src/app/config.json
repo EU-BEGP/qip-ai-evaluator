@@ -4,17 +4,19 @@
     "acronym": "UPB",
     "name": "Universidad Privada Boliviana"
   },
+  "registerLink": "https://eubbc-digital.upb.edu/booking/access",
   "time": {
     "notificationPolling": 3,
     "evaluationPolling": 5
   },
   "api": {
-    "baseUrl": "https://eu-begp.upb.edu/evaluator/api/",
+    "baseUrl": "http://localhost:8000/api/",
     "users": {
       "login": "users/auth/login/"
     },
     "evaluation": {
       "evaluate": "evaluations/evaluate/",
+      "verifyMetadata": "evaluations/verify_metadata/",
       "list": "evaluations/list_evaluations/",
       "detailModule": "evaluations/evaluation_detail/module/{id}/",
       "detailScan": "evaluations/evaluation_detail/scan/{id}/",

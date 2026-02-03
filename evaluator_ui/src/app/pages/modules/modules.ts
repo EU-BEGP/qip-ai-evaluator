@@ -17,6 +17,9 @@ import { StorageService } from '../../services/storage-service';
 import { MatIconModule } from '@angular/material/icon';
 import { EvaluationListComponent } from '../../components/evaluation-list-component/evaluation-list-component';
 import { ToastrService } from 'ngx-toastr';
+import { MetadataStatusComponent } from '../../components/metadata-status-component/metadata-status-component';
+import { MetadataItem } from '../../interfaces/metadata-item';
+import { NewEvaluationModalComponent } from '../../components/new-evaluation-modal-component/new-evaluation-modal-component';
 
 @Component({
   selector: 'app-modules',
@@ -29,13 +32,13 @@ import { ToastrService } from 'ngx-toastr';
     FormsModule,
     MatInputModule,
     MatButtonModule,
-    EvaluationListComponent
+    EvaluationListComponent,
+    NewEvaluationModalComponent
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',
 })
 export class Modules implements OnInit {
-  newEvalForm!: FormGroup;
   modules: any[] = [];
   email: string = '';
   openCardIndex: number | null = null;
@@ -46,31 +49,17 @@ export class Modules implements OnInit {
 
   constructor(
     private evaluationService: EvaluationService,
-    private router: Router,
-    private fb: FormBuilder
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.email = localStorage.getItem('accountEmail') || '';
-
-    this.newEvalForm = this.fb.group({
-      courseLink: [{ value: '', disabled: false }, Validators.required],
-      scanName: ['', Validators.required]
-    });
 
     this.evaluationService.getModules(this.email).subscribe({
       next: (response) => {
         this.modules = response;
       }
     });
-  }
-
-  get courseLinkControl() {
-    return this.newEvalForm.controls['courseLink'];
-  }
-
-  get scanNameControl() {
-    return this.newEvalForm.controls['scanName'];
   }
 
   onClickCard(link: string, index: number) {
@@ -96,16 +85,17 @@ export class Modules implements OnInit {
     });
   }
 
+  ////
   onClickEvaluateUpdated(link: string) {
     this.openNewEvalModal(link);
   }
 
-  openNewEvalModal(courseLink: string = '', scan: string = '') {
-    this.disableCourseLink = !!courseLink;
+  ////
+  openNewEvalModal(courseLink: string = '') {
+    //this.disableCourseLink = !!courseLink;
     this.showNewEvalModal = true;
 
-    const courseControl = this.newEvalForm.get('courseLink');
-    const scanControl = this.newEvalForm.get('scanName');
+    /*const courseControl = this.newEvalForm.get('courseLink');
 
     courseControl!.setValue(courseLink || '');
     if (courseLink) {
@@ -113,23 +103,11 @@ export class Modules implements OnInit {
     }  
     else {
       courseControl!.enable();
-    }
-  
-    scanControl!.setValue(scan || '');
+    }*/
   }
 
   closeNewEvalModal() {
     this.showNewEvalModal = false;
-    const courseControl = this.newEvalForm.get('courseLink');
-    courseControl!.enable();
-    this.newEvalForm.reset();
-  }
-
-  evaluateNew() {
-    if (this.newEvalForm.valid) {
-      this.evaluate();
-      this.closeNewEvalModal();
-    }
   }
 
   onSelectEvaluation(item: any) {
@@ -137,28 +115,6 @@ export class Modules implements OnInit {
     this.openCardIndex = null;
     this.router.navigate(['/evaluation', item.id], {
       queryParams: { scan: 'All Scans' }
-    });
-  }
-
-  evaluate(): void {
-    const courseLink = this.newEvalForm.get('courseLink')?.value;
-    const scanName = this.newEvalForm.get('scanName')?.value;
-
-    const scanRequest: ScanRequest = { 
-      course_link: courseLink,
-      email: this.email,
-      scan_name: scanName
-    }
-
-    this.evaluationService.evaluate(scanRequest).subscribe({
-      next: (response) => {
-        this.router.navigate(['/evaluation', response.body.evaluation_id], {
-          queryParams: { scan: scanRequest.scan_name }
-        });
-      },
-      error: (error) => {
-        console.error('Evaluation error:', error);
-      }
     });
   }
 }

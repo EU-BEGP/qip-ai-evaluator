@@ -1,0 +1,16 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<div class="alert alert-container" [ngClass]="getAlertClass()" role="alert" (click)="toggleExpand()">
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-1">
+      <mat-icon class="status-icon">{{ getStatusIcon() }}</mat-icon>
+      {{title}}
+    </div>
+    <span class="badge" [ngClass]="getBadgeClass()">{{status}}</span>
+  </div>
+  <div *ngIf="expanded" class="mt-1">
+    {{description}}
+  </div>
+</div>

@@ -33,6 +33,27 @@ export class EvaluationService {
     };
   }
 
+  verifyMetadata(moduleLink: string, loader: boolean = false): Observable<any> {
+    let URL = `${config.api.baseUrl}${config.api.evaluation.verifyMetadata}`;
+    const body = { moduleLink: moduleLink };
+    
+    if (loader) {
+      this.loaderService.show();
+    }
+
+    return this.http.post(URL, body, this.httpOptions).pipe(
+      catchError((err) => {
+        this.toastr.error('Could not verify metadata', 'Error');
+        return throwError(() => err);
+      }),
+      finalize(() => {
+        if (loader) {
+          this.loaderService.hide();
+        }
+      })
+    );
+  }
+
   evaluate(scanRequest: ScanRequest): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
     const body = scanRequest;

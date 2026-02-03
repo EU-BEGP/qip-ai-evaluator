@@ -1,0 +1,53 @@
+/*
+Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+MIT License - See LICENSE file in the root directory
+Sebastian Itamari, Santiago Almancy, Alex Villazon
+*/
+
+.evaluation-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.evaluation-card {
+  width: 620px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.evaluation-card.expanded {
+  width: 90vw;
+}
+
+.metadata-column {
+  flex: 1;
+}
+
+.iframe-column {
+  flex: 1;
+}
+
+.course-frame {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  height: auto;
+  border: none;
+}
+
+.content-container {
+  display: flex;
+}
+
+@media screen and (max-width: 768px) {
+  .evaluation-card {
+    max-width: 90vw; 
+  }
+
+  .iframe-column {
+    display: none;
+  }
+}

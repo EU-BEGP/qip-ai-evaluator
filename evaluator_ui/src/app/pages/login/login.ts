@@ -15,6 +15,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth-service';
 import { AccountCredentials } from '../../interfaces/account-credentials';
 import { ToastrService } from 'ngx-toastr';
+import config from '../../config.json'
 
 @Component({
   selector: 'app-login',
@@ -35,6 +36,7 @@ import { ToastrService } from 'ngx-toastr';
 export class LoginComponent {
   hide: boolean = true;
   loginForm!: FormGroup;
+  registerLink: string = config.registerLink;
 
   constructor(
     private authService: AuthService,
