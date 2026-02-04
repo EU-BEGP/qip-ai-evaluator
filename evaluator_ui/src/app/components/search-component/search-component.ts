@@ -21,6 +21,7 @@ import { AlertComponent } from '../alert-component/alert-component';
 import { EvaluationResultComponent } from '../evaluation-result/evaluation-result';
 import { EvaluationProgressBarComponent } from '../evaluation-progress-bar-component/evaluation-progress-bar-component';
 import { EvaluationProgressDotsComponent } from '../evaluation-progress-dots-component/evaluation-progress-dots-component';
+import { Scan } from '../../interfaces/scan';
 
 @Component({
   selector: 'app-search-component',
@@ -45,9 +46,8 @@ import { EvaluationProgressDotsComponent } from '../evaluation-progress-dots-com
   styleUrl: './search-component.css',
 })
 export class SearchComponent implements OnInit, DoCheck {
-  @Input() disableEvaluateButton!: boolean;
   @Input() linkModule!: string;
-  @Input() scanInformation!: any;
+  @Input() scanInformation!: Scan;
   @Output() startPolling = new EventEmitter<{ scan: ScanItem, refresh: boolean }>();
   @Output() downloadEvent = new EventEmitter<void>();
 
@@ -59,7 +59,6 @@ export class SearchComponent implements OnInit, DoCheck {
   codeControl = new FormControl('', Validators.required);
   evaluationList: any[] = [];
   selectedTabIndex = 0;
-  download: boolean = false;
   isEvaluating: boolean = false;
   isFinished: boolean = false;
   message: string = 'This evaluation belongs to a previous module version. Please start a new evaluation to continue.';
@@ -76,7 +75,6 @@ export class SearchComponent implements OnInit, DoCheck {
 
     this.isEvaluating = (this.scanInformation.status === 'Creating' || this.scanInformation.status === 'In Progress') && this.scanInformation.evaluable === false;
     this.isFinished = this.scanInformation.status === 'Completed';
-    this.download = this.scanInformation.status === 'Completed' && this.scanInformation.name === 'All Scans';
   }
 
   ngDoCheck(): void {
@@ -109,8 +107,8 @@ export class SearchComponent implements OnInit, DoCheck {
     this.isLoading = true;
 
     const request$ = this.tab === 'All Scans'
-      ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id, true)
-      : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id, true);
+      ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id!, true)
+      : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id!, true);
 
     request$.subscribe({
       next: (response) => {
@@ -122,9 +120,5 @@ export class SearchComponent implements OnInit, DoCheck {
         this.isLoading = false;
       }
     });
-  }
-
-  downloadPDF(): void {
-    this.downloadEvent.emit();
   }
 }

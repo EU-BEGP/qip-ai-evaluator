@@ -4,45 +4,12 @@ MIT License - See LICENSE file in the root directory
 Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
-.evaluation-table {
-  width: 100%;
-  min-width: 940px;
-  table-layout: fixed;
-  border-collapse: collapse;
-}
-
 .evaluation-container {
   min-height: 100px;
 }
 
-.evaluation-table th,
-.evaluation-table td {
-  border-left: 1px solid #dee2e6;
-  border-right: 1px solid #dee2e6;
-  padding: 10px;
-  vertical-align: top;
-  overflow: hidden;
-  word-wrap: break-word;
-}
-
-.evaluation-table thead th {
-  border-top: 1px solid #dee2e6;
-  border-bottom: 1px solid #dee2e6;
-  background: #f8f9fa;
-  text-align: left;
-}
-
-.evaluation-table td .ps-3 {
-  margin: 0;
-  padding-left: 1rem;
-}
-
-.evaluation-table td.text-center {
-  text-align: center;
-}
-
 .space-top {
-  margin-top: 48px;
+  margin-top: 36px;
 }
 
 .ai-container {

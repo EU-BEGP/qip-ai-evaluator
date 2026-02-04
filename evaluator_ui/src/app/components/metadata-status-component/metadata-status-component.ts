@@ -23,17 +23,17 @@ export class MetadataStatusComponent {
   expanded: boolean = false;
 
   private readonly statusConfig: Record<string, { icon: string; badge: string; alert: string }> = {
-    Good: {
+    GOOD: {
       icon: 'check_circle',
       badge: 'bg-success',
       alert: 'alert-success',
     },
-    Critical: {
+    CRITICAL: {
       icon: 'error',
       badge: 'bg-danger',
       alert: 'alert-danger',
     },
-    Missing: {
+    MISSING: {
       icon: 'warning',
       badge: 'bg-warning',
       alert: 'alert-warning',

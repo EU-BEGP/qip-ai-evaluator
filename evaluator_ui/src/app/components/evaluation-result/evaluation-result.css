@@ -17,7 +17,48 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   justify-content: center;
   align-items: flex-start;
   flex-direction: column;
-  overflow-x: scroll;
+  overflow-x: auto;
+}
+
+.evaluation-table {
+  width: 100%;
+  min-width: 840px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
+  background-color: #fff;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.evaluation-table thead th {
+  background: #3F51B5;
+  color: #ffffff;
+  font-weight: 600;
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  white-space: nowrap;
+}
+
+.evaluation-table td {
+  padding: 12px;
+  vertical-align: top;
+  color: #2c2c2c;
+  line-height: 1.5;
+  border-bottom: 1px solid #e9ecef;
+  word-break: break-word;
+}
+
+.evaluation-table th,
+.evaluation-table td {
+  border-left: none;
+  border-right: none;
+}
+
+.evaluation-table tbody tr:nth-child(even) {
+  background-color: #f8f9fc;
 }
 
 @media screen and (max-width: 1000px) {

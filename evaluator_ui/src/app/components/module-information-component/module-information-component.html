@@ -1,0 +1,9 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<div class="d-flex flex-column align-items-center justify-content-start m-0 p-0 evaluation-container">
+  <button class="text-center space-top" mat-raised-button color="primary" *ngIf="download" (click)="downloadPDF()">Download PDF</button>
+  
+  <app-module-results-component class="mt-4 align-self-start"></app-module-results-component>
+</div>
