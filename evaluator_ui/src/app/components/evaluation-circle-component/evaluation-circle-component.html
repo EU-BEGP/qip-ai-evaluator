@@ -8,13 +8,13 @@
   </div>
 
   <ngx-gauge [type]="'semi'"
-            [value]="obtained" 
-            [min]="0"
-            [max]="max"
-            [thresholds]="thresholdConfig"
-            [duration]="400"
-            [size]="small ? 120 : 200"
-            [thick]="small ? 8 : 16">
+    [value]="obtained" 
+    [min]="0"
+    [max]="max"
+    [thresholds]="thresholdConfig"
+    [duration]="400"
+    [size]="small ? 120 : 200"
+    [thick]="small ? 8 : 16">
   </ngx-gauge>
 
   <div class="circle-text" *ngIf="label">

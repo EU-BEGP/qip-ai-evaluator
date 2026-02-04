@@ -19,10 +19,16 @@
 
     <app-search-component 
       [scanInformation]="scan"
-      [disableEvaluateButton]="disableEvaluateButton"
       [linkModule]="linkModule"
       (startPolling)="startPolling($event)"
+      *ngIf="scan.name !== 'All Scans'"
+    ></app-search-component>
+
+    <app-module-information-component
+      [scanInformation]="scan"
+      [scanList]="scansList"
       (downloadEvent)="download()"
-    />
+      *ngIf="scan.name === 'All Scans'"
+    ></app-module-information-component>
   </mat-tab>
 </mat-tab-group>
