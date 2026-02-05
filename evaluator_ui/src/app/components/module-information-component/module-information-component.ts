@@ -7,18 +7,21 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { Scan } from '../../interfaces/scan';
 import { ModuleResultsComponent } from '../module-results-component/module-results-component';
+import { ModuleDetailComponent } from '../module-detail-component/module-detail-component';
 
 @Component({
   selector: 'app-module-information-component',
   imports: [
     MatButtonModule,
     CommonModule,
-    ModuleResultsComponent
-  ],
+    ModuleResultsComponent,
+    ModuleDetailComponent
+],
   templateUrl: './module-information-component.html',
   styleUrl: './module-information-component.css',
 })
 export class ModuleInformationComponent implements OnInit{
+  @Input() evaluationId!: string;
   @Input() scanInformation!: Scan;
   @Input() scanList!: Scan[];
   @Output() downloadEvent = new EventEmitter<void>();
@@ -26,7 +29,6 @@ export class ModuleInformationComponent implements OnInit{
 
   ngOnInit(): void {
     this.download = this.scanInformation.status === 'Completed';
-    console.log(this.scanInformation);
   }
 
   downloadPDF(): void {

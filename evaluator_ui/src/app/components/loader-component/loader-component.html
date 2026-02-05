@@ -2,6 +2,8 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<div class="loader-overlay" *ngIf="loaderService.loading$ | async">
-  <div class="spinner"></div>
-</div>
+@if(loaderService.loading$ | async) {
+  <div class="loader-overlay">
+    <div class="spinner"></div>
+  </div>
+}

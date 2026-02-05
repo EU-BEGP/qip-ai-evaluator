@@ -4,12 +4,13 @@
 
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import { RouterLink } from "@angular/router";
 
 @Component({
   selector: 'app-evaluation-result-component',
   imports: [
     CommonModule
-  ],
+],
   templateUrl: './evaluation-result.html',
   styleUrl: './evaluation-result.css',
 })

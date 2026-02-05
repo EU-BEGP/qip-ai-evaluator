@@ -2,14 +2,38 @@
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-import { Component } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
+import { Scan } from '../../interfaces/scan';
+import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
+import { RouterLink } from "@angular/router";
+import { EvaluationService } from '../../services/evaluation-service';
 
 @Component({
   selector: 'app-module-detail-component',
-  imports: [],
+  imports: [
+    EvaluationCircleComponent
+],
   templateUrl: './module-detail-component.html',
   styleUrl: './module-detail-component.css',
 })
-export class ModuleDetailComponent {
+export class ModuleDetailComponent implements OnInit {
+  testData: any = null;
 
+  @Input() scanInformation!: Scan;
+  @Input() evaluationId!: string;
+
+  constructor(
+    private evaluationService: EvaluationService,
+  ) {}
+
+  ngOnInit(): void {
+    this.evaluationService.getBasicInformation(this.evaluationId).subscribe({
+      next: (response) => {
+        this.testData = response;
+      },
+      error: (error) => {
+        console.error('Error fetching basic information:', error);
+      }
+    })
+  }
 }

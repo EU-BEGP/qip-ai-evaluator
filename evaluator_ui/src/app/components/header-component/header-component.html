@@ -6,7 +6,7 @@
   <div id="main-label" (click)="navigateToHome()" style="cursor: pointer;">
     <div id="logo-title-group">
       <img id="logo" src="logo.png" alt="logo" width="28px" class="me-2 pb-1"/>
-      <span id="navbar-title">QIP AI Evaluator</span>
+      <span id="navbar-title">EEDA QIP V2.0</span>
     </div>
   </div>
 
@@ -14,9 +14,12 @@
 
   <button mat-icon-button aria-label="Notifications" class="me-1 notifications-button" (click)="navigateToNotifications()">
     <mat-icon class="bell">notifications</mat-icon>
-    <span class="badge" *ngIf="notificationService.unreadCount() > 0">
-      {{ notificationService.unreadCount() }}
-    </span>
+
+    @if(notificationService.unreadCount() > 0) {
+      <span class="badge">
+        {{ notificationService.unreadCount() }}
+      </span>
+    }
   </button>
 
   <button mat-button aria-label="Logout icon" (click)="logout()">

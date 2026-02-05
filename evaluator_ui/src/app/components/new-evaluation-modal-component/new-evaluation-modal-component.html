@@ -10,32 +10,41 @@
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Course Link</mat-label>
           <input matInput formControlName="courseLink" placeholder="https://time.learnify.se/l/show.html#att/OYJPG">
-          <mat-error *ngIf="courseLinkControl.invalid">
-            You must enter a course link.
-          </mat-error>
+
+          @if(courseLinkControl.invalid) {
+            <mat-error>
+              You must enter a course link.
+            </mat-error>
+          }
+
         </mat-form-field>
         <button mat-raised-button color="primary" type="button" (click)="verifyMetadata()">Verify</button>
       </div>
 
-      <div class="d-flex gap-4 content-container">
-        <div class="metadata-column">
-          <app-metadata-status-component
-            *ngFor="let item of metadata"
-            [title]="item.title"
-            [status]="item.status"
-            [description]="item.description"
-            class="mb-4">
-          </app-metadata-status-component>
-        </div>
+      @if(metadata.length > 0) {
+        <div class="d-flex gap-4 content-container">
+          <div class="metadata-column">
+            @for (item of metadata; track $index) {
+              <app-metadata-status-component
+                [title]="item.title"
+                [status]="item.status"
+                [description]="item.description"
+                class="mb-4">
+              </app-metadata-status-component>
+            }
+          </div>
 
-        <div class="iframe-column" *ngIf="safeCourseLink">
-          <iframe
-            [src]="safeCourseLink"
-            class="course-frame"
-            frameborder="0">
-          </iframe>
+          @if(safeCourseLink) {
+            <div class="iframe-column">
+              <iframe
+                [src]="safeCourseLink"
+                class="course-frame"
+                frameborder="0">
+              </iframe>
+            </div>
+          }
         </div>
-      </div>
+      }
 
       <div class="d-flex justify-content-end gap-2 mt-3">
         <button mat-stroked-button (click)="closeNewEvalModal()" type="button">Cancel</button>

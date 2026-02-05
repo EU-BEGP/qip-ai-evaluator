@@ -4,16 +4,20 @@ MIT License - See LICENSE file in the root directory
 Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
+.icon-detail {
+  color: #3F51B5 !important;
+}
+
 .icon-progress {
-  color: red !important;
+  color: rgb(255, 204, 0) !important;
 }
 
 .icon-completed {
   color: rgb(5, 185, 5) !important;
 }
 
-.icon-evaluation {
-  color: rgb(255, 204, 0) !important;
+.icon-missing {
+  color: red !important;
 }
 
 :host ::ng-deep .mat-mdc-tab-header {

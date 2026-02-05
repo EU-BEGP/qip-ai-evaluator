@@ -82,12 +82,14 @@ export class NewEvaluationModalComponent implements OnInit{
     }
     else {
       this.newEvalForm.markAllAsTouched();
+      this.metadata = [];
+      this.verified = false;
     }
   }
 
   checkMetadataStatus(metadata: MetadataItem[]): void {
     if (metadata.length > 0) {
-      this.verified = metadata.every(item => item.status === 'Good');
+      this.verified = metadata.every(item => item.status === 'GOOD');
     } else {
       this.verified = false;
     }

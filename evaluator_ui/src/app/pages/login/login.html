@@ -10,9 +10,13 @@
         <mat-label>Email</mat-label>
         <input matInput placeholder="user@gmail.com" formControlName="email" />
         <mat-icon matSuffix>email</mat-icon>
-        <mat-error *ngIf="emailControl.invalid">
-        {{ getEmailErrorMessage() }}
-        </mat-error>
+
+        @if(emailControl.invalid) {
+          <mat-error>
+            {{ getEmailErrorMessage() }}
+          </mat-error>
+        }
+
       </mat-form-field>
 
       <mat-form-field class="input-field">
@@ -22,9 +26,13 @@
         [attr.aria-pressed]="hide" tabindex="-1">
         <mat-icon>{{ hide ? "visibility_off" : "visibility" }}</mat-icon>
         </button>
-        <mat-error *ngIf="passwordControl.invalid">
-        {{ getPasswordErrorMessage() }}
-        </mat-error>
+
+        @if(passwordControl.invalid) {
+          <mat-error>
+            {{ getPasswordErrorMessage() }}
+          </mat-error>
+        }
+
       </mat-form-field>
 
       <p class="caption mb-0">

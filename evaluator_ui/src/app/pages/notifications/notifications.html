@@ -4,7 +4,13 @@
 
 <div class="notification-container my-5">
   <h3 class="text-center">Notifications</h3>
-  <app-notification-card-component *ngFor="let notification of notifications" [notification]="notification" (read)="read(notification)"></app-notification-card-component>
+  
+  @for(notification of notifications; track notification.id) {
+    <app-notification-card-component [notification]="notification" (read)="read(notification)"></app-notification-card-component>
+  }
+
 </div>
 
-<app-notification-modal-component *ngIf="showNotificationModal" [selectedNotification]="selectedNotification" (close)="closeNotificationModal()" ></app-notification-modal-component>
+@if(showNotificationModal) {
+  <app-notification-modal-component [selectedNotification]="selectedNotification" (close)="closeNotificationModal()" ></app-notification-modal-component>
+}

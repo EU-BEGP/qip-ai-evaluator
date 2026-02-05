@@ -27,7 +27,6 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   border-spacing: 0;
   font-size: 0.95rem;
   background-color: #fff;
-  border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
@@ -36,6 +35,7 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   background: #3F51B5;
   color: #ffffff;
   font-weight: 600;
+  font-size: 1rem;
   text-align: left;
   padding: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.25);
@@ -63,12 +63,12 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 @media screen and (max-width: 1000px) {
   .container {
-    width: 90vw;
+    width: 91vw;
     justify-content: stretch;
   }
 
   .module-title {
-    width: 90vw;
+    width: 91vw;
     min-width: auto;
   }
 }

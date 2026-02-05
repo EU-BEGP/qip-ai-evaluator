@@ -195,4 +195,20 @@ export class EvaluationService {
       })
     );
   }
+
+  getBasicInformation(evuluationId: string): Observable<any> {
+    let URL = `${config.api.baseUrl}${config.api.evaluation.basicInformation}`;
+    URL = URL.replace('{id}', String(evuluationId));
+    this.loaderService.show();
+    
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => {
+        this.loaderService.hide();
+        return throwError(() => err);
+      }),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
+  }  
 }

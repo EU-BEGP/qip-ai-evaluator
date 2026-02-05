@@ -2,4 +2,40 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<p>module-detail-component works!</p>
+@if (testData !== null) {
+  <div class="d-flex flex-column container card rounded-2 p-0 mb-3">
+    <div class="card-header">
+      <p class="title-results my-1"><b>Basic Information</b></p>
+    </div>
+
+    <div class="card-body py-4">
+      @if(scanInformation.status === 'Completed') {
+        <app-evaluation-circle-component [obtained]="scanInformation.scan_average!" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true"></app-evaluation-circle-component>
+      }
+      
+      <h4 class="text-center module-title mt-2">{{ testData.title }}</h4>
+
+      @if(testData.abstract) {
+        <p class="module-text text-center mt-2"><i>{{ testData.abstract }}</i></p>
+      }
+
+      <div class="d-flex flex-wrap justify-content-center mt-3 items-container">
+        <span class="badge bg-secondary p-2">ELH: {{testData.elh}}</span>
+        <span class="badge bg-secondary p-2">EQF: {{testData.eqf}}</span>
+        <span class="badge bg-secondary p-2">SMCTS: {{testData.smcts}}</span>
+      </div>
+
+      <div class="d-flex flex-wrap justify-content-center align-self-center mt-3 items-container">
+        <span class="align-self-center"><b>Keywords:</b></span>
+        @for(keyword of testData.keywords; track $index) {
+          <span class="badge bg-primary p-2">{{keyword}}</span>
+        }
+      </div>
+
+      <div class="mt-3 module-text">
+        <p class="mb-0 text-center"><b>Teachers: </b></p>
+        <p class="mb-0 text-center">{{testData.teachers}}</p>
+      </div>
+    </div>
+  </div>
+}

@@ -3,9 +3,11 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 <div class="circle-wrapper" [ngClass]="small ? 'small' : ''">
-  <div class="circle-title mb-3" *ngIf="title">
-    <b>Average Scan: {{ obtained }}/{{ max }}</b>
-  </div>
+  @if(title) {
+    <div class="circle-title mb-3">
+      <b>Average Scan: {{ obtained }}/{{ max }}</b>
+    </div>
+  }
 
   <ngx-gauge [type]="'semi'"
     [value]="obtained" 
@@ -17,7 +19,9 @@
     [thick]="small ? 8 : 16">
   </ngx-gauge>
 
-  <div class="circle-text" *ngIf="label">
-    <b>{{ label }}</b>
-  </div>
+  @if(label) {
+    <div class="circle-text">
+      <b>{{ label }}</b>
+    </div>
+  }
 </div>
