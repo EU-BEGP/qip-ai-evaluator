@@ -10,7 +10,10 @@
     </div>
     <span class="badge" [ngClass]="getBadgeClass()">{{status}}</span>
   </div>
-  <div *ngIf="expanded" class="mt-1">
-    {{description}}
-  </div>
+
+  @if(expanded) {
+    <div class="mt-1">
+      {{description}}
+    </div>
+  }
 </div>

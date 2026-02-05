@@ -10,5 +10,8 @@
   <p class="mb-0"><b>Last Average:</b> {{ data.last_average }}/{{ data.last_max }}
     <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
   </p>
-  <button mat-flat-button color="primary" class="mb-2" *ngIf="showEvaluateUpdatedButton" (click)="onClickEvaluateUpdatedVersion(data.link, $event)">Evaluate Updated Version</button>
+
+  @if(showEvaluateUpdatedButton) {
+    <button mat-flat-button color="primary" class="mb-2" (click)="onClickEvaluateUpdatedVersion(data.link, $event)">Evaluate Updated Version</button>
+  }
 </mat-card>

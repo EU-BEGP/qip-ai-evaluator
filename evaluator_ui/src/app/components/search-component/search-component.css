@@ -28,11 +28,6 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 }
 
 @media screen and (max-width: 1000px) {
-  .container {
-    width: 90vw;
-    justify-content: stretch;
-  }
-
   .module-title {
     width: 90vw;
     min-width: auto;
