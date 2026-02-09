@@ -1,5 +1,5 @@
 {
-  "version": "1.9.0",
+  "version": "2.0.0",
   "organizationData": {
     "acronym": "UPB",
     "name": "Universidad Privada Boliviana"
@@ -15,6 +15,7 @@
       "login": "users/auth/login/"
     },
     "evaluation": {
+      "create": "evaluations/create_evaluation/",
       "evaluate": "evaluations/evaluate/",
       "verifyMetadata": "evaluations/verify_metadata/",
       "list": "evaluations/list_evaluations/",
@@ -24,7 +25,8 @@
       "statusScan": "evaluations/evaluation_status/scan/{id}/",
       "idsList": "evaluations/evaluation_ids/{id}/",
       "linkModule": "evaluations/link_module/{id}/",
-      "modulesList": "evaluations/modules/{email}/"
+      "modulesList": "evaluations/modules/{email}/",
+      "basicInformation": "evaluations/basic_information/{id}/"
     },
     "notifications": {
       "read": "notifications/read_message/",

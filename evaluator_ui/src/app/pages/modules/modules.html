@@ -10,13 +10,13 @@
   <app-new-evaluation-modal-component (closeModalEvent)="closeNewEvalModal()"></app-new-evaluation-modal-component>
 }
 
-<div class="modules-container space d-flex flex-wrap justify-content-center gap-5">
+<div class="modules-container space justify-content-center gap-5">
   @for (module of modules; let i = $index; track $index) {
     <div class="position-relative">
-      <app-module-card-component [data]="module" (onClick)="onClickCard($event, i)" (onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"></app-module-card-component>
+      <app-module-card-component [data]="module" (onClick)="onClickCard(i)"></app-module-card-component>
 
       @if(openCardIndex === i) {
-        <app-evaluation-list-component [evaluationList]="evaluationListByIndex[i]" (selectEvaluation)="onSelectEvaluation($event)"></app-evaluation-list-component>
+        <app-evaluation-list-component [moduleData]="modules[i]"></app-evaluation-list-component>
       }
     </div>
   }

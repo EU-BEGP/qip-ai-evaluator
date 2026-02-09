@@ -5,6 +5,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-evaluation-list-component',
@@ -16,10 +17,17 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './evaluation-list-component.css',
 })
 export class EvaluationListComponent {
-  @Input() evaluationList: any[] = [];
-  @Output() selectEvaluation = new EventEmitter<any>();
+  @Input() moduleData!: any;
 
-  clickEvaluation(item: any) {
-    this.selectEvaluation.emit(item);
+  constructor(
+    private router: Router
+  ) {}
+
+  onClickSelfAssessment(): void {
+    this.router.navigate(['/self-assessment', this.moduleData.last_evaluation_id]);
+  }
+
+  onClickAIEvaluation(): void {
+    this.router.navigate(['/evaluation', this.moduleData.last_evaluation_id]);
   }
 }

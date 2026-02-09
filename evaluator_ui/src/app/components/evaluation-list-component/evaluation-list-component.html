@@ -4,16 +4,24 @@
 
 <div class="mt-2 history-list">
   <ul class="list-group">
-    @for(item of evaluationList; track item.id) {
-      <li class="list-group-item list-group-item-action evaluation-item" (click)="clickEvaluation(item)">
+    <li class="list-group-item list-group-item-action evaluation-item" (click)="onClickSelfAssessment()">
+      <div class="item-container d-flex">
+        <div>
+          <mat-icon class="icon">fact_check</mat-icon>
+          @if(moduleData.status === "Self assessment") {
+            Continue self-assessment
+          } @else {
+            View self-assessment
+          }
+        </div>
+      </div>
+    </li>
+    @if (moduleData.status !== "Self assessment") {
+      <li class="list-group-item list-group-item-action evaluation-item" (click)="onClickAIEvaluation()">
         <div class="item-container d-flex">
-          <div class="me-2 date-description">
-            <mat-icon class="icon">calendar_month</mat-icon>
-            {{ item.date }}
-          </div>
           <div>
-            <mat-icon class="icon user-description">person</mat-icon>
-            {{ item.user }}
+            <mat-icon class="icon">memory</mat-icon>
+              View AI evaluation
           </div>
         </div>
       </li>

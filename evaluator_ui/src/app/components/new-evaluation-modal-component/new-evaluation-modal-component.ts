@@ -12,6 +12,7 @@ import { CommonModule } from '@angular/common';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-new-evaluation-modal-component',
@@ -34,10 +35,29 @@ export class NewEvaluationModalComponent implements OnInit{
   verified: boolean = false;
   safeCourseLink: SafeResourceUrl | null = null;
 
+    private readonly statusConfig: Record<string, { icon: string; badge: string; alert: string }> = {
+    GOOD: {
+      icon: 'check_circle',
+      badge: 'bg-success',
+      alert: 'alert-success',
+    },
+    CRITICAL: {
+      icon: 'error',
+      badge: 'bg-danger',
+      alert: 'alert-danger',
+    },
+    MISSING: {
+      icon: 'warning',
+      badge: 'bg-warning',
+      alert: 'alert-warning',
+    },
+  };
+
   constructor(
     private evaluationService: EvaluationService,
     private fb: FormBuilder,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -60,7 +80,17 @@ export class NewEvaluationModalComponent implements OnInit{
   }
 
   evaluateNew(): void {
-    console.log("Redirect to self-assessment page");
+    const courseLink = this.newEvalForm.get('courseLink')?.value;
+    const email = localStorage.getItem('accountEmail')!
+    this.evaluationService.createEvaluation(courseLink, email).subscribe({
+      next: (response) => {
+        this.closeNewEvalModal();
+        this.router.navigate(['/self-assessment', response.body.evaluation_id]);
+      },
+      error: (error) => {
+        this.closeNewEvalModal();
+      }
+    });
   }
 
   verifyMetadata(): void {
@@ -94,26 +124,4 @@ export class NewEvaluationModalComponent implements OnInit{
       this.verified = false;
     }
   }
-
-  /*evaluate(): void {
-    const courseLink = this.newEvalForm.get('courseLink')?.value;
-    const scanName = this.newEvalForm.get('scanName')?.value;
-
-    const scanRequest: ScanRequest = { 
-      course_link: courseLink,
-      email: this.email,
-      scan_name: scanName
-    }
-
-    this.evaluationService.evaluate(scanRequest).subscribe({
-      next: (response) => {
-        this.router.navigate(['/evaluation', response.body.evaluation_id], {
-          queryParams: { scan: scanRequest.scan_name }
-        });
-      },
-      error: (error) => {
-        console.error('Evaluation error:', error);
-      }
-    });
-  }*/
 }

@@ -4,6 +4,11 @@ MIT License - See LICENSE file in the root directory
 Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
+.alert {
+  font-size: 0.85rem;
+  padding: 0.16rem 0.6rem;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -14,12 +19,20 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   margin: 0 0 0.75rem 0;
 }
 
+.clickable:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
 .clickable {
   cursor: pointer;
   transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
 }
 
-.clickable:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+@media (min-width: 1000px) {
+  .card-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

@@ -13,8 +13,9 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 .modules-container > div { 
   display: flex; 
   flex-direction: column; 
-  align-items: stretch; 
-  flex: 0 0 540px; 
+  align-items: stretch;
+  align-self: stretch;
+  width: 620px;
 }
 
 .new-eval-button {
