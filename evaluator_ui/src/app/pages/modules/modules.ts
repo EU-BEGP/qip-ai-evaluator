@@ -62,59 +62,20 @@ export class Modules implements OnInit {
     });
   }
 
-  onClickCard(link: string, index: number) {
-    const scanRequest: ScanRequest = { 
-      course_link: link,
-      email: this.email,
-      scan_name: 'All Scans'
-    }
-    
+  onClickCard(index: number) {
     if (this.openCardIndex === index) {
       this.openCardIndex = null;
       return;
     }
 
     this.openCardIndex = index;
-    this.evaluationService.getEvaluationList(scanRequest).subscribe({
-      next: (response) => {
-        let list: any[] = [];
-        list = response.body;
-
-        if (index >= 0) this.evaluationListByIndex[index] = list;
-      }
-    });
   }
 
-  ////
-  onClickEvaluateUpdated(link: string) {
-    this.openNewEvalModal(link);
-  }
-
-  ////
   openNewEvalModal(courseLink: string = '') {
-    //this.disableCourseLink = !!courseLink;
     this.showNewEvalModal = true;
-
-    /*const courseControl = this.newEvalForm.get('courseLink');
-
-    courseControl!.setValue(courseLink || '');
-    if (courseLink) {
-      courseControl!.disable();
-    }  
-    else {
-      courseControl!.enable();
-    }*/
   }
 
   closeNewEvalModal() {
     this.showNewEvalModal = false;
-  }
-
-  onSelectEvaluation(item: any) {
-    if (!item) return;
-    this.openCardIndex = null;
-    this.router.navigate(['/evaluation', item.id], {
-      queryParams: { scan: 'All Scans' }
-    });
   }
 }

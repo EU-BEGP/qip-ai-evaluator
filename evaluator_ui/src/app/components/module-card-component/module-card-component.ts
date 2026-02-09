@@ -21,11 +21,23 @@ import { UtilsService } from '../../services/utils-service';
   styleUrl: './module-card-component.css',
 })
 export class ModuleCardComponent implements OnInit {
-  @Output() onClick = new EventEmitter<string>();
-  @Output() onClickEvaluateUpdated = new EventEmitter<string>();
+  @Output() onClick = new EventEmitter<void>();
   @Input() data!: any;
 
-  showEvaluateUpdatedButton: boolean = false;
+  private readonly statusConfig: Record<string, { badge: string; text: string }> = {
+    "Outdated": {
+      badge: 'alert-danger',
+      text: 'Outdated'
+    },
+    "Updated": {
+      badge: 'alert-success',
+      text: 'Updated'
+    },
+    "Self assessment": {
+      badge: 'alert-primary',
+      text: 'Self assessment'
+    },
+  };
 
   constructor(
     private utilsService: UtilsService
@@ -34,18 +46,17 @@ export class ModuleCardComponent implements OnInit {
   ngOnInit(): void {
     const lastEvaluationDate = this.utilsService.parseDate(this.data.last_evaluation);
     const lastModifyDate = this.utilsService.parseDate(this.data.last_modify);
-
-    if (lastModifyDate > lastEvaluationDate) {
-      this.showEvaluateUpdatedButton = true;
-    }
   }
 
-  onClickCard(link: string) {
-    this.onClick.emit(link);
+  getClass(): string {
+    return this.statusConfig[this.data.status]?.badge;
   }
 
-  onClickEvaluateUpdatedVersion(link: string, event: MouseEvent) { 
-    event.stopPropagation();
-    this.onClickEvaluateUpdated.emit(link);
+  getText(): string {
+    return this.statusConfig[this.data.status]?.text;
+  }
+
+  onClickCard() {
+    this.onClick.emit();
   }
 }

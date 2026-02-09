@@ -73,6 +73,24 @@ export class EvaluationService {
     );
   }
 
+  createEvaluation(courseLink: string, email: string): Observable<any> {
+    const URL = `${config.api.baseUrl}${config.api.evaluation.create}`;
+    const body = { course_link: courseLink, email: email };
+    this.loaderService.show();
+
+    return this.http.post(URL, body, this.httpOptions).pipe(
+      tap((response: any) => {
+        this.toastr.success('Evaluation request successfully submitted.', 'Success');
+        this.loaderService.hide();
+      }),
+      catchError((err) => {
+        this.toastr.error('Something went wrong while creating the evaluation. Please try again later.', 'Error');
+        this.loaderService.hide();
+        return throwError(() => err);
+      })
+    );
+  }
+
   getEvaluationList(scanRequest: ScanRequest): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.list}`;
     const body = scanRequest;
