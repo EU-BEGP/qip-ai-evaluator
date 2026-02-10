@@ -58,6 +58,24 @@ def run_evaluation_task(self, course_key: str, original_link: str, callback_url:
             vector_manager=GLOBAL_VECTOR_MANAGER,
             rag_model=GLOBAL_RAG_MODEL
         )
+        try:
+             last_mod = evaluator.get_module_last_modified(course_key)
+             if not last_mod:
+                 raise ValueError("Learnify returned empty modified date.")
+        except Exception as e:
+             logger.error(f"[{log_id}] Learnify check failed: {e}")
+             send_callback(
+                callback_url=callback_url, 
+                course_key=original_link, 
+                status="FAILED", 
+                results=None, 
+                error=f"Learnify Validation Failed: {str(e)}", 
+                evaluation_id=evaluation_id, 
+                qip_user_id=qip_user_id,
+                scan_names=scan_names
+             )
+             return
+        
         # 2. Load module content (uses the shared vector_manager)
         docs = evaluator.vector_manager.load_documents([course_key])
         if not docs:
@@ -213,3 +231,67 @@ def send_callback(callback_url: str, course_key: str, status: str, results: Opti
     
     except requests.exceptions.RequestException as e:
         logger.error(f"[{evaluation_id}] FAILED to send FINAL callback to {callback_url}: {e}")
+
+@shared_task
+def generate_single_suggestion_task(course_key: str, original_link: str, review_question: str, criteria_description: str, criterion_name: str, 
+                                    callback_url: str, qip_user_id: Optional[str] = None, evaluation_id: Optional[str] = None):
+    """
+    Task to generate a single, chat-like suggestion asynchronously.
+    Includes identity fields (criterion_name, user_id, evaluation_id) in the callback.
+    """
+    logger.info(f"Suggestion task started for {course_key} | Criterion: {criterion_name} | Eval ID: {evaluation_id}")
+    
+    try:
+        # 1. Reuse Global Resources
+        evaluator = ContentEvaluator(
+            vector_manager=GLOBAL_VECTOR_MANAGER,
+            rag_model=GLOBAL_RAG_MODEL
+        )
+
+        # 2. Load Documents
+        docs = evaluator.vector_manager.load_documents([course_key])
+        if not docs:
+            raise ValueError(f"No documents found for {course_key}")
+        
+        # 3. Prepare RAG
+        evaluator.set_documents_for_rag(docs, generate_snapshot=False)
+
+        # 4. Generate Suggestion
+        suggestion_text = evaluator.evaluate_single_suggestion(
+            review_question=review_question, 
+            criteria_description=criteria_description
+        )
+
+        # 5. Send Callback
+        payload = {
+            "status": "SUGGESTION_READY",
+            "course_key": original_link,
+            "criterion_name": criterion_name,
+            "suggestion": suggestion_text,
+            "user_id": qip_user_id,
+            "evaluation_id": evaluation_id
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Callback-Secret": settings.QIP_CALLBACK_SECRET
+        }
+
+        requests.post(callback_url, json=payload, headers=headers, timeout=30)
+        logger.info(f"Suggestion sent to {callback_url} for criterion '{criterion_name}'")
+
+    except Exception as e:
+        logger.error(f"Suggestion task failed: {e}")
+        # 5.1 Send error callback
+        payload = {
+            "status": "SUGGESTION_FAILED",
+            "course_key": original_link,
+            "criterion_name": criterion_name,
+            "error": str(e),
+            "user_id": qip_user_id,
+            "evaluation_id": evaluation_id
+        }
+        try:
+             requests.post(callback_url, json=payload, timeout=30)
+        except:
+             pass

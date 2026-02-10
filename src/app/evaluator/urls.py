@@ -3,11 +3,13 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 from django.urls import path
-from .views import evaluate_module, module_last_modified, get_module_metadata
+from .views import evaluate_module, module_last_modified, get_module_metadata, get_single_suggestion, validate_module_metadata
 
 urlpatterns = [
     # POST /api/evaluate/
     path('evaluate/', evaluate_module, name='evaluate_module'),
     path('module_last_modified/', module_last_modified, name='module_last_modified'),
     path('extract_metadata/', get_module_metadata, name='extract_metadata'),
+    path('suggestion/', get_single_suggestion, name='single_suggestion'),
+    path('metadata/validate/', validate_module_metadata, name='validate_module_metadata'),
 ]
