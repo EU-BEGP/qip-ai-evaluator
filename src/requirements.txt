@@ -40,3 +40,4 @@ numpy==1.26.4
 sqlalchemy==2.0.43
 python-decouple==3.8
 dj-database-url==2.1.0
+rapidfuzz==3.14.3
