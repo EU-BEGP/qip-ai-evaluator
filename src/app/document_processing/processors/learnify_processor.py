@@ -4,11 +4,16 @@
 
 import requests
 import re
+import logging
+import concurrent.futures
 from typing import List, Dict
 from bs4 import BeautifulSoup
 from langchain.schema import Document
 from ..document_loader import DocumentLoader
-import logging
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', datefmt='%H:%M:%S')
 
 class LearnifyProcessor(DocumentLoader):
     """Process content from Learnify API and convert to Document objects"""
@@ -115,32 +120,49 @@ class LearnifyProcessor(DocumentLoader):
         }
 
     def get_clean_content(self, page_tree):
-        """Extract content from all pages with pageType=9"""
-        results = []
-        def recurse(pages):
+        """Extract content from all pages with pageType=9 using Parallel Retrieval """
+        # 1. Collect IDs first
+        target_ids = []
+        def collect(pages):
             for p in pages:
                 if p.get("pageType") == 9:
-                    pid = p["id"]
-                    try:
-                        r = requests.get(f"{self.content_base_url}/{pid}/content")
-                        if r.ok:
-                            data = r.json()
-                            clean_page = self.extract_text_from_content(data)
-                            results.append(clean_page)
-                        else:
-                            logging.warning(f"Failed to fetch content for page {pid}: {r.status_code}")
-                    except Exception as e:
-                        logging.error(f"Error fetching page {pid}: {e}")
+                    target_ids.append(p["id"])
                 elif "pages" in p and p["pages"]:
-                    recurse(p["pages"])
-        recurse(page_tree)
-        return results
+                    collect(p["pages"])
+        collect(page_tree)
+
+        logging.info(f"Downloading {len(target_ids)} pages in PARALLEL")
+
+        # 2. Worker function
+        def fetch_one(pid, session):
+            try:
+                r = session.get(f"{self.content_base_url}/{pid}/content", timeout=15)
+                if r.ok:
+                    return self.extract_text_from_content(r.json())
+                else:
+                    logging.warning(f"Failed to fetch content for page {pid}: {r.status_code}")
+            except Exception as e:
+                logging.error(f"Error fetching page {pid}: {e}")
+            return None
+
+        # 3. Execute Pool
+        results = []
+        with requests.Session() as session:
+            # Configure retries
+            adapter = HTTPAdapter(pool_connections=10, pool_maxsize=10, max_retries=Retry(total=3, backoff_factor=0.5))
+            session.mount("https://", adapter)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                # Map maintains order corresponding to target_ids
+                results = list(executor.map(lambda pid: fetch_one(pid, session), target_ids))
+
+        return [r for r in results if r]
 
     def fetch_module_content(self, course_key):
         """Fetch all module content from Learnify API"""
         structure_url = f"{self.structure_base_url}/0?key={course_key}"
         
-        logging.info(f"🔄 Fetching course structure for key: {course_key}")
+        logging.info(f"Fetching course structure for key: {course_key}")
         response = requests.get(structure_url)
 
         if response.ok:
