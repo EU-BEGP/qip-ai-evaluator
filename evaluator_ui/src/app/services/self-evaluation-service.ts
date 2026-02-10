@@ -24,15 +24,15 @@ export class SelfEvaluationService {
   }
 
   updateCriterion(criterionId: string, result: any): Observable<any> {
-    const url = `${this.base}/scans/criterions/${encodeURIComponent(criterionId)}`;
+    const url = `${this.base}/scans/criterions/${encodeURIComponent(criterionId)}/`;
     return this.http.put<any>(url, { result });
   }
 
-  requestAiSuggestion(criterionId: string): Observable<any> {
-    const url = `${this.base}/scans/criterions/${encodeURIComponent(criterionId)}/ai-suggestion`;
+  requestAiSuggestion(criterionId: string, question: string, description: string): Observable<any> {
+    const url = `${this.base}/scans/criterions/${encodeURIComponent(criterionId)}/ai-suggestion/`;
     return this.http.post<{
       result: string;
-    }>(url, {});
+    }>(url, { question, description});
   }
 
   getAiSuggestion(criterionId: string): Observable<{

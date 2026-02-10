@@ -68,7 +68,7 @@ export class SelfAssessment implements OnInit {
     if (!scan || !scan.id) return;
 
     this.selfEval.getCriterions(String(scan.id)).subscribe({
-      next: (res) => (this.criterions = res),
+      next: (res: any) => {this.criterions = res.criterions || [];},
       error: (err) => console.error('Failed loading criterions', err),
     });
   }
@@ -101,7 +101,7 @@ export class SelfAssessment implements OnInit {
   }) {
     if (!this.currentScan || !criterion) return;
 
-    this.selfEval.requestAiSuggestion(String(criterion.id)).subscribe({
+    this.selfEval.requestAiSuggestion(String(criterion.id), criterion.question, criterion.description ).subscribe({
       next: (res) => {
         const intervalId = setInterval(() => {
           this.selfEval.getAiSuggestion(String(criterion.id)).subscribe({
