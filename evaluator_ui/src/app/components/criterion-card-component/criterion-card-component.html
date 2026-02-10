@@ -1,0 +1,33 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<mat-card class="criterion-card card bg-light px-3 pt-3 pb-2 clickable">
+  <div class="question mb-2">{{ question }}</div>
+
+  <div class="button-row mb-2">
+    <ng-container *ngFor="let b of buttons; let i = index">
+      <button
+        mat-flat-button
+        [color]="b.color || 'primary'"
+        class="me-2"
+        (click)="onButtonClick(b, $event)"
+      >
+        {{ b.label }}
+      </button>
+    </ng-container>
+    <button
+      mat-mini-fab
+      color="accent"
+      class="ai-fab"
+      title="AI suggestion"
+      (click)="onAiClick($event)"
+    >
+      AI
+    </button>
+  </div>
+
+  <hr class="divider" />
+
+  <div class="description mt-2">{{ description }}</div>
+</mat-card>

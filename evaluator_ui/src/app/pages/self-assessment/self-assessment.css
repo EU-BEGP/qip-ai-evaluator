@@ -1,0 +1,59 @@
+.self-assessment .section-title {
+  margin-bottom: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.container {
+  padding: 16px;
+}
+
+.criterion-status .status-badge {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.ai-yes {
+  background-color: #d4edda;
+  color: #155724;
+  border-left: 4px solid #28a745;
+}
+
+.ai-no {
+  background-color: #f8d7da;
+  color: #721c24;
+  border-left: 4px solid #dc3545;
+}
+
+.ai-na {
+  background-color: #e2e3e5;
+  color: #6c757d;
+  border-left: 4px solid #6c757d;
+}
+
+.suggestion-card .explanation {
+  white-space: pre-wrap;
+}
+
+.suggestion-card {
+  animation: fadeInUp 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

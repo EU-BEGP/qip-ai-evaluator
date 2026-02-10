@@ -1,0 +1,84 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<div class="self-assessment container">
+  <h2 class="mb-3">Self Assessment</h2>
+
+  <div class="row">
+    <!-- Left: scans list -->
+    <div class="col-3">
+      <div class="list-group">
+        <button
+          type="button"
+          class="list-group-item list-group-item-action"
+          *ngFor="let scan of scans"
+          [class.active]="currentScan && currentScan.id === scan.id"
+          (click)="selectScan(scan)"
+        >
+          {{ scan.name }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Middle: criterion cards -->
+    <div class="col-6">
+      <ng-container *ngIf="currentScan; else empty">
+        <h3 class="mb-3">{{ currentScan.name }}</h3>
+
+        <div *ngIf="criterions.length === 0" class="alert alert-info">No criterions available for this scan.</div>
+
+        <div *ngFor="let c of criterions" class="d-flex align-items-start mb-3">
+          <div class="grow" (click)="selectCriterion(c)">
+            <app-criterion-card-component
+              [question]="c.question"
+              [description]="c.description"
+              [buttons]="[ { label: 'Yes' }, { label: 'No' }, { label: 'Not applicable' } ]"
+              (buttonClick)="onCriterionAction($event, c)"
+              (aiClick)="onAiSuggestion(c)"
+            ></app-criterion-card-component>
+          </div>
+
+          <div class="ms-3 criterion-status" *ngIf="c.suggestion">
+            <div
+              class="status-badge"
+              [ngClass]="{
+                'ai-yes': c.suggestion.badge === 'yes',
+                'ai-no': c.suggestion.badge === 'no',
+                'ai-na': c.suggestion.badge === 'not applicable'
+              }"
+            >
+              {{ c.suggestion.result }}
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #empty>
+        <div class="alert alert-secondary">Select a scan to view its criterions.</div>
+      </ng-template>
+    </div>
+
+    <!-- Right: AI suggestion panel for selected criterion -->
+    <div class="col-3">
+      <div *ngIf="selectedCriterion && selectedCriterion.suggestion; else hint">
+        <h5 class="mb-2">AI Suggestion</h5>
+        <div
+          class="suggestion-card p-3"
+          [ngClass]="{
+            'ai-yes': selectedCriterion.suggestion.badge === 'yes',
+            'ai-no': selectedCriterion.suggestion.badge === 'no',
+            'ai-na': selectedCriterion.suggestion.badge === 'not applicable'
+          }"
+        >
+          <div class="fw-bold mb-2 text-capitalize">{{ selectedCriterion.suggestion.result }}</div>
+          <div class="explanation">{{ selectedCriterion.suggestion.explanation }}</div>
+        </div>
+      </div>
+
+      <ng-template #hint>
+        <div class="alert alert-light">Select a criterion and request an AI suggestion (click the AI button).</div>
+      </ng-template>
+    </div>
+  </div>
+</div>
