@@ -9,6 +9,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { Modules } from './pages/modules/modules';
 import { Notifications } from './pages/notifications/notifications';
 import { MainLayout } from './pages/main-layout/main-layout';
+import { SelfAssessment } from './pages/self-assessment/self-assessment';
 
 export const routes: Routes = [
   {
@@ -34,7 +35,12 @@ export const routes: Routes = [
         path: 'evaluation/:id', 
         component: EvaluationComponent, 
         canActivate: [AuthGuard] 
-      }
+      },
+      { 
+        path: 'self-assessment/:id', 
+        component: SelfAssessment, 
+        canActivate: [AuthGuard] 
+      },
     ]
   },
   { 

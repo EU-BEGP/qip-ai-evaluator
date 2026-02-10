@@ -94,7 +94,7 @@ export class SelfAssessment implements OnInit {
     id: number;
     question: string;
     description: string;
-    suggestion: {
+    suggestion?: {
       result: string;
       badge: string;
     } | null;
