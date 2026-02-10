@@ -141,7 +141,9 @@ EXTERNAL_LOGIN_API_URL = config('EXTERNAL_LOGIN_API_URL')
 RAG_BASE_URL = config('RAG_BASE_URL').rstrip('/')
 RAG_API_MODULE_MODIFIED_URL = f"{RAG_BASE_URL}/module_last_modified/"
 RAG_API_EVALUATE_URL = f"{RAG_BASE_URL}/evaluate/"
+RAG_API_SUGGESTION_URL = f"{RAG_BASE_URL}/suggestion/"
 RAG_API_METADATA_URL = f"{RAG_BASE_URL}/extract_metadata/"
+RAG_API_VALIDATE_METADATA_URL = f"{RAG_BASE_URL}/metadata/validate/"
 
 RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
 SERVER_PUBLIC_URL = config('SERVER_PUBLIC_URL', default="http://host.docker.internal:8004/")
