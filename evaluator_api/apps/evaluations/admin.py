@@ -3,7 +3,7 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 from django.contrib import admin
-from .models import Module, Evaluation, Scan, UserModule
+from .models import Module, Evaluation, Scan, UserModule, Criterion, Rubric
 
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
@@ -28,3 +28,20 @@ class ScanAdmin(admin.ModelAdmin):
     # Admin for Scans
     list_display = ('id', 'scan_type', 'status', 'evaluation')
     list_filter = ('scan_type', 'status')
+
+@admin.register(Rubric)
+class RubricAdmin(admin.ModelAdmin):
+    # Admin for Rubric
+    list_display = ('id', 'created_at', 'is_active_display')
+    ordering = ('-created_at',)
+    
+    def is_active_display(self, obj):
+        return obj.is_active
+    is_active_display.boolean = True
+    is_active_display.short_description = "Is Active"
+
+@admin.register(Criterion)
+class CriterionAdmin(admin.ModelAdmin):
+    # Admin for Criterion
+    list_display = ('id', 'scan', 'criterion_name', 'status')
+    list_filter = ('scan__scan_type', 'status')
