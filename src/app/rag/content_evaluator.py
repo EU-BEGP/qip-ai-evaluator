@@ -16,6 +16,8 @@ import os
 from retrievers.vector_store_manager import VectorStoreManager
 from .criteria_manager import CriteriaManager
 from retrievers.cross_encoder import CrossEncoderRAG
+from document_processing.metadata_analyzer import MetadataAnalyzer
+from document_processing.processors.learnify_processor import LearnifyProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +46,7 @@ class ContentEvaluator:
             self.rag = CrossEncoderRAG(model_name=cross_encoder_model, use_memory_only=True)
         
         self.llm = get_llm_wrapper(self.cfg)
+        self.metadata_validator = MetadataAnalyzer()
 
     def _load_config(self) -> Dict:
         """Load YAML configuration and substitute env vars."""
@@ -54,7 +57,7 @@ class ContentEvaluator:
         content = content.replace("${HF_TOKEN}", os.environ.get("HF_TOKEN", ""))        
         return yaml.safe_load(content)
 
-    def set_documents_for_rag(self, documents: List[Document], existing_snapshot: Optional[str] = None):
+    def set_documents_for_rag(self, documents: List[Document], existing_snapshot: Optional[str] = None, generate_snapshot: bool = True):
         """Set documents for CrossEncoderRAG and initialize/reuse anchored session memory."""
         self.document_chunks = documents
         self.rag.set_documents(documents)
@@ -62,10 +65,13 @@ class ContentEvaluator:
         if existing_snapshot:
             logger.info("[INFO] Reusing provided document snapshot.")
             self.document_snapshot = existing_snapshot
-        else:
+        elif generate_snapshot:
             logger.info("[INFO] Generating new document snapshot via LLM...")
             snapshot = self._build_document_digest_llm()
             self.document_snapshot = snapshot
+        else:
+            logger.info("[INFO] Snapshot generation skipped.")
+            self.document_snapshot = ""
 
     def _build_document_digest_llm(self) -> str:
         """
@@ -243,6 +249,39 @@ class ContentEvaluator:
         eval_obj = self.llm.run_prompt(prompt, mode="criterion", remember=False)
         elapsed = time.time() - start_time
         return {"evaluation": eval_obj, "elapsed": elapsed}
+    
+    def _get_hybrid_context(self, query: str, n_relevant: int = 5) -> str:
+        """
+        Retrieves context using the 'First 5 + Top N' strategy.
+        Used for single-criterion queries where Snapshot is optional/unavailable.
+        """
+        if not self.document_chunks:
+            return ""
+        total_chunks = len(self.document_chunks)
+        
+        # 1. First 5 chunks, if document is small user everything
+        intro_chunks = self.document_chunks[:5]      
+        if total_chunks <= 5:
+            return "\n\n".join([d.page_content for d in intro_chunks])
+
+        # 2. Relevant chunks from the rest of the document
+        remaining_chunks = self.document_chunks[5:]
+        if remaining_chunks:
+            ranked = self.rag.rank_chunks(query, documents=remaining_chunks, top_k=n_relevant)
+            relevant_chunks = [doc for doc, _, _ in ranked]
+        else:
+            relevant_chunks = []
+
+        # 3. Combine chunks
+        combined_chunks = intro_chunks + relevant_chunks
+        seen = set()
+        final_docs = []
+        for doc in combined_chunks:
+            if doc.page_content not in seen:
+                seen.add(doc.page_content)
+                final_docs.append(doc)
+
+        return "\n\n".join([d.page_content for d in final_docs])
 
     def extract_metadata(self, course_key: str) -> Dict:
         """
@@ -514,3 +553,54 @@ class ContentEvaluator:
             content_list.append(scan_dict)
 
         return {"title": main_title, "content": content_list}
+    
+    def evaluate_single_suggestion(self, review_question: str, criteria_description: str) -> str:
+        """
+        Evaluates a specific REVIEW QUESTION against the document context.
+        Returns a plain text verdict and suggestion.
+        """
+        query = f"{review_question} {criteria_description}"
+        context_text = self._get_hybrid_context(query, n_relevant=7)
+        
+        prompt = (
+            "Role: Strict Quality Assurance Auditor.\n"
+            "Task: Check if the document satisfies the Review Question based on the Guideline.\n\n"
+            "### RULES (Follow strictly):\n"
+            "1. **The FIRST word of your response MUST be**: 'Yes', 'No', or 'Partial'.\n"
+            "2. **Standard:** If the text basically complies, the verdict is YES. Do NOT nitpick or suggest stylistic improvements.\n"
+            "3. **No Fluff:** Do not use phrases like 'Great start', 'Nice job', or 'You have done well'. Be simple and direct.\n"
+            "4. **Structure:**\n"
+            "   - If YES: 'Yes. [One sentence confirming it is present].'\n"
+            "   - If NO/PARTIAL: '[VERDICT]. [State the missing element]. Suggestion: [One specific fix].'\n\n"
+            "### INPUTS:\n"
+            f"**Question:** \"{review_question}\"\n"
+            f"**Guideline:** \"{criteria_description}\"\n"
+            f"**Document Context:**\n{context_text}\n\n"
+            "### AUDIT RESULT:"
+        )
+        try:
+            response_text = self.llm.run_prompt(prompt, mode=None, remember=False)
+            return response_text.strip()
+        except Exception as e:
+            logger.error(f"Single suggestion failed: {e}")
+            return "[ERROR] Could not generate suggestion due to an internal error."
+
+    def validate_metadata(self, course_key: str) -> List[Dict]:
+        """
+        Loads document directly from Learnify API to avoid fragmentation
+        Runs metadata analyzer
+        """
+        processor = LearnifyProcessor()
+        
+        try:
+            module_data = processor.fetch_module_content(course_key)
+            docs = processor.convert_to_documents(module_data)
+            
+            if not docs:
+                return [{"status": "MISSING", "title": "Global", "description": "No content found."}]
+            
+            return self.metadata_validator.analyze(docs)
+            
+        except Exception as e:
+            logger.error(f"Failed to load Learnify module for metadata validation: {e}")
+            return [{"status": "MISSING", "title": "Global", "description": f"Error: {str(e)}"}]
