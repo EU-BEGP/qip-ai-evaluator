@@ -18,13 +18,11 @@ import tempfile
 import os
 import json
 
-from .models import Module, Evaluation, Scan, UserModule
-from apps.notifications.models import Message
-from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer
+from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion
+from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer
 from .services import EvaluationService, RagService
 from evaluation.report_manager import ReportManager 
 from .security import verify_rag_callback 
-from .tasks import fetch_and_update_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -39,38 +37,49 @@ def start_evaluation(request):
     
     data = serializer.validated_data
     user = request.user
-    module = EvaluationService.ensure_module_access(user, data['course_link'])
-    
-    rag_date_str = RagService.get_last_modified(module.course_key)
-    if not rag_date_str:
-        return Response({"error": "Verify module failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    rag_date = isoparse(rag_date_str)
-    if rag_date.tzinfo is None:
-        rag_date = rag_date.replace(tzinfo=datetime.timezone.utc)
+    course_link = data.get('course_link')
 
-    try:
-        evaluation, _ = EvaluationService.resolve_evaluation_instance(
-            module, user, rag_date, data.get('evaluation_id'), data.get('scan_name')
+    # 1. Get module link
+    clean_key = course_link.split('?')[0]
+    module = get_object_or_404(Module, course_key=clean_key)
+
+    # 2. Retrieve Evaluation
+    evaluation = Evaluation.objects.filter(module=module).order_by('-created_at').first()
+    
+    if not evaluation:
+        return Response(
+            {"error": "No evaluation found for this module. Create one first."}, 
+            status=status.HTTP_404_NOT_FOUND
         )
-    except (ValueError, LookupError) as e:
-        status_code = status.HTTP_409_CONFLICT if isinstance(e, ValueError) else status.HTTP_404_NOT_FOUND
-        return Response({"error": str(e)}, status=status_code)
+    if evaluation.status == Evaluation.Status.COMPLETED:
+        return Response(
+            {"error": "Evaluation already completed. Cannot restart."}, 
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
-    scans_to_run, created_objs, is_all = EvaluationService.prepare_scans_and_placeholders(
-        evaluation, data.get('scan_name'), user
+    # 3. Prepare Scans
+    scans_to_run, partial_id, is_all = EvaluationService.prepare_scans_and_placeholders(
+        evaluation, request.data.get('scan_name'), request.user
     )
+    final_scan_id = str(evaluation.id) if is_all else partial_id
 
     if not scans_to_run:
-        ret_id = evaluation.id
-        if not is_all and data.get('scan_name'):
-            try: ret_id = evaluation.scans.get(scan_type=data.get('scan_name')).id
-            except Scan.DoesNotExist: pass
-        return Response({"message": "Cached.", "evaluation_id": evaluation.id, "scan_id": ret_id})
+        return Response({
+            "message": "All requested scans are already completed.",
+            "evaluation_id": str(evaluation.id),
+            "scan_id": final_scan_id
+        }, status=status.HTTP_200_OK)
+    
+    if evaluation.module_last_modified is None:
+        rag_date = RagService.get_last_modified(module.course_key)
+        if rag_date:
+            evaluation.module_last_modified = rag_date
+        evaluation.save(update_fields=['module_last_modified'])
 
+    # 4. Trigger RAG
     payload = {
         "evaluation_id": evaluation.id,
-        "course_key": module.course_key,
+        "course_key": evaluation.module.course_key,
         "callback_url": f"{settings.SERVER_PUBLIC_URL.rstrip('/')}{reverse('evaluation_callback')}",
         "qip_user_id": str(user.id),
         "scan_names": scans_to_run, 
@@ -80,13 +89,16 @@ def start_evaluation(request):
     try:
         RagService.trigger_evaluation(payload)
     except Exception as e:
-        # Only fail specific scans, do NOT set evaluation to FAILED
+        evaluation.status = Evaluation.Status.FAILED
         evaluation.save()
-        Scan.objects.filter(evaluation=evaluation, scan_type__in=scans_to_run).update(status=Scan.Status.FAILED)
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    resp_scan_id = created_objs[0].id if (not is_all and created_objs) else evaluation.id
-    return Response({"message": "Started.", "evaluation_id": evaluation.id, "scan_id": resp_scan_id}, status=status.HTTP_202_ACCEPTED)
+    # 5. Response
+    return Response({
+        "message": "Evaluation started.", 
+        "evaluation_id": str(evaluation.id),
+        "scan_id": final_scan_id
+    }, status=status.HTTP_202_ACCEPTED)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -94,7 +106,7 @@ def get_evaluation_ids(request, pk):
     # Returns status/evaluability of all scans; checks for outdated content
     evaluation = get_object_or_404(Evaluation, pk=pk)
     
-    rag_date_str = RagService.get_last_modified(evaluation.module.course_key)
+    rag_date = RagService.get_last_modified(evaluation.module.course_key)
     is_outdated = False
 
     # 1. Check if this evaluation is the most recent one in the DB
@@ -102,22 +114,18 @@ def get_evaluation_ids(request, pk):
     if latest_local and latest_local.id != evaluation.id:
         is_outdated = True
     # 2. If it is the latest, check if the module content in Learnify is newer
-    elif rag_date_str:
-        try:
-            rag_date = isoparse(rag_date_str)
-            if rag_date.tzinfo is None: rag_date = rag_date.replace(tzinfo=datetime.timezone.utc)
-            if rag_date.replace(second=0, microsecond=0) > evaluation.created_at.replace(second=0, microsecond=0):
-                is_outdated = True
-        except Exception: pass
+    elif rag_date and rag_date.replace(second=0, microsecond=0) > evaluation.created_at.replace(second=0, microsecond=0):
+        is_outdated = True
 
     active_scans = set(evaluation.scans.filter(status__in=[Scan.Status.IN_PROGRESS, Scan.Status.COMPLETED]).values_list('scan_type', flat=True))
-    missing_scans = set(Scan.ScanType.values) - active_scans
-    
+    expected_scans_list = EvaluationService.get_valid_scan_types(evaluation.rubric)
+    expected_scans_set = set(expected_scans_list)
+    missing_scans = expected_scans_set - active_scans
     existing_scans_map = {s.scan_type: s for s in evaluation.scans.all()}
     response_list, global_total, global_count = [], 0.0, 0
     scans_data = []
 
-    for s_type in Scan.ScanType.values:
+    for s_type in expected_scans_list:
         scan = existing_scans_map.get(s_type)
         s_id, s_status, s_avg, s_evaluable = None, "Not Started", None, True
         
@@ -132,7 +140,7 @@ def get_evaluation_ids(request, pk):
         
         if is_outdated: s_evaluable = False
         scans_data.append({
-            "name": s_type, 
+            "name": s_type,
             "id": s_id, 
             "evaluable": s_evaluable, 
             "scan_max": 5.0, 
@@ -230,38 +238,58 @@ def evaluation_status_scan(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_modules(request, email):
-    # Dashboard: returns modules and stats for user
-    if request.user.email != email: return Response(status=status.HTTP_403_FORBIDDEN)
-    
-    modules = EvaluationService.get_user_dashboard_modules(request.user)
-    response_list = []
-    
-    for mod in modules:
-        eval_obj = mod.evaluations.exclude(status=Evaluation.Status.NOT_STARTED).order_by('-created_at').first()
-        rag_date = RagService.get_last_modified(mod.course_key)
+    # Returns the list of modules for a specific user; determines status (Outdated, Updated, Self assessment)
+    user_modules = UserModule.objects.filter(user__email=email).select_related('module')
+    response_data = []
+
+    for um in user_modules:
+        module = um.module
+        last_eval = Evaluation.objects.filter(module=module).order_by('-created_at').first()
         
-        last_date, last_avg = "N/A", 0.0
-        title = eval_obj.title if (eval_obj and eval_obj.title) else (mod.title or "Pending...")
+        last_modify = None
+        last_evaluation_date = None
+        last_avg = None
+        last_eval_id = None
+        status_label = "Updated"
 
-        if eval_obj:
-            last_date = eval_obj.created_at.strftime("%Y-%m-%d %H:%M") 
-            s, c = EvaluationService.calculate_score_from_json(eval_obj.result_json)
-            if c == 0: 
-                for sc in eval_obj.scans.all():
-                    sub_s, sub_c = EvaluationService.calculate_score_from_json(sc.result_json)
-                    s += sub_s; c += sub_c
-            if c > 0: last_avg = round(s/c, 2)
-
-        fmt_rag = "N/A"
+        # 1. Check if this evaluation is outdated based on Learnify date
+        rag_date = RagService.get_last_modified(module.course_key)
         if rag_date:
-            try: fmt_rag = isoparse(rag_date).strftime("%Y-%m-%d %H:%M")
-            except: pass
+            last_modify = rag_date.date().isoformat()
             
-        response_list.append({
-            "title": title, "link": mod.course_key, "last_modify": fmt_rag,
-            "last_evaluation": last_date, "last_average": last_avg, "last_max": 5.0
+            if last_eval:
+                last_eval_id = last_eval.id
+                last_evaluation_date = last_eval.created_at.date().isoformat()
+                
+                # Outdated check
+                if last_eval.module_last_modified:
+                    learnify_ts = rag_date.replace(second=0, microsecond=0)
+                    stored_ts = last_eval.module_last_modified.replace(second=0, microsecond=0)
+                    if learnify_ts > stored_ts:
+                        status_label = "Outdated"
+                
+                # Self assessment check (overrides updated/outdated label)
+                if last_eval.status == Evaluation.Status.SELF_ASSESSMENT:
+                    status_label = "Self assessment"
+                
+                # Calculate average
+                if last_eval.result_json:
+                    total, count = EvaluationService.calculate_score_from_json(last_eval.result_json)
+                    if count > 0:
+                        last_avg = round(total / count, 2)
+
+        response_data.append({
+            "title": module.title,
+            "link": module.course_key,
+            "last_modify": last_modify,
+            "last_evaluation": last_evaluation_date,
+            "last_average": last_avg,
+            "last_max": 5.0,
+            "last_evaluation_id": last_eval_id,
+            "status": status_label
         })
-    return Response(response_list)
+
+    return Response(response_data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -287,7 +315,7 @@ def download_evaluation_pdf(request, pk):
     if not evaluation.metadata_json:
         logger.info(f"Metadata missing for PDF (Eval {pk}). Fetching...")
         try:
-            fetch_and_update_metadata(evaluation)
+            EvaluationService.fetch_and_update_metadata(evaluation)
             evaluation.refresh_from_db()
         except Exception as e:
             logger.error(f"Failed to fetch metadata during PDF generation: {e}")
@@ -341,20 +369,201 @@ def download_evaluation_pdf(request, pk):
             os.remove(tmp_pdf_path)
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_criterion_ai_suggestion(request, criterion_id):
+    # AI suggestion for criterion
+    criterion = get_object_or_404(Criterion, pk=criterion_id)
+    scan = criterion.scan
+    
+    question = request.data.get("question") or request.data.get("review_question")
+    description = request.data.get("description") or request.data.get("criteria_description")
+
+    if not question or not description:
+        return Response({"error": "Missing question or description"}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = {
+        "evaluation_id": scan.evaluation.id,
+        "course_key": scan.evaluation.module.course_key,
+        "review_question": question,
+        "criteria_description": description,
+        "criterion_name": criterion.criterion_name,
+        "callback_url": f"{settings.SERVER_PUBLIC_URL.rstrip('/')}{reverse('evaluation_callback')}",
+        "qip_user_id": str(request.user.id)
+    }
+    data, code = RagService.trigger_single_suggestion(payload)
+    return Response(data, status=code)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def validate_module_metadata(request):
+    # Get and evaluate metadata from module
+    course_key = request.data.get('moduleLink') or request.data.get('course_link')
+    if not course_key:
+        return Response({"error": "moduleLink required"}, status=status.HTTP_400_BAD_REQUEST)
+    data, code = RagService.validate_metadata({"course_key": course_key})
+    return Response(data, status=code)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def create_evaluation(request):
+    # Initialize evaluation, create whole structure
+    course_link = request.data.get('course_link')    
+    if not course_link:
+        return Response({"error": "course_link is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    module = EvaluationService.ensure_module_access(request.user, course_link)
+    try:
+        evaluation, created = EvaluationService.get_or_create_evaluation_structure(module, request.user)
+    except ValueError as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    resp_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+
+    return Response({
+        "message": "Evaluation started.",
+        "evaluation_id": str(evaluation.id)
+    }, status=resp_status)
+    
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_scans(request, module_id=None):
+    # Get scans names, with scan ids if module id included
+    if module_id:
+        module = get_object_or_404(Module, pk=module_id)       
+        latest_eval = Evaluation.objects.filter(module=module).order_by('-created_at').first()
+        
+        if not latest_eval:
+            return Response([])
+        data = [
+            {"id": str(scan.id), "name": scan.scan_type} 
+            for scan in latest_eval.scans.all()
+        ]
+        return Response(data, status=status.HTTP_200_OK)
+    else:
+        rubric = Rubric.objects.first()
+        if not rubric:
+            return Response([], status=status.HTTP_200_OK)
+            
+        data = [{"name": scan_name} for scan_name in rubric.available_scans]
+        return Response(data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_scan_criterions(request, scan_id):
+    # Returns the list of criteria for a specific scan
+    scan = get_object_or_404(Scan, pk=scan_id)
+    criterions = scan.criteria_results.all()
+    serializer = CriterionListSerializer(criterions, many=True)
+    
+    return Response({"criterions": serializer.data}, status=status.HTTP_200_OK)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_criterion_selection(request, criterion_id):
+    # Updates user selection (YES, NO, NOT APPLICABLE)
+    criterion = get_object_or_404(Criterion, pk=criterion_id)
+    
+    serializer = CriterionUpdateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Normalize input to match database choices
+    selection = serializer.validated_data['result'].upper()
+    if "APPLICABLE" in selection:
+        selection = "NOT APPLICABLE"
+        
+    criterion.user_selection = selection
+    criterion.save()
+    
+    return Response({
+        "message": "Selection updated", 
+        "id": criterion.id, 
+        "selection": criterion.user_selection
+    }, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_criterion_result(request, criterion_id):
+    criterion = get_object_or_404(Criterion, pk=criterion_id)
+    return Response({"result": criterion.result}, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_evaluation_basic_info(request, evaluation_id):
+    # Get basic info from Learnify module
+    evaluation = get_object_or_404(Evaluation, pk=evaluation_id)
+    # 1. Check for metadata or ask to rag
+    if not evaluation.metadata_json:
+        logger.info(f"Metadata missing for Basic Info (Eval {evaluation_id}). Fetching...")
+        try:
+            EvaluationService.fetch_and_update_metadata(evaluation)
+            evaluation.refresh_from_db()
+        except Exception as e:
+            logger.error(f"Failed to fetch metadata: {e}")
+
+    # 2. Prepare data
+    meta = evaluation.metadata_json or {}
+    raw_keywords = meta.get('keywords', [])
+    final_keywords = []
+    
+    if isinstance(raw_keywords, str):
+        final_keywords = [k.strip() for k in raw_keywords.split(',') if k.strip()]
+    elif isinstance(raw_keywords, list):
+        final_keywords = raw_keywords
+
+    # 3. Create response
+    response_data = {
+        "elh": meta.get('elh', "N/A"),
+        "eqf": meta.get('eqf', "N/A"),
+        "smcts": meta.get('smcts', "N/A"),
+        "title": meta.get('title') or evaluation.title or evaluation.module.title or "Untitled Module",
+        "abstract": meta.get('abstract', "No abstract available."),
+        "keywords": final_keywords,
+        "teachers": meta.get('teachers', "No teachers information available.")
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
 @verify_rag_callback
 @transaction.atomic
 def evaluation_callback(request):
     # Handles RAG Webhooks.
     data = request.data
+    status_cb = data.get('status')
+    result = data.get('result')
+
     try:
         evaluation = Evaluation.objects.select_for_update().get(id=int(data.get('evaluation_id')))
     except (ValueError, TypeError, Evaluation.DoesNotExist):
         return Response({"message": "Invalid ID"}, status=status.HTTP_200_OK)
 
-    if evaluation.status in [Evaluation.Status.COMPLETED, Evaluation.Status.FAILED]:
-        return Response({"message": "Already finished"}, status=status.HTTP_200_OK)
+    # CASE 1: AI Suggestion (Allowed in any status)
+    if status_cb in ['SUGGESTION_READY', 'SUGGESTION_FAILED']:
+        crit_name = data.get('criterion_name')
+        
+        criterion = Criterion.objects.filter(
+            scan__evaluation=evaluation, 
+            criterion_name=crit_name
+        ).first()
 
-    status_cb, result = data.get('status'), data.get('result')
+        if not criterion:
+            return Response({"message": "Criterion not found in this evaluation"}, status=status.HTTP_404_NOT_FOUND)
+
+        if status_cb == 'SUGGESTION_READY':
+            # Save the suggestion text into the 'result' field
+            criterion.result = data.get('suggestion', '')
+            criterion.save()
+            return Response({"message": "Suggestion saved"}, status=status.HTTP_200_OK)
+
+        elif status_cb == 'SUGGESTION_FAILED':
+            criterion.result = f"Error: {data.get('error', 'Unknown error')}"
+            criterion.save()
+            return Response({"message": "Suggestion failure recorded"}, status=status.HTTP_200_OK)
+
+    # CASE 2: Standard Evaluation Lifecycle
+    if evaluation.status in [Evaluation.Status.COMPLETED]:
+        return Response({"message": "Already finished"}, status=status.HTTP_200_OK)
 
     # Scenario A: Snapshot
     if status_cb == 'SNAPSHOT_CREATED':
@@ -365,88 +574,31 @@ def evaluation_callback(request):
 
     # Scenario B: Interim Progress
     elif status_cb == 'CRITERION_COMPLETE':
-        if not result or 'content' not in result: return Response(status=status.HTTP_400_BAD_REQUEST)
-        try:
-            partial = result['content'][0]; scan_name = partial.get('scan')
-        except: return Response(status=status.HTTP_400_BAD_REQUEST)
+        if not result or 'content' not in result: 
+            return Response(status=status.HTTP_400_BAD_REQUEST)
         
-        Scan.objects.update_or_create(
-            evaluation=evaluation, scan_type=scan_name,
-            defaults={'status': Scan.Status.IN_PROGRESS, 'result_json': result}
-        )
+        scan_data = result['content'][0]
+        s_name = scan_data.get('scan')
+        valid_types = EvaluationService.get_valid_scan_types(evaluation.rubric)
+        
+        if s_name in valid_types:
+            Scan.objects.update_or_create(
+                evaluation=evaluation, scan_type=s_name,
+                defaults={
+                    'status': Scan.Status.IN_PROGRESS,
+                    'result_json': result
+                }
+            )
+            EvaluationService.merge_scan_results(evaluation, [scan_data])
 
-        curr_json = evaluation.result_json or {"title": result.get("title", ""), "content": []}
-        curr_content = curr_json.get("content", [])
-        idx = next((i for i, item in enumerate(curr_content) if item.get('scan') == scan_name), -1)
-        
-        if idx >= 0: curr_content[idx] = partial
-        else: curr_content.append(partial)
-        
-        if result.get('title'): curr_json['title'] = result['title']
-        curr_json['content'] = curr_content
-        evaluation.result_json = curr_json
-        evaluation.save()
         return Response({"message": "Interim merged"}, status=status.HTTP_200_OK)
 
     # Scenario C: Evaluation Finished
     elif status_cb == 'COMPLETE':
         if not result: return Response(status=status.HTTP_400_BAD_REQUEST)
         
-        if result.get('title'):
-            evaluation.title = result['title']
-            if evaluation.module:
-                evaluation.module.title = result['title']
-                evaluation.module.save()
-
-        for scan_data in result.get('content', []):
-            s_name = scan_data.get('scan')
-            Scan.objects.update_or_create(
-                evaluation=evaluation, scan_type=s_name,
-                defaults={
-                    'status': Scan.Status.COMPLETED, 
-                    'result_json': {"title": evaluation.title, "content": [scan_data]}
-                }
-            )
-
-            if evaluation.triggered_by:
-                title_text = evaluation.title or evaluation.module.title or "Module"
-                
-                Message.objects.get_or_create(
-                    user=evaluation.triggered_by, 
-                    evaluation=evaluation, 
-                    scan_type=s_name,
-                    defaults={
-                        "title": f"{s_name} Finished: {title_text}", 
-                        "content": f"The {s_name} has finished successfully for {title_text}.", 
-                        "is_read": False
-                    }
-                )
-
-        current_json = evaluation.result_json or {"title": evaluation.title, "content": []}
-        current_content = current_json.get("content", [])
-        content_map = {item.get('scan'): item for item in current_content}
-
-        new_content_list = result.get('content', [])
-        for new_item in new_content_list:
-            scan_type = new_item.get('scan')
-            content_map[scan_type] = new_item 
-
-        merged_content = list(content_map.values())
-        evaluation.result_json = {
-            "title": evaluation.title,
-            "content": merged_content
-        }
-
-        # Check if ALL possible scans are done.
-        completed_types = set(evaluation.scans.filter(status=Scan.Status.COMPLETED).values_list('scan_type', flat=True))
-        all_types = set(Scan.ScanType.values)
-        
-        if all_types.issubset(completed_types):
-            evaluation.status = Evaluation.Status.COMPLETED
-
-        evaluation.save()
-        EvaluationService.check_and_update_status(evaluation)
-        return Response({"message": "Completed processed and merged"}, status=status.HTTP_200_OK)
+        EvaluationService.handle_evaluation_completion(evaluation, result)
+        return Response({"message": "Completed processed"}, status=status.HTTP_200_OK)
 
     # Scenario D: Failure (Granular & CLEANUP)
     elif status_cb == 'FAILED':

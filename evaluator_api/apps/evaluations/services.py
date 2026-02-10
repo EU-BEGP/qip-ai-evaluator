@@ -6,7 +6,10 @@ import requests
 import logging
 from django.conf import settings
 from django.utils import timezone
-from .models import Module, Evaluation, Scan, UserModule
+from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion
+from apps.notifications.models import Message
+from dateutil.parser import isoparse
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +18,6 @@ class RagService:
     
     @staticmethod
     def get_last_modified(course_key):
-        # Fetches metadata from RAG service
         try:
             response = requests.get(
                 settings.RAG_API_MODULE_MODIFIED_URL,
@@ -23,9 +25,14 @@ class RagService:
                 timeout=900
             )
             response.raise_for_status()
-            return response.json().get('last_modified_date')
-        except requests.exceptions.RequestException as e:
-            logger.error(f"RAG API Error (Last Modified): {e}")
+            date_str = response.json().get('last_modified_date')
+            if not date_str: return None
+            dt = isoparse(date_str)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=datetime.timezone.utc)
+            return dt
+        except Exception as e:
+            logger.error(f"RAG API Error: {e}")
             return None
 
     @staticmethod
@@ -42,9 +49,59 @@ class RagService:
         except requests.exceptions.RequestException as e:
             logger.error(f"RAG API Error (Trigger Evaluation): {e}")
             raise e
+        
+    @staticmethod
+    def trigger_single_suggestion(payload):
+        # Dispatches the suggestion request to RAG. Returns JSON and Status Code.
+        try:
+            response = requests.post(
+                settings.RAG_API_SUGGESTION_URL,
+                json=payload,
+                timeout=60 
+            )
+            return response.json(), response.status_code
+        except requests.exceptions.RequestException as e:
+            logger.error(f"RAG API Error (Trigger Suggestion): {e}")
+            return {"error": "Failed to reach RAG service"}, 503
+        
+    @staticmethod
+    def validate_metadata(payload):
+        # Call to validate metadata fields
+        try:
+            url = getattr(settings, 'RAG_API_VALIDATE_METADATA_URL', None)
+            if not url: return {"error": "Validation URL Config Error"}, 500
+            
+            response = requests.post(url, json=payload, timeout=60)
+            return response.json(), response.status_code
+        except Exception as e:
+            logger.error(f"RAG Validation Error: {e}")
+            return {"error": "RAG Service Unreachable"}, 503
 
 class EvaluationService:
     # Business logic for managing modules and evaluations
+    @staticmethod
+    def fetch_and_update_metadata(evaluation):
+        if evaluation.metadata_json:
+            return 
+        try:
+            url = getattr(settings, 'RAG_API_METADATA_URL', None)
+            if url:
+                response = requests.post(
+                    url,
+                    json={'course_key': evaluation.module.course_key},
+                    timeout=300
+                )
+                response.raise_for_status()
+                evaluation.metadata_json = response.json()
+                evaluation.save(update_fields=['metadata_json'])
+        except Exception as e:
+            logger.error(f"Failed to fetch metadata for evaluation {evaluation.id}: {e}")
+
+    @staticmethod
+    def get_valid_scan_types(rubric=None):
+        if not rubric:
+            rubric = Rubric.objects.first() 
+        return rubric.available_scans if rubric else []
     
     @staticmethod
     def ensure_module_access(user, course_key):
@@ -95,109 +152,219 @@ class EvaluationService:
             followed_by__user=user
         ).order_by('-followed_by__last_accessed')
     
-    @staticmethod
-    def resolve_evaluation_instance(module, user, rag_date, input_id=None, requested_scan_name=None):
-        # Decides whether to reuse an existing evaluation or create new one
-
-        # 1. Case: specific ID provided (Retry/Validate)
-        if input_id:
-            try:
-                target_eval = Evaluation.objects.get(id=input_id, module=module)
-                db_date = target_eval.created_at.replace(second=0, microsecond=0)
-                live_date = rag_date.replace(second=0, microsecond=0)
-
-                if db_date != live_date:
-                    raise ValueError(f"Evaluation outdated. Current: {live_date}, Provided: {db_date}")
-                
-                return target_eval, False
-            except Evaluation.DoesNotExist:
-                raise LookupError("Evaluation ID not found.")
-
-        # 2. Case: Auto-discovery (Cache vs New)
-        cached_eval = EvaluationService.get_cached_evaluation(module, rag_date)
-        if cached_eval:
-            return cached_eval, False
-
-        # 3. Create New
-        initial_scans = [requested_scan_name] if (requested_scan_name and requested_scan_name.lower() != "all scans") else list(Scan.ScanType.values)
-        
-        new_eval = Evaluation.objects.create(
-            module=module,
-            triggered_by=user,
-            status=Evaluation.Status.IN_PROGRESS,
-            requested_scans=initial_scans,
-            created_at=rag_date
-        )
-        return new_eval, True
 
     @staticmethod
     def prepare_scans_and_placeholders(evaluation, requested_scan_name, user):
-        # Determines which scans actually need to run
-
-        # 1. Determine scope
-        if not requested_scan_name or requested_scan_name.lower() == "all scans":
-            scans_scope = list(Scan.ScanType.values)
-            is_all_scans = True
-        else:
-            scans_scope = [requested_scan_name]
-            is_all_scans = False
-
-        # 2. Filter out already completed scans (Delta Logic)
-        existing_scans_set = set(evaluation.scans.exclude(status=Scan.Status.FAILED).values_list('scan_type', flat=True))
-        scans_to_run = [s for s in scans_scope if s not in existing_scans_set]
-
-        if not scans_to_run:
-            return [], [], is_all_scans
-
-        # 3. Update History & Authorship (Last Modified By)
-        current_requested = set(evaluation.requested_scans)
-        current_requested.update(scans_to_run)
-        evaluation.requested_scans = list(current_requested)
-        evaluation.triggered_by = user 
+        active_rubric = evaluation.rubric
+        available_scan_types = active_rubric.available_scans
         
-        # Set Correct Status based on Scope
-        if is_all_scans:
-            evaluation.status = Evaluation.Status.IN_PROGRESS
-        else:
-            evaluation.status = Evaluation.Status.INCOMPLETED
-            
-        evaluation.save()
+        # 1. Normalize name to handle "all scans"
+        scan_name_lower = str(requested_scan_name).lower().strip() if requested_scan_name else ""
+        is_all_scans = (scan_name_lower == 'all scans' or not requested_scan_name)
+        
+        target_scans = available_scan_types if is_all_scans else [requested_scan_name]
 
-        created_objs = []
-        for s_name in scans_to_run:
-            scan_obj, _ = Scan.objects.update_or_create(
+        # 2. Filter completed scans
+        completed_scans = set(Scan.objects.filter(
+            evaluation=evaluation, 
+            scan_type__in=target_scans,
+            status=Scan.Status.COMPLETED
+        ).values_list('scan_type', flat=True))
+
+        scans_to_run = [s for s in target_scans if s not in completed_scans]
+
+        # 3. Handle IDs (Ensure no nulls)
+        partial_scan_id = None
+        if not is_all_scans:
+            scan_obj, _ = Scan.objects.get_or_create(
                 evaluation=evaluation, 
-                scan_type=s_name, 
-                defaults={
-                    'status': Scan.Status.IN_PROGRESS,
-                    'result_json': None
-                }
+                scan_type=requested_scan_name,
+                defaults={'status': Scan.Status.PENDING}
             )
-            created_objs.append(scan_obj)
+            partial_scan_id = str(scan_obj.id)
+        
+        # 4. Status Management Rules
+        if scans_to_run:
+            for stype in scans_to_run:
+                Scan.objects.get_or_create(evaluation=evaluation, scan_type=stype)
+
+            Scan.objects.filter(
+                evaluation=evaluation,
+                scan_type__in=scans_to_run
+            ).update(status=Scan.Status.IN_PROGRESS)
             
-        return scans_to_run, created_objs, is_all_scans
+            evaluation.requested_scans = list(set((evaluation.requested_scans or []) + scans_to_run))
+            
+            # Only All Scans triggers IN_PROGRESS on the evaluation level
+            if is_all_scans:
+                evaluation.status = Evaluation.Status.IN_PROGRESS
+            else:
+                evaluation.status = Evaluation.Status.INCOMPLETED
+            
+            evaluation.triggered_by = user
+            evaluation.save()
+
+        return scans_to_run, partial_scan_id, is_all_scans
+
+    @staticmethod
+    def merge_scan_results(evaluation, new_content_list, save=True):
+        # Centralized logic to merge new scan results into the evaluation JSON
+        current_json = evaluation.result_json or {"title": evaluation.title, "content": []}
+        current_content = current_json.get("content", [])
+        
+        content_map = {item.get('scan'): item for item in current_content}
+
+        for new_item in new_content_list:
+            scan_type = new_item.get('scan')
+            if scan_type:
+                content_map[scan_type] = new_item 
+
+        merged_content = list(content_map.values())
+        
+        # Preserve title logic
+        final_title = evaluation.title
+        if not final_title and current_json.get('title'):
+            final_title = current_json.get('title')
+
+        evaluation.result_json = {
+            "title": final_title,
+            "content": merged_content
+        }
+        
+        if save:
+            evaluation.save()
+
+    @staticmethod
+    def handle_evaluation_completion(evaluation, result_payload):
+        # 1. Update Title if provided
+        if result_payload.get('title'):
+            evaluation.title = result_payload['title']
+            if evaluation.module:
+                evaluation.module.title = result_payload['title']
+                evaluation.module.save()
+
+        # 2. Update ONLY the scans that are actually present in this payload
+        valid_types = EvaluationService.get_valid_scan_types(evaluation.rubric)
+        new_content = result_payload.get('content', [])
+
+        for scan_data in new_content:
+            s_name = scan_data.get('scan')
+            if s_name in valid_types:
+                Scan.objects.update_or_create(
+                    evaluation=evaluation, scan_type=s_name,
+                    defaults={
+                        'status': Scan.Status.COMPLETED,
+                        'result_json': {"title": evaluation.title, "content": [scan_data]}
+                    }
+                )
+                
+                # Notification
+                if evaluation.triggered_by:
+                    title_text = evaluation.title or evaluation.module.title or "Module"
+                    Message.objects.get_or_create(
+                        user=evaluation.triggered_by, 
+                        evaluation=evaluation, 
+                        scan_type=s_name,
+                        defaults={
+                            "title": f"{s_name} Finished: {title_text}", 
+                            "content": f"The {s_name} has finished successfully.", 
+                            "is_read": False
+                        }
+                    )
+
+        # 3. Merge ONLY the new content into the global JSON
+        EvaluationService.merge_scan_results(evaluation, new_content, save=False)
+        EvaluationService.check_and_update_status(evaluation)
 
     @staticmethod
     def check_and_update_status(evaluation):
-        """
-        Checks if all scans have finished (i.e., no scans are IN_PROGRESS).
-        Determines the final state of the Evaluation:
-           - If ALL scans are COMPLETED -> Evaluation.Status.COMPLETED
-           - If some scans FAILED or are missing -> Evaluation.Status.INCOMPLETED
-        """
-        # If there are still scans running, do not touch the status.
-        if evaluation.scans.filter(status=Scan.Status.IN_PROGRESS).exists():
-            return
-
-        # If it reach here, everything has finished (either COMPLETED or FAILED).
+        # Checks if all scans have finished and updates Evaluation status
         completed_types = set(
             evaluation.scans.filter(status=Scan.Status.COMPLETED).values_list('scan_type', flat=True)
         )
-        all_possible_types = set(Scan.ScanType.values)
-
+        all_possible_types = set(EvaluationService.get_valid_scan_types(evaluation.rubric))
         if all_possible_types.issubset(completed_types):
             evaluation.status = Evaluation.Status.COMPLETED
         else:
             evaluation.status = Evaluation.Status.INCOMPLETED
-        
         evaluation.save()
+    
+    @staticmethod
+    def get_or_create_evaluation_structure(module, user):
+        # Initialize evaluation or get last one
+        active_rubric = Rubric.objects.first()
+        if not active_rubric:
+            raise ValueError("No active rubric found.")
+        latest_eval = Evaluation.objects.filter(module=module).order_by('-created_at').first()
+        rag_date = RagService.get_last_modified(module.course_key)
+        should_create_new = False
+
+        if not latest_eval:
+            should_create_new = True
+        else:
+            # Rubric is outdated
+            if latest_eval.status in [Evaluation.Status.NOT_STARTED, Evaluation.Status.SELF_ASSESSMENT]:
+                if latest_eval.rubric != active_rubric:
+                    should_create_new = True
+            
+            # Check if module is outdated
+            else:
+                if rag_date and rag_date.replace(second=0, microsecond=0) > latest_eval.created_at.replace(second=0, microsecond=0):
+                    should_create_new = True
+
+        # Must return last evaluation if other cases do not apply
+        if not should_create_new:
+            return latest_eval, False
+
+        # Create new evaluation
+        evaluation = Evaluation.objects.create(
+            module=module,
+            triggered_by=user,
+            rubric=active_rubric,
+            status=Evaluation.Status.SELF_ASSESSMENT,
+            requested_scans=[], 
+            created_at=timezone.now(),
+            title=module.title or "New Evaluation"
+        )
+
+        # Retrieve metadata for evaluation
+        try:
+            EvaluationService.fetch_and_update_metadata(evaluation)
+            evaluation.refresh_from_db()
+            # Create title for the evaluation
+            if evaluation.metadata_json and 'title' in evaluation.metadata_json:
+                new_title = evaluation.metadata_json['title']
+                evaluation.title = new_title
+                module.title = new_title
+                module.save()
+                evaluation.save()
+        except Exception as e:
+            logger.error(f"Immediate metadata fetch failed for Eval {evaluation.id}: {e}")
+
+        # Create scans
+        valid_scans = active_rubric.available_scans
+        scans_objs = [
+            Scan(evaluation=evaluation, scan_type=st, status=Scan.Status.PENDING) 
+            for st in valid_scans
+        ]
+        created_scans = Scan.objects.bulk_create(scans_objs)
+        
+        # Create criteria
+        criteria_objs = []
+        rubric_content = active_rubric.content if isinstance(active_rubric.content, list) else [] 
+        rubric_map = {
+            item.get('scan'): item.get('criteria', []) 
+            for item in rubric_content if item.get('scan')
+        }
+        for scan_instance in created_scans:
+            scan_def = rubric_map.get(scan_instance.scan_type, [])
+            for crit_def in scan_def:
+                criteria_objs.append(Criterion(
+                    scan=scan_instance,
+                    criterion_name=crit_def.get('name'),
+                    status="Pending"
+                ))       
+        if criteria_objs:
+            Criterion.objects.bulk_create(criteria_objs)
+        
+        return evaluation, True
