@@ -8,7 +8,8 @@
   <div class="button-row mb-2">
     <ng-container *ngFor="let b of buttons; let i = index">
       <button
-        [ngClass]="b.state ? 'mat-flat-button' : 'mat-stroked-button'"
+        mat-raised-button
+        [color]="b.state ? 'primary' : 'basic'"
         class="me-2"
         (click)="onButtonClick(b, $event)"
       >
