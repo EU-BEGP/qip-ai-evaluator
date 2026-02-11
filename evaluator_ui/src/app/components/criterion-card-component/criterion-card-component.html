@@ -8,10 +8,12 @@
   <div class="button-row mb-2">
     <ng-container *ngFor="let b of buttons; let i = index">
       <button
-        mat-flat-button
-        [color]="b.color || 'primary'"
+        [mat-flat-button]="b.state"
+        [mat-stroked-button]="!b.state"
+        [color]="'primary'"
         class="me-2"
         (click)="onButtonClick(b, $event)"
+        [@clickAnimation]="b.state"
       >
         {{ b.label }}
       </button>
