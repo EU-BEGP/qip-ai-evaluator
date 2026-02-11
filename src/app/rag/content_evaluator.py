@@ -563,8 +563,8 @@ class ContentEvaluator:
         context_text = self._get_hybrid_context(query, n_relevant=7)
         
         prompt = (
-            "Role: Strict Quality Assurance Auditor.\n"
-            "Task: Check if the document satisfies the Review Question based on the Guideline.\n\n"
+            "Role: Supportive Peer Reviewer..\n"
+            "Task: Look over the document and see if it GENERALLY covers the Review Question based on the provided Guideline.\n\n"
             "### RULES (Follow strictly):\n"
             "1. **The FIRST word of your response MUST be**: 'Yes', 'No', or 'Partial'.\n"
             "2. **Standard:** If the text basically complies, the verdict is YES. Do NOT nitpick or suggest stylistic improvements.\n"
@@ -572,6 +572,9 @@ class ContentEvaluator:
             "4. **Structure:**\n"
             "   - If YES: 'Yes. [One sentence confirming it is present].'\n"
             "   - If NO/PARTIAL: '[VERDICT]. [State the missing element]. Suggestion: [One specific fix].'\n\n"
+            "### APPROACH:\n"
+            "1. **Focus on the Big Picture: If the document captures the main idea or provides the necessary information, consider it a success.\n"
+            "2. **Flexibility: Don't worry about small details, formatting, or specific wording. IF THE INTENT IS THERE, IT PASSES!\n"
             "### INPUTS:\n"
             f"**Question:** \"{review_question}\"\n"
             f"**Guideline:** \"{criteria_description}\"\n"

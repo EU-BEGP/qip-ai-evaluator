@@ -448,7 +448,7 @@ def get_scans(request, module_id=None):
 def get_scan_criterions(request, scan_id):
     # Returns the list of criteria for a specific scan
     scan = get_object_or_404(Scan, pk=scan_id)
-    criterions = scan.criteria_results.all()
+    criterions = scan.criteria_results.all().order_by('id')
     serializer = CriterionListSerializer(criterions, many=True)
     
     return Response({"criterions": serializer.data}, status=status.HTTP_200_OK)
