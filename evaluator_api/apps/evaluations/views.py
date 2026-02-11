@@ -464,10 +464,7 @@ def update_criterion_selection(request, criterion_id):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     # Normalize input to match database choices
-    selection = serializer.validated_data['result'].upper()
-    if "APPLICABLE" in selection:
-        selection = "NOT APPLICABLE"
-        
+    selection = serializer.validated_data['result'].strip().upper()        
     criterion.user_selection = selection
     criterion.save()
     

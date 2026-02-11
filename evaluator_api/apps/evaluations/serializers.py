@@ -83,5 +83,5 @@ class CriterionListSerializer(serializers.ModelSerializer):
 class CriterionUpdateSerializer(serializers.Serializer):
     # Validate user choice
     result = serializers.ChoiceField(
-        choices=['YES', 'NO', 'NOT APPLICABLE', 'Yes', 'No', 'Not Applicable', 'yes', 'no', 'not applicable']
+        choices=['YES', 'NO', 'NOT APPLICABLE', 'Yes', 'No', 'Not applicable', 'yes', 'no', 'not applicable']
     )
