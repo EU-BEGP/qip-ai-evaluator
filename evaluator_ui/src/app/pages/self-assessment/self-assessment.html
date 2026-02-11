@@ -19,6 +19,14 @@
           {{ scan.name }}
         </button>
       </div>
+      <div *ngIf="scans.length === 0" class="alert alert-info mt-3">
+        No scans available.
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary w-100" (click)="onEvaluate()">
+          Evaluate
+        </button>
+      </div>
     </div>
 
     <!-- Middle: criterion cards -->
@@ -26,14 +34,20 @@
       <ng-container *ngIf="currentScan; else empty">
         <h3 class="mb-3">{{ currentScan.name }}</h3>
 
-        <div *ngIf="criterions.length === 0" class="alert alert-info">No criterions available for this scan.</div>
+        <div *ngIf="criterions.length === 0" class="alert alert-info">
+          No criterions available for this scan.
+        </div>
 
         <div *ngFor="let c of criterions" class="d-flex align-items-start mb-3">
           <div class="grow" (click)="selectCriterion(c)">
             <app-criterion-card-component
               [question]="c.question"
               [description]="c.description"
-              [buttons]="[ { label: 'Yes' }, { label: 'No' }, { label: 'Not applicable' } ]"
+              [buttons]="[
+                { label: 'Yes' },
+                { label: 'No' },
+                { label: 'Not applicable' },
+              ]"
               (buttonClick)="onCriterionAction($event, c)"
               (aiClick)="onAiSuggestion(c)"
             ></app-criterion-card-component>
@@ -42,7 +56,9 @@
       </ng-container>
 
       <ng-template #empty>
-        <div class="alert alert-secondary">Select a scan to view its criterions.</div>
+        <div class="alert alert-secondary">
+          Select a scan to view its criterions.
+        </div>
       </ng-template>
     </div>
 
@@ -55,16 +71,22 @@
           [ngClass]="{
             'ai-yes': selectedCriterion.suggestion.badge === 'yes',
             'ai-no': selectedCriterion.suggestion.badge === 'no',
-            'ai-na': selectedCriterion.suggestion.badge === 'not applicable'
+            'ai-na': selectedCriterion.suggestion.badge === 'not applicable',
           }"
         >
-          <div class="fw-bold mb-2 text-capitalize">{{ selectedCriterion.suggestion.badge }}</div>
-          <div class="explanation">{{ selectedCriterion.suggestion.result }}</div>
+          <div class="fw-bold mb-2 text-capitalize">
+            {{ selectedCriterion.suggestion.badge }}
+          </div>
+          <div class="explanation">
+            {{ selectedCriterion.suggestion.result }}
+          </div>
         </div>
       </div>
 
       <ng-template #hint>
-        <div class="alert alert-light">Select a criterion and request an AI suggestion (click the AI button).</div>
+        <div class="alert alert-light">
+          Select a criterion and request an AI suggestion (click the AI button).
+        </div>
       </ng-template>
     </div>
   </div>

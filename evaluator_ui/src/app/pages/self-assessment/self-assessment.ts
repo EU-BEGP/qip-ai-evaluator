@@ -7,9 +7,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { CriterionCardComponent } from '../../components/criterion-card-component/criterion-card-component';
 import { SelfEvaluationService } from '../../services/self-evaluation-service';
-
-// check why the ai suggestion appears duplicated, once in the third column and again right besides the card.
-// fix it and make it work normally.
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-self-assessment',
@@ -25,7 +23,7 @@ export class SelfAssessment implements OnInit {
     id: number;
     question: string;
     description: string;
-    user_selected: string;
+    user_selection: string;
     suggestion?: {
       result: string;
       badge: string;
@@ -35,27 +33,33 @@ export class SelfAssessment implements OnInit {
     id: number;
     question: string;
     description: string;
-    user_selected: string;
+    user_selection: string;
     suggestion?: {
       result: string;
       badge: string;
     } | null;
   } | null = null;
+  evaluationId: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
     private selfEval: SelfEvaluationService,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
-    const moduleId = this.route.snapshot.paramMap.get('id');
-    if (moduleId) {
-      this.loadScans(moduleId);
+    this.evaluationId = this.route.snapshot.paramMap.get('id');
+    if (this.evaluationId) {
+      this.loadScans(this.evaluationId);
     }
   }
 
-  loadScans(moduleId: string) {
-    this.selfEval.getScans(moduleId).subscribe({
+  onEvaluate() {
+    this.router.navigate(['/evaluation', this.evaluationId]);
+  }
+
+  loadScans(evaluationId: string) {
+    this.selfEval.getScans(evaluationId).subscribe({
       next: (res) => {
         this.scans = res;
         if (res.length > 0) {
@@ -84,7 +88,7 @@ export class SelfAssessment implements OnInit {
     id: number;
     question: string;
     description: string;
-    user_selected: string;
+    user_selection: string;
   }) {
     this.selectedCriterion = c as any;
   }
@@ -112,7 +116,7 @@ export class SelfAssessment implements OnInit {
     id: number;
     question: string;
     description: string;
-    user_selected: string;
+    user_selection: string;
     suggestion?: {
       result: string;
       badge: string;
