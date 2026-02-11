@@ -5,21 +5,12 @@ import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
   selector: 'app-criterion-card-component',
   imports: [MatCardModule, CommonModule, MatButtonModule],
   templateUrl: './criterion-card-component.html',
   styleUrls: ['./criterion-card-component.css'],
-  animations: [
-    trigger('clickAnimation', [
-      transition('* => *', [
-        style({ transform: 'scale(0.95)' }),
-        animate('100ms ease-out', style({ transform: 'scale(1)' })),
-      ]),
-    ]),
-  ],
 })
 export class CriterionCardComponent implements OnInit {
   @Input() question: string = '';

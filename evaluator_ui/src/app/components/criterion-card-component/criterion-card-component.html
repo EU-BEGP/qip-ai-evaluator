@@ -11,7 +11,6 @@
         [ngClass]="b.state ? 'mat-flat-button' : 'mat-stroked-button'"
         class="me-2"
         (click)="onButtonClick(b, $event)"
-        [@clickAnimation]="b.state"
       >
         {{ b.label }}
       </button>
