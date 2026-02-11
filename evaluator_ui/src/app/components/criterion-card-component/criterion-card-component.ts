@@ -27,7 +27,6 @@ export class CriterionCardComponent implements OnInit {
   @Input() buttons: Array<{
     label: string;
     value?: any;
-    color?: string;
     state?: boolean;
   }> = [];
 
@@ -39,7 +38,7 @@ export class CriterionCardComponent implements OnInit {
   ngOnInit(): void {}
 
   onButtonClick(
-    btn: { label: string; value?: any; state: boolean },
+    btn: { label: string; value?: any; state?: boolean },
     event: MouseEvent,
   ) {
     event.stopPropagation();
