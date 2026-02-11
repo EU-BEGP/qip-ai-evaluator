@@ -563,7 +563,7 @@ class ContentEvaluator:
         context_text = self._get_hybrid_context(query, n_relevant=7)
         
         prompt = (
-            "Role: Supportive Peer Reviewer..\n"
+            "Role: Supportive Peer Reviewer.\n"
             "Task: Look over the document and see if it GENERALLY covers the Review Question based on the provided Guideline.\n\n"
             "### RULES (Follow strictly):\n"
             "1. **The FIRST word of your response MUST be**: 'Yes', 'No', or 'Partial'.\n"
