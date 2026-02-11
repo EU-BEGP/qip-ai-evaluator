@@ -260,6 +260,10 @@ def get_user_modules(request, email):
             if last_eval:
                 last_eval_id = last_eval.id
                 last_evaluation_date = last_eval.created_at.date().isoformat()
+
+                # Self assessment check (overrides updated/outdated label)
+                if last_eval.status == Evaluation.Status.SELF_ASSESSMENT:
+                    status_label = "Self assessment"
                 
                 # Outdated check
                 if last_eval.module_last_modified:
@@ -267,10 +271,6 @@ def get_user_modules(request, email):
                     stored_ts = last_eval.module_last_modified.replace(second=0, microsecond=0)
                     if learnify_ts > stored_ts:
                         status_label = "Outdated"
-                
-                # Self assessment check (overrides updated/outdated label)
-                if last_eval.status == Evaluation.Status.SELF_ASSESSMENT:
-                    status_label = "Self assessment"
                 
                 # Calculate average
                 if last_eval.result_json:
