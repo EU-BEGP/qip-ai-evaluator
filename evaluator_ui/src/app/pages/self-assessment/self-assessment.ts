@@ -99,14 +99,13 @@ export class SelfAssessment implements OnInit {
       id: number;
       question: string;
       description: string;
-      user_selected: string;
+      user_selection: string;
     },
   ) {
     this.selfEval.updateCriterion(String(criterion.id), event.value).subscribe({
       next: () => {
-        criterion.user_selected = event.value;
+        criterion.user_selection = event.value;
         console.log('Criterion updated successfully');
-        // Optionally, refresh criterions or update UI state here
       },
       error: (err) => console.error('Failed updating criterion', err),
     });
