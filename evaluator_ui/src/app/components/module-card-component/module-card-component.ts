@@ -39,13 +39,9 @@ export class ModuleCardComponent implements OnInit {
     },
   };
 
-  constructor(
-    private utilsService: UtilsService
-  ) {}
+  constructor() {}
 
   ngOnInit(): void {
-    const lastEvaluationDate = this.utilsService.parseDate(this.data.last_evaluation);
-    const lastModifyDate = this.utilsService.parseDate(this.data.last_modify);
   }
 
   getClass(): string {

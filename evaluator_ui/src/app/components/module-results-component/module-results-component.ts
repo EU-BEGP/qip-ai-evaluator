@@ -16,4 +16,14 @@ import { Scan } from '../../interfaces/scan';
 })
 export class ModuleResultsComponent {
   @Input() scanList!: Scan[];
+
+  get completedScans(): Scan[] {
+    return this.scanList?.filter(
+      scan => scan.name !== 'All Scans' && scan.status === 'Completed'
+    ) ?? [];
+  }
+
+  get shouldRender(): boolean {
+    return this.completedScans.length > 1;
+  }
 }

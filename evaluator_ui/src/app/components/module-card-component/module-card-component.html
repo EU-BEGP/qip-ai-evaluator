@@ -11,7 +11,13 @@
   <p><b class="me-2">Link:</b>{{ data.link }}</p>
   <p><b class="me-2">Last Modify:</b>{{ data.last_modify }}</p>
   <p><b class="me-2">Last Evaluation:</b>{{ data.last_evaluation }}</p>
-  <p class="mb-0"><b>Last Score:</b> {{ data.last_average }}/{{ data.last_max }}
-    <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
+  <p class="mb-0"><b>Last Score:</b> {{ data.last_average ? data.last_average : '-' }}/{{ data.last_max }}
+    @if (data.last_average !== null) {
+      <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
+    } @else {
+      <div class="d-flex justify-content-center">
+        <img src="evaluation.png" alt="No Score" class="no-score-img">
+      </div>
+    }
   </p>
 </mat-card>

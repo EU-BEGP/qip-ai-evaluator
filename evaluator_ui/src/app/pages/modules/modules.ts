@@ -43,9 +43,7 @@ export class Modules implements OnInit {
   email: string = '';
   openCardIndex: number | null = null;
   evaluationListByIndex: any = {};
-  disableCourseLink = false;
-  showNewEvalModal = false;
-  scans: string[] = ['All Scans', 'Academic Metadata Scan', 'Learning Content Scan', 'Assessment Scan', 'Multimedia Scan', 'Certificate Scan', 'Summary Scan'];
+  showNewEvalModal: boolean = false;
 
   constructor(
     private evaluationService: EvaluationService,

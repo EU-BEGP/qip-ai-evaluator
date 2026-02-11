@@ -95,6 +95,7 @@ export class NewEvaluationModalComponent implements OnInit{
 
   verifyMetadata(): void {
     if (this.newEvalForm.valid) {
+      this.metadata = [];
       const courseLink = this.newEvalForm.get('courseLink')?.value;
       this.safeCourseLink = null;
       this.evaluationService.verifyMetadata(courseLink, true).subscribe({
@@ -104,7 +105,6 @@ export class NewEvaluationModalComponent implements OnInit{
           this.checkMetadataStatus(this.metadata);
         },
         error: (error) => {
-          this.metadata = [];
           this.verified = false;
           console.error('Evaluation error:', error);
         }

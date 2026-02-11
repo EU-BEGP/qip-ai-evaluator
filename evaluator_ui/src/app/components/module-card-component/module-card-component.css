@@ -29,6 +29,11 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
 }
 
+.no-score-img {
+  height: 90px;
+  margin: 0px auto 12px auto;
+}
+
 @media (min-width: 1000px) {
   .card-title {
     white-space: nowrap;

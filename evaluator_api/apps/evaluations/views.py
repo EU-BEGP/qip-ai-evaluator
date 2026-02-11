@@ -429,14 +429,10 @@ def create_evaluation(request):
 def get_scans(request, module_id=None):
     # Get scans names, with scan ids if module id included
     if module_id:
-        module = get_object_or_404(Module, pk=module_id)       
-        latest_eval = Evaluation.objects.filter(module=module).order_by('-created_at').first()
-        
-        if not latest_eval:
-            return Response([])
+        evaluation = get_object_or_404(Evaluation, pk=module_id)
         data = [
             {"id": str(scan.id), "name": scan.scan_type} 
-            for scan in latest_eval.scans.all()
+            for scan in evaluation.scans.all()
         ]
         return Response(data, status=status.HTTP_200_OK)
     else:
