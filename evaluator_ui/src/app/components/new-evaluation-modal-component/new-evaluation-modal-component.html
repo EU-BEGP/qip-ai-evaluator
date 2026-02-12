@@ -3,8 +3,11 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 <div class="modal-backdrop bg-dark bg-opacity-50 evaluation-modal">
-  <div class="card p-4 evaluation-card" [class.expanded]="metadata.length > 0">
+  <div class="card p-4 new-eval-content" [class.expanded]="metadata.length > 0">
     <h5 class="mb-3">Verify Metadata</h5>
+    <button mat-icon-button class="close-button" (click)="closeNewEvalModal()" aria-label="Close">
+      <mat-icon>close</mat-icon>
+    </button>
     <form [formGroup]="newEvalForm" (ngSubmit)="evaluateNew()" class="p-0">
       <div class="d-flex align-items-center gap-3">
         <mat-form-field appearance="fill" class="w-100">

@@ -4,11 +4,14 @@
 
 <div class="modal-backdrop bg-dark bg-opacity-50 notification-modal">
   <div class="card p-4 notification-modal-content">
+    <button mat-icon-button class="close-button" (click)="closeNotificationModal()" aria-label="Close">
+      <mat-icon>close</mat-icon>
+    </button>
     <h5 class="mb-3">{{ selectedNotification!.title }}</h5>
     <p class="mb-3">{{ selectedNotification!.content }}</p>
     <div class="d-flex justify-content-end mt-3">
-      <button mat-raised-button color="primary" (click)="goToEvaluation(selectedNotification!.evaluation_id, selectedNotification!.scan_name)" class="me-2">Go to evaluation</button>
-      <button mat-stroked-button (click)="closeNotificationModal()">Close</button>
+      <button mat-stroked-button (click)="closeNotificationModal()" class="me-2">Close</button>
+      <button mat-raised-button color="primary" (click)="goToEvaluation(selectedNotification!.evaluation_id, selectedNotification!.scan_name)">Go to evaluation</button>
     </div>
   </div>
 </div>

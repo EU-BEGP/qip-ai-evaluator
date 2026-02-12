@@ -18,6 +18,7 @@ import { Router } from '@angular/router';
 })
 export class EvaluationListComponent {
   @Input() moduleData!: any;
+  @Output() peerReviewClick = new EventEmitter<void>();
 
   constructor(
     private router: Router
@@ -29,5 +30,9 @@ export class EvaluationListComponent {
 
   onClickAIEvaluation(): void {
     this.router.navigate(['/evaluation', this.moduleData.last_evaluation_id]);
+  }
+
+  onClickPeerReview(): void {
+    this.peerReviewClick.emit();
   }
 }

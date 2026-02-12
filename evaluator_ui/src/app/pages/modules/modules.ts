@@ -20,6 +20,7 @@ import { ToastrService } from 'ngx-toastr';
 import { MetadataStatusComponent } from '../../components/metadata-status-component/metadata-status-component';
 import { MetadataItem } from '../../interfaces/metadata-item';
 import { NewEvaluationModalComponent } from '../../components/new-evaluation-modal-component/new-evaluation-modal-component';
+import { PeerReviewModalComponent } from '../../components/peer-review-modal-component/peer-review-modal-component';
 
 @Component({
   selector: 'app-modules',
@@ -33,7 +34,8 @@ import { NewEvaluationModalComponent } from '../../components/new-evaluation-mod
     MatInputModule,
     MatButtonModule,
     EvaluationListComponent,
-    NewEvaluationModalComponent
+    NewEvaluationModalComponent,
+    PeerReviewModalComponent
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',
@@ -44,6 +46,7 @@ export class Modules implements OnInit {
   openCardIndex: number | null = null;
   evaluationListByIndex: any = {};
   showNewEvalModal: boolean = false;
+  showPeerReviewModal: boolean = false;
 
   constructor(
     private evaluationService: EvaluationService,
@@ -69,11 +72,19 @@ export class Modules implements OnInit {
     this.openCardIndex = index;
   }
 
-  openNewEvalModal(courseLink: string = '') {
+  openNewEvalModal() {
     this.showNewEvalModal = true;
   }
 
   closeNewEvalModal() {
     this.showNewEvalModal = false;
+  }
+
+  openPeerReviewModal() {
+    this.showPeerReviewModal = true;
+  }
+
+  closePeerReviewModal() {
+    this.showPeerReviewModal = false;
   }
 }

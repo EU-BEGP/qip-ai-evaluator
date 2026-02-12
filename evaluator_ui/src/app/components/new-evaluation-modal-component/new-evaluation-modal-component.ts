@@ -13,6 +13,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-new-evaluation-modal-component',
@@ -23,7 +24,8 @@ import { Router } from '@angular/router';
     MatFormFieldModule,
     MetadataStatusComponent,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
   templateUrl: './new-evaluation-modal-component.html',
   styleUrl: './new-evaluation-modal-component.css',
