@@ -6,11 +6,13 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { Notification } from '../../interfaces/notification';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-notification-modal-component',
   imports: [
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
   templateUrl: './notification-modal-component.html',
   styleUrl: './notification-modal-component.css',

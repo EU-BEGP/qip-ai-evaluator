@@ -10,13 +10,17 @@
   <app-new-evaluation-modal-component (closeModalEvent)="closeNewEvalModal()"></app-new-evaluation-modal-component>
 }
 
+@if(showPeerReviewModal) {
+  <app-peer-review-modal-component (closeModalEvent)="closePeerReviewModal()" [evaluationId]="selectedModule.last_evaluation_id"></app-peer-review-modal-component>
+}
+
 <div class="modules-container space justify-content-center gap-5">
   @for (module of modules; let i = $index; track $index) {
     <div class="position-relative">
       <app-module-card-component [data]="module" (onClick)="onClickCard(i)"></app-module-card-component>
 
       @if(openCardIndex === i) {
-        <app-evaluation-list-component [moduleData]="modules[i]"></app-evaluation-list-component>
+        <app-evaluation-list-component [moduleData]="modules[i]" (peerReviewClick)="openPeerReviewModal()"></app-evaluation-list-component>
       }
     </div>
   }

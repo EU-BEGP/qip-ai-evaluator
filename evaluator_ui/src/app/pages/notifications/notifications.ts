@@ -51,6 +51,10 @@ export class Notifications {
       })
     }
 
+    this.openNotificationModal(notification);
+  }
+
+  openNotificationModal(notification: Notification): void {
     this.selectedNotification = notification;
     this.showNotificationModal = true;
   }

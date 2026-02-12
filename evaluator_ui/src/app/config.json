@@ -33,6 +33,9 @@
       "mailbox": "notifications/user_mailbox/{email}/",
       "unreadQuantity": "notifications/notifications_unread/{email}/"
     },
+    "peerReview" : {
+      "reviews": "peer_review/reviews/{id}/"
+    },
     "extra": {
       "download": "evaluations/download_pdf/{id}/"
     }

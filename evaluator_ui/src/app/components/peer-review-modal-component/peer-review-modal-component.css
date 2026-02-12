@@ -4,7 +4,31 @@ MIT License - See LICENSE file in the root directory
 Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
-.notification-modal {
+.icon {
+  color: #3F51B5;
+}
+
+.review-item {
+  cursor: pointer;
+}
+
+.text-muted {
+  font-size: 0.84rem;
+  color: #3F51B5 !important;
+}
+
+.reviewer-name {
+  max-width: 80%; /* ajusta el porcentaje que quieras */
+  overflow: hidden;
+}
+
+.reviewer-name .text-dark {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peer-review-modal {
   position: fixed;
   inset: 0;
   display: flex;
@@ -13,13 +37,19 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   z-index: 2000;
 }
 
-.notification-modal-content {
+.peer-review-content {
   width: 94%;
   max-width: 620px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
+}
+
+.no-data-img {
+  width: 20%;
+  min-width: 100px;
+  display: block;
+  margin: auto;
 }
 
 .close-button {

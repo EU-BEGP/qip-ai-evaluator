@@ -1,0 +1,40 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<div class="modal-backdrop bg-dark bg-opacity-50 peer-review-modal">
+  <div class="card p-4 peer-review-content">
+    <h5 class="mb-3">Peer Reviews</h5>
+    <button mat-icon-button class="close-button" (click)="closePeerReviewModal()" aria-label="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+    @if(reviews.length === 0) {
+      <img src="no-data.png" alt="No Data" class="no-data-img"/>
+      <div class="alert alert-primary rounded-1 mt-2 mb-0">No peer reviews available.</div>
+    } @else {
+      <ul class="list-group border-0">
+        @for (review of reviews; let i = $index; track $index) {
+          <li class="list-group-item list-group-item-primary list-group-item-action review-item d-flex align-items-center gap-3 shadow-sm">
+            <div>
+              <mat-icon class="icon">person</mat-icon>
+            </div>
+            <div class="reviewer-name">
+              <div class="text-dark">{{ review.reviewer }}</div>
+              <small class="text-muted"><i>Reviewer</i></small>
+            </div>
+            <div class="ms-auto text-end">
+              <div class="text-dark">{{ review.review_score }}/{{ review.review_max }}</div>
+              <small class="text-muted"><i>Score</i></small>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+    <div class="d-flex justify-content-end mt-3">
+      <button mat-stroked-button (click)="closePeerReviewModal()">Close</button>
+      @if(reviews.length === 0) {
+        <button mat-raised-button color="primary" class="ms-2">+ Invite reviewers</button>
+      }
+    </div>
+  </div>
+</div>
