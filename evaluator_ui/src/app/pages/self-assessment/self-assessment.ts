@@ -54,10 +54,6 @@ export class SelfAssessment implements OnInit {
     }
   }
 
-  onEvaluate() {
-    this.router.navigate(['/evaluation', this.evaluationId]);
-  }
-
   loadScans(evaluationId: string) {
     this.selfEval.getScans(evaluationId).subscribe({
       next: (res) => {
