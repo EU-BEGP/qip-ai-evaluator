@@ -114,6 +114,15 @@ export class SelfAssessment implements OnInit {
     question: string;
     description: string;
     user_selection: string;
+    buttons?: Array<{
+      label: string;
+      value?: any;
+      state?: boolean;
+    }>;
+    suggestion?: {
+      result: string;
+      badge: string;
+    } | null;
   }) {
     this.selectedCriterion = c as any;
   }
@@ -125,11 +134,17 @@ export class SelfAssessment implements OnInit {
       question: string;
       description: string;
       user_selection: string;
+      buttons?: Array<{
+        label: string;
+        value?: any;
+        state?: boolean;
+      }>;
     },
   ) {
     this.selfEval.updateCriterion(String(criterion.id), event.value).subscribe({
       next: () => {
         criterion.user_selection = event.value;
+        criterion.buttons?.map((b) => (b.state = b.value === event.value));
         console.log('Criterion updated successfully');
       },
       error: (err) => console.error('Failed updating criterion', err),

@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 
 @Component({
+  standalone: true,
   selector: 'app-criterion-card-component',
   imports: [MatCardModule, CommonModule, MatButtonModule],
   templateUrl: './criterion-card-component.html',
