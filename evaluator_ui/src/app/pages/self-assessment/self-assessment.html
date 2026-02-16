@@ -44,11 +44,7 @@
             <app-criterion-card-component
               [question]="c.question"
               [description]="c.description"
-              [buttons]="[
-                { label: 'Yes' },
-                { label: 'No' },
-                { label: 'Not applicable' },
-              ]"
+              [buttons]="c.buttons"
               (buttonClick)="onCriterionAction($event, c)"
               (aiClick)="onAiSuggestion(c)"
             ></app-criterion-card-component>

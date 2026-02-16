@@ -24,6 +24,11 @@ export class SelfAssessment implements OnInit {
     question: string;
     description: string;
     user_selection: string;
+    buttons?: Array<{
+      label: string;
+      value?: any;
+      state?: boolean;
+    }>;
     suggestion?: {
       result: string;
       badge: string;
@@ -34,6 +39,11 @@ export class SelfAssessment implements OnInit {
     question: string;
     description: string;
     user_selection: string;
+    buttons?: Array<{
+      label: string;
+      value?: any;
+      state?: boolean;
+    }>;
     suggestion?: {
       result: string;
       badge: string;
@@ -75,6 +85,25 @@ export class SelfAssessment implements OnInit {
     this.selfEval.getCriterions(String(scan.id)).subscribe({
       next: (res: any) => {
         this.criterions = res.criterions || [];
+        this.criterions.map((c) => {
+          c.buttons = [
+            {
+              label: 'Yes',
+              value: 'yes',
+              state: c.user_selection.toLowerCase() === 'yes',
+            },
+            {
+              label: 'No',
+              value: 'no',
+              state: c.user_selection.toLowerCase() === 'no',
+            },
+            {
+              label: 'Not applicable',
+              value: 'not applicable',
+              state: c.user_selection.toLowerCase() === 'not applicable',
+            },
+          ];
+        });
       },
       error: (err) => console.error('Failed loading criterions', err),
     });
