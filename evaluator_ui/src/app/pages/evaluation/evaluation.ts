@@ -69,7 +69,19 @@ export class EvaluationComponent {
     this.route.queryParamMap
     .pipe(takeUntil(this.destroy$))
     .subscribe(queryParams => {
-      this.scanNameSelected = queryParams.get('scan') || 'All Scans';
+      const scanParam = queryParams.get('scan');
+      this.scanNameSelected = scanParam || 'All Scans';
+      
+      // If there is no scan parameter, redirect by replacing the history status
+      if (!scanParam) {
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { scan: this.scanNameSelected },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+      }
+      
       if (this.scansList.length > 0) {
         this.selectedIndex = this.getScanIndexByName(this.scanNameSelected);
       }

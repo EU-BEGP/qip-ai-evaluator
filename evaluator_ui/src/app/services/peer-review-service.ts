@@ -38,4 +38,32 @@ export class PeerReviewService {
       })
     );
   }
+
+  getScansInfo(reviewId: string): Observable<any> {
+    let URL = `${config.api.baseUrl}${config.api.peerReview.scansInfo}`;
+    URL = URL.replace('{id}', reviewId);
+
+    this.loaderService.show();
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
+  }
+
+  getReviewDetailScan(scanId: string): Observable<any> {
+    let URL = `${config.api.baseUrl}${config.api.peerReview.reviewDetail}`;
+    URL = URL.replace('{id}', scanId);
+
+    this.loaderService.show();
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
+  }
 }

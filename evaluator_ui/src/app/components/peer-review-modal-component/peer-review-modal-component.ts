@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { PeerReviewService } from '../../services/peer-review-service';
 import { Review } from '../../interfaces/review';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-peer-review-modal-component',
@@ -24,7 +25,9 @@ export class PeerReviewModalComponent implements OnInit {
 
   reviews: Review[] = [];
 
-  constructor(private peerReviewService: PeerReviewService) {}
+  constructor(private peerReviewService: PeerReviewService,
+              private router: Router
+  ) {}
 
   ngOnInit(): void {
     this.peerReviewService.getPeerReviews(this.evaluationId).subscribe({
@@ -39,5 +42,9 @@ export class PeerReviewModalComponent implements OnInit {
 
   closePeerReviewModal() {
     this.closeModalEvent.emit();
+  }
+
+  goToPeerReview(evaluationId: string, reviewId: number) {
+    this.router.navigate(['/peer-review-evaluation', evaluationId, 'review', reviewId]);
   }
 }

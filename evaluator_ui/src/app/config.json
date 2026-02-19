@@ -34,7 +34,9 @@
       "unreadQuantity": "notifications/notifications_unread/{email}/"
     },
     "peerReview" : {
-      "reviews": "peer_review/reviews/{id}/"
+      "reviews": "peer_review/reviews/{id}/",
+      "scansInfo": "peer_review/scans_info/{id}/",
+      "reviewDetail": "peer_review/review_detail/{id}/"
     },
     "extra": {
       "download": "evaluations/download_pdf/{id}/"

@@ -10,6 +10,7 @@ import { Modules } from './pages/modules/modules';
 import { Notifications } from './pages/notifications/notifications';
 import { MainLayout } from './pages/main-layout/main-layout';
 import { SelfAssessment } from './pages/self-assessment/self-assessment';
+import { PeerReviewEvaluation } from './pages/peer-review-evaluation/peer-review-evaluation';
 
 export const routes: Routes = [
   {
@@ -41,6 +42,11 @@ export const routes: Routes = [
         component: SelfAssessment, 
         canActivate: [AuthGuard] 
       },
+      { 
+        path: 'peer-review-evaluation/:id/review/:reviewId', 
+        component: PeerReviewEvaluation, 
+        canActivate: [AuthGuard] 
+      }
     ]
   },
   { 
