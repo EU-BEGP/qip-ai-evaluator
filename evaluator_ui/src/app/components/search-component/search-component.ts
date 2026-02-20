@@ -22,6 +22,7 @@ import { EvaluationResultComponent } from '../evaluation-result/evaluation-resul
 import { EvaluationProgressBarComponent } from '../evaluation-progress-bar-component/evaluation-progress-bar-component';
 import { EvaluationProgressDotsComponent } from '../evaluation-progress-dots-component/evaluation-progress-dots-component';
 import { Scan } from '../../interfaces/scan';
+import { PeerReviewService } from '../../services/peer-review-service';
 
 @Component({
   selector: 'app-search-component',
@@ -48,6 +49,7 @@ import { Scan } from '../../interfaces/scan';
 export class SearchComponent implements OnInit, DoCheck, OnChanges {
   @Input() linkModule!: string;
   @Input() scanInformation!: Scan;
+  @Input() isAIEvaluation: boolean = true;
   @Output() startPolling = new EventEmitter<{ scan: ScanItem, refresh: boolean }>();
   @Output() downloadEvent = new EventEmitter<void>();
 
@@ -64,7 +66,8 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
   message: string = 'This evaluation belongs to a previous module version. Please start a new evaluation to continue.';
 
   constructor (
-    private evaluationService: EvaluationService
+    private evaluationService: EvaluationService,
+    private peerReviewService: PeerReviewService
   ) {}
 
   ngOnInit(): void {
@@ -74,7 +77,7 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
       this.evaluate();
     }
     
-    if (this.scanInformation.evaluable === false) {
+    if (this.scanInformation.evaluable === false || this.isAIEvaluation === false) {
       this.loadData();
     }
 
@@ -122,10 +125,17 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
 
   loadData(): void {
     this.isLoading = true;
+    let request$;
 
-    const request$ = this.tab === 'All Scans'
-      ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id!, true)
-      : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id!, true);
+    if (this.isAIEvaluation === true) {
+      request$ = this.tab === 'All Scans'
+        ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id!, true)
+        : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id!, true);
+    } else {
+      request$ = this.peerReviewService.getReviewDetailScan(this.scanInformation.id!.toString());
+    }
+    
+
 
     request$.subscribe({
       next: (response) => {

@@ -11,19 +11,30 @@
         <p>{{ item.description }}</p>
         <table class="table table-striped evaluation-table rounded-2">
           <colgroup>
-            <col style="width:12%" />
-            <col style="width:28%" />
-            <col style="width:8%" />
-            <col style="width:28%" />
-            <col style="width:28%" />
+            @if (isAIEvaluation) {
+              <col style="width:12%" />
+              <col style="width:28%" />
+              <col style="width:8%" />
+              <col style="width:26%" />
+              <col style="width:26%" />
+            } @else {
+              <col style="width:16%" />
+              <col style="width:38%" />
+              <col style="width:8%" />
+              <col style="width:38%" />
+            }
           </colgroup>
           <thead>
             <tr>
               <th>Criterion</th>
               <th>Description</th>
               <th class="text-center">Score</th>
-              <th>Shortcomings</th>
-              <th>Recommendations</th>
+              @if(isAIEvaluation) {
+                <th>Shortcomings</th>
+                <th>Recommendations</th>
+              } @else {
+                <th>Note</th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -32,20 +43,24 @@
                 <td>{{ criterion.name }}</td>
                 <td>{{ criterion.description }}</td>
                 <td class="text-center">{{ criterion.score }}</td>
-                <td>
-                  <ul class="ps-3 mb-0">
-                    @for(shortcoming of criterion.shortcomings; track shortcoming) {
-                      <li>{{ shortcoming }}</li>
-                    }
-                  </ul>
-                </td>
-                <td>
-                  <ul class="ps-3 mb-0">
-                    @for(recommendation of criterion.recommendations; track recommendation) {
-                      <li>{{ recommendation }}</li>
-                    }
-                  </ul>
-                </td>
+                @if (isAIEvaluation) {
+                  <td>
+                    <ul class="ps-3 mb-0">
+                      @for(shortcoming of criterion.shortcomings; track shortcoming) {
+                        <li>{{ shortcoming }}</li>
+                      }
+                    </ul>
+                  </td>
+                  <td>
+                    <ul class="ps-3 mb-0">
+                      @for(recommendation of criterion.recommendations; track recommendation) {
+                        <li>{{ recommendation }}</li>
+                      }
+                    </ul>
+                  </td>
+                } @else {
+                  <td>{{ criterion.note }}</td>
+                }
               </tr>
             }
           </tbody>

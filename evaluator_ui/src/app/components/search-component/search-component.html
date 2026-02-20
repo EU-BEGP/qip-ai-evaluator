@@ -22,7 +22,7 @@
   }
   
   @if(data !== null && !isLoading) {
-    <app-evaluation-result-component [data]="data" class="m-0"></app-evaluation-result-component>
+    <app-evaluation-result-component [data]="data" [isAIEvaluation]="isAIEvaluation" class="m-0"></app-evaluation-result-component>
   }
 
   @if(isEvaluating) {

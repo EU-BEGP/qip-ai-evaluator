@@ -11,6 +11,9 @@ import { SearchComponent } from '../../components/search-component/search-compon
 import { ModuleInformationComponent } from '../../components/module-information-component/module-information-component';
 import { PeerReviewService } from '../../services/peer-review-service';
 import { ActivatedRoute, Router } from '@angular/router';
+import { takeUntil } from 'rxjs/internal/operators/takeUntil';
+import { Subject } from 'rxjs/internal/Subject';
+import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 
 @Component({
   selector: 'app-peer-review-evaluation',
@@ -20,31 +23,54 @@ import { ActivatedRoute, Router } from '@angular/router';
     MatProgressSpinnerModule,
     MatTabsModule,
     SearchComponent,
-    ModuleInformationComponent
+    ModuleInformationComponent,
+    PageTitleComponent
   ],
   templateUrl: './peer-review-evaluation.html',
   styleUrl: './peer-review-evaluation.css',
 })
 export class PeerReviewEvaluation implements OnInit {
-  review: any = null;
+  private destroy$ = new Subject<void>();
+
   selectedIndex?: number;
   evaluationId?: string;
   reviewId?: string;
   scansList: any[] = [];
+  scanNameSelected: string = 'All Scans';
 
   constructor(private peerReviewService: PeerReviewService,
               private route: ActivatedRoute,
               private router: Router,
   ) {}
 
-  ngOnInit(): void {
+  ngOnInit(): void {    
     this.evaluationId = this.route.snapshot.paramMap.get('id') || undefined;
     this.reviewId = this.route.snapshot.paramMap.get('reviewId') || undefined;
 
+    this.route.queryParamMap
+    .pipe(takeUntil(this.destroy$))
+    .subscribe(queryParams => {
+      const scanParam = queryParams.get('scan');
+      this.scanNameSelected = scanParam || 'All Scans';
+      
+      // If there is no scan parameter, redirect by replacing the history status
+      if (!scanParam) {
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { scan: this.scanNameSelected },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+      }
+      
+      if (this.scansList.length > 0) {
+        this.selectedIndex = this.getScanIndexByName(this.scanNameSelected);
+      }
+    });
+
     this.peerReviewService.getScansInfo(this.reviewId!).subscribe({
       next: (response) => {
-        this.review = response;
-        this.scansList = response.content;
+        this.scansList = response;
       },
       error: (error) => {
         console.error(error);
@@ -71,5 +97,14 @@ export class PeerReviewEvaluation implements OnInit {
       queryParams: { scan: scanName },
       queryParamsHandling: 'merge'
     });
+  }
+
+  getScanIndexByName(name: string): number {
+    return this.scansList.findIndex(scan => scan.name === name);
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

@@ -15,5 +15,6 @@ import { RouterLink } from "@angular/router";
   styleUrl: './evaluation-result.css',
 })
 export class EvaluationResultComponent {
+  @Input() isAIEvaluation: boolean = true;
   @Input() data!: any;
 }

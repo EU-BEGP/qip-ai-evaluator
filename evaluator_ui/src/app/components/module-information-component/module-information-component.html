@@ -6,6 +6,6 @@
   @if(download) {
     <button class="text-center space-top mb-2" mat-raised-button color="primary" (click)="downloadPDF()">Download PDF</button>
   }
-  <app-module-detail-component [scanInformation]="scanInformation" [evaluationId]="evaluationId" class="mt-4"></app-module-detail-component>
+  <app-module-detail-component [scanInformation]="scanInformation" [evaluationId]="evaluationId" [ngClass]="download ? 'mt-4' : 'space-top'">></app-module-detail-component>
   <app-module-results-component [scanList]="scanList" class="mt-4"></app-module-results-component>
 </div>

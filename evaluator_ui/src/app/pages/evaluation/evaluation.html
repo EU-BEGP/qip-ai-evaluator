@@ -2,7 +2,9 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<mat-tab-group class="mt-2" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
+<app-page-title-component [title]="'AI Evaluation'" [icon]="'auto_awesome'"></app-page-title-component>
+
+<mat-tab-group class="mt-0" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
   @for(scan of scansList; let i = $index; track $index) {
     <mat-tab>
       <ng-template mat-tab-label>

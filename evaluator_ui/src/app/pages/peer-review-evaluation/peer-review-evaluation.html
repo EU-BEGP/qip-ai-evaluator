@@ -2,7 +2,9 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<!--<mat-tab-group class="mt-2" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
+<app-page-title-component [title]="'Peer Evaluation'" [icon]="'person'"></app-page-title-component>
+
+<mat-tab-group class="mt-0" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
   @for(scan of scansList; let i = $index; track $index) {
     <mat-tab>
       <ng-template mat-tab-label>
@@ -12,8 +14,8 @@
             description
           </mat-icon>
         } @else {
-          <mat-icon class="icon-completed ms-1">
-            check
+          <mat-icon class="material-symbols-outlined icon-detail ms-1">
+            grading
           </mat-icon>
         }
       </ng-template>
@@ -21,9 +23,8 @@
       @if(scan.name !== 'All Scans') {
         <app-search-component 
           [scanInformation]="scan"
-          [linkModule]="linkModule"
-          (startPolling)="startPolling($event)"
-        ></app-search-component>
+          [isAIEvaluation]="false"
+        ></app-search-component>  
       }
 
       @if(scan.name === 'All Scans') {
@@ -31,9 +32,9 @@
           [evaluationId]="evaluationId!"
           [scanInformation]="scan"
           [scanList]="scansList"
-          (downloadEvent)="download()"
+          [isAIEvaluation]="false"
         ></app-module-information-component>
       }
     </mat-tab>
   }
-</mat-tab-group>-->
+</mat-tab-group>

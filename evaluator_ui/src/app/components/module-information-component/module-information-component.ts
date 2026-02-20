@@ -24,11 +24,12 @@ export class ModuleInformationComponent implements OnInit{
   @Input() evaluationId!: string;
   @Input() scanInformation!: Scan;
   @Input() scanList!: Scan[];
+  @Input() isAIEvaluation: boolean = true;
   @Output() downloadEvent = new EventEmitter<void>();
   download: boolean = false;
 
   ngOnInit(): void {
-    this.download = this.scanInformation.status === 'Completed';
+    this.download = this.scanInformation.status === 'Completed' && this.isAIEvaluation;
   }
 
   downloadPDF(): void {

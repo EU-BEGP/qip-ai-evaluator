@@ -23,6 +23,7 @@ import { UtilsService } from '../../services/utils-service';
 import { ScanItem } from '../../interfaces/scan-item';
 import { ToastrService } from 'ngx-toastr';
 import { ModuleInformationComponent } from '../../components/module-information-component/module-information-component';
+import { PageTitleComponent } from "../../components/page-title-component/page-title-component";
 
 @Component({
   selector: 'app-evaluation',
@@ -38,8 +39,9 @@ import { ModuleInformationComponent } from '../../components/module-information-
     MatSelectModule,
     MatTabsModule,
     SearchComponent,
-    ModuleInformationComponent
-  ],
+    ModuleInformationComponent,
+    PageTitleComponent
+],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',
   standalone: true

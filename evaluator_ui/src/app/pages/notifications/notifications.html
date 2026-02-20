@@ -2,9 +2,9 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<div class="notification-container my-5">
-  <h3 class="text-center">Notifications</h3>
-  
+<app-page-title-component [title]="'Notifications'" [icon]="'notifications'"></app-page-title-component>
+
+<div class="notification-container mb-5">  
   @for(notification of notifications; track notification.id) {
     <app-notification-card-component [notification]="notification" (read)="read(notification)"></app-notification-card-component>
   }
