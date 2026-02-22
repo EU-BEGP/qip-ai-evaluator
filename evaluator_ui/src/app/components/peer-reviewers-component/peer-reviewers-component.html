@@ -1,0 +1,66 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<div
+  id="peer-review-modal"
+  class="modal-backdrop bg-dark bg-opacity-50 peer-review-modal"
+>
+  <div class="card p-4 peer-review-modal-content">
+    <h3 class="mb-3">Invite Reviewers</h3>
+
+    <div class="link-row d-flex align-items-center mb-3">
+      <label class="me-2 mb-0">Link:</label>
+      <div
+        class="form-control-plaintext link-text me-2"
+        tabindex="0"
+        aria-label="Invite link"
+      >
+        http://example.com/invite/abcd1234
+      </div>
+      <button
+        mat-icon-button
+        aria-label="Copy link"
+        class="me-1"
+        (click)="copyLink()"
+      >
+        <mat-icon>file_copy</mat-icon>
+      </button>
+    </div>
+    <div *ngFor="let email of emails; let i = index" class="mb-2">
+      <div class="invite-row d-flex align-items-center">
+        <input
+          class="form-control email-input me-2"
+          placeholder="Input a reviewer email..."
+          aria-label="Invitee email"
+          [(ngModel)]="emails[i]"
+        />
+        <button
+          mat-icon-button
+          color="primary"
+          aria-label="Add"
+          (click)="addEmail(i)"
+          class="me-1 square-btn"
+        >
+          <mat-icon>add</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="warn"
+          aria-label="Remove"
+          (click)="deleteEmail(i)"
+          class="square-btn"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="text-end mt-3">
+      <button mat-stroked-button (click)="closePeerReviewModal()">
+        Cancel
+      </button>
+      <button mat-flat-button color="primary" class="ms-2">Invite</button>
+    </div>
+  </div>
+</div>

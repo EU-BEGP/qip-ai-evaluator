@@ -1,0 +1,76 @@
+.peer-review-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 1200;
+}
+
+.peer-review-modal-content {
+  width: 100%;
+  max-width: 640px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.link-input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.invite-row .email-input {
+  flex: 1 1 auto;
+}
+
+.invite-row .add-btn {
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.link-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.25rem;
+  background-color: #f8f9fa;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+
+.link-text:focus {
+  outline: 2px solid rgba(0, 123, 255, 0.25);
+}
+
+/* Square icon buttons to match the requested layout */
+.square-btn {
+  width: 40px;
+  height: 36px;
+  min-width: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.email-input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 575.98px) {
+  .peer-review-modal-content {
+    padding: 12px;
+  }
+  .invite-row {
+    flex-direction: row;
+    gap: 8px;
+  }
+}
