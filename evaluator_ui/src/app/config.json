@@ -33,10 +33,13 @@
       "mailbox": "notifications/user_mailbox/{email}/",
       "unreadQuantity": "notifications/notifications_unread/{email}/"
     },
-    "peerReview" : {
+    "peerReview": {
       "reviews": "peer_review/reviews/{id}/",
       "scansInfo": "peer_review/scans_info/{id}/",
       "reviewDetail": "peer_review/review_detail/{id}/"
+    },
+    "selfAssessment": {
+      "results": "evaluations/self_assessment/{id}/results/"
     },
     "extra": {
       "download": "evaluations/download_pdf/{id}/"

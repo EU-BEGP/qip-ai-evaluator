@@ -1,7 +1,10 @@
+
+
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { catchError, finalize, Observable, throwError } from 'rxjs';
 import config from '../config.json';
+import { LoaderService } from './loader-service';
 
 @Injectable({
   providedIn: 'root',
@@ -9,7 +12,9 @@ import config from '../config.json';
 export class SelfEvaluationService {
   private base = `${config.api.baseUrl}evaluations`;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient,
+              private loaderService: LoaderService
+  ) {}
 
   getScans(moduleId: string): Observable<any> {
     return this.http.get<any>(
@@ -42,5 +47,19 @@ export class SelfEvaluationService {
     return this.http.get<{
       result: string;
     }>(url);
+  }
+
+  getResults(evaluationId: string) {
+    let URL = `${config.api.baseUrl}${config.api.selfAssessment.results}`;
+    URL = URL.replace('{id}', evaluationId);
+
+    this.loaderService.show();
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
   }
 }

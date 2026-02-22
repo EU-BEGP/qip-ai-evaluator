@@ -181,7 +181,7 @@ export class EvaluationComponent {
     }
   }
 
-  getNameShort(value: string): string {
+  getShortName(value: string): string {
     if (!value) return "";
 
     const parts = value.trim().split(" ");

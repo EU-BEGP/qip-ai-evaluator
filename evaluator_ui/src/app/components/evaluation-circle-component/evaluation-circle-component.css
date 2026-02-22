@@ -18,6 +18,10 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   color: #333;
 }
 
+.reading-block {
+  transform: translateY(508px) !important;
+}
+
 .circle-title {
   font-size: 20px;
   color: #333;
@@ -32,3 +36,4 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
     margin-top: 16px;
   }
 }
+

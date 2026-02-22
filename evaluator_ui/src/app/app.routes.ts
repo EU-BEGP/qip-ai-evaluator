@@ -11,6 +11,7 @@ import { Notifications } from './pages/notifications/notifications';
 import { MainLayout } from './pages/main-layout/main-layout';
 import { SelfAssessment } from './pages/self-assessment/self-assessment';
 import { PeerReviewEvaluation } from './pages/peer-review-evaluation/peer-review-evaluation';
+import { Results } from './pages/results/results';
 
 export const routes: Routes = [
   {
@@ -41,6 +42,11 @@ export const routes: Routes = [
         path: 'self-assessment/:id', 
         component: SelfAssessment, 
         canActivate: [AuthGuard] 
+      },
+      {
+        path: 'self-assessment/:id/results',
+        component: Results,
+        canActivate: [AuthGuard]
       },
       { 
         path: 'peer-review-evaluation/:id/review/:reviewId', 

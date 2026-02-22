@@ -5,18 +5,24 @@
 <div class="circle-wrapper" [ngClass]="small ? 'small' : ''">
   @if(title) {
     <div class="circle-title mb-3">
-      <b>Average Scan: {{ obtained }}/{{ max }}</b>
+      <b>Average Score: {{ obtained }}/{{ max }}</b>
     </div>
   }
 
-  <ngx-gauge [type]="'semi'"
+  <ngx-gauge [type]="type"
     [value]="obtained" 
     [min]="0"
     [max]="max"
     [thresholds]="thresholdConfig"
     [duration]="400"
     [size]="small ? 120 : 200"
-    [thick]="small ? 8 : 16">
+    [thick]="small ? 8 : 16"
+    [margin]="margin">
+    @if (percentage) {
+      <ngx-gauge-value>
+        {{ obtained  }}%
+      </ngx-gauge-value>
+    }
   </ngx-gauge>
 
   @if(label) {

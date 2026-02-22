@@ -16,9 +16,12 @@ import { NgxGaugeModule } from 'ngx-gauge';
 export class EvaluationCircleComponent implements OnChanges {
   @Input() obtained!: number;
   @Input() max!: number;
+  @Input() type: 'full' | 'semi' | 'arch' = 'semi';
+  @Input() margin: number = 0;
   @Input() label: string = '';
   @Input() title: boolean = false;
   @Input() small: boolean = false;
+  @Input() percentage: boolean = false;
 
   thresholdConfig: Record<string, { color: string }> = { '0': { color: 'red' } };
 

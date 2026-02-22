@@ -8,7 +8,7 @@
   @for(scan of scansList; let i = $index; track $index) {
     <mat-tab>
       <ng-template mat-tab-label>
-        {{ getNameShort(scan.name) }}
+        {{ getShortName(scan.name) }}
         @if(scan.name === 'All Scans') {
           <mat-icon class="material-symbols-outlined icon-detail ms-1">
             description

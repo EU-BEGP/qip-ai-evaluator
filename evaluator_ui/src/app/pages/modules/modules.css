@@ -8,6 +8,8 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
+  margin-left: 48px;
+  margin-right: 48px;
 }
 
 .modules-container > div { 
@@ -20,22 +22,32 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 .new-eval-button {
   justify-content: flex-end;
+  position: sticky;
+  top: 20px;
+  z-index: 100;
+}
+
+.new-eval-button button {
+  position: sticky;
+  top: 20px;
+  z-index: 100;
 }
 
 .space {
-  margin: 48px;
+  margin-bottom: 48px;
 }
 
 @media screen and (max-width: 768px) {
+  .modules-container {
+    margin-left: 0px;
+    margin-right: 0px;
+  }
+
   .modules-container > div {
     max-width: 90vw; 
   }
 
   .new-eval-button {
     justify-content: center;
-  }
-
-  .space {
-    margin-top: 24px;
   }
 }

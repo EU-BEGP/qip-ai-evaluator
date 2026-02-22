@@ -1,0 +1,51 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<mat-card class="card bg-light px-4 pt-4 pb-2">
+  @if (!isMain) {
+    <div class="d-flex justify-content-end">
+      <div class="alert border-0 rounded-1 mb-2" [ngClass]="getClass()">{{ getText() }}</div>
+    </div>
+  }
+
+  <p class="scan-title mb-1"><b class="me-2">{{ isMain ? data.name : getShortName(data.name) }}</b></p>
+  <p class="description text-muted mb-0"><i>{{ data.description }}</i></p>
+
+  @if (isMain) {
+    <p class="my-2"><b>Compliance Percentage</b></p>
+    <app-evaluation-circle-component 
+      [obtained]="totalPercentage"
+      [max]="100"
+      [type]="'full'"
+      [margin]="12"
+      [small]="true"
+      [percentage]="true"
+      class="gauge"
+    ></app-evaluation-circle-component>
+    <p class="description text-muted mt-3 mb-0"><i>{{complianceText}}</i></p>
+  } @else {
+    <div class="d-flex justify-content-around mt-3">
+      <div class="d-flex">
+        <div class="align-self-center icon-container me-1">
+          <mat-icon class="icon">gpp_good</mat-icon>
+        </div>
+        <div class="justify-content-center text-center">
+          <div class="fs-4"><b>{{ data.answer_distribution.yes + data.answer_distribution.not_applicable }}</b></div>
+          <p class="text-muted description lh-1"><i>Compliance Score</i></p>
+        </div>
+      </div>
+      <div class="d-flex">
+        <div class="align-self-center icon-container me-2">
+          <mat-icon class="icon">ballot</mat-icon>
+        </div>
+        <div class="justify-content-center text-center">
+          <div class="fs-4"><b>{{ data.answer_distribution.total }}</b></div>
+          <p class="text-muted description lh-1"><i>Total Criterions</i></p>
+        </div>
+      </div>
+    </div>
+  }
+
+  <app-answer-distribution-component [answerDistribution]="data.answer_distribution" class="my-3"></app-answer-distribution-component>
+</mat-card>

@@ -6,21 +6,16 @@ import { Component, OnInit } from '@angular/core';
 import { ModuleCardComponent } from '../../components/module-card-component/module-card-component';
 import { EvaluationService } from '../../services/evaluation-service';
 import { CommonModule } from '@angular/common';
-import { ScanRequest } from '../../interfaces/scan-request';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { FormBuilder, FormGroup, Validators, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { StorageService } from '../../services/storage-service';
-import { MatIconModule } from '@angular/material/icon';
 import { EvaluationListComponent } from '../../components/evaluation-list-component/evaluation-list-component';
-import { ToastrService } from 'ngx-toastr';
-import { MetadataStatusComponent } from '../../components/metadata-status-component/metadata-status-component';
-import { MetadataItem } from '../../interfaces/metadata-item';
 import { NewEvaluationModalComponent } from '../../components/new-evaluation-modal-component/new-evaluation-modal-component';
 import { PeerReviewModalComponent } from '../../components/peer-review-modal-component/peer-review-modal-component';
+import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 
 @Component({
   selector: 'app-modules',
@@ -35,7 +30,8 @@ import { PeerReviewModalComponent } from '../../components/peer-review-modal-com
     MatButtonModule,
     EvaluationListComponent,
     NewEvaluationModalComponent,
-    PeerReviewModalComponent
+    PeerReviewModalComponent,
+    PageTitleComponent
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',

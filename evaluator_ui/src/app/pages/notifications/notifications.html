@@ -8,7 +8,6 @@
   @for(notification of notifications; track notification.id) {
     <app-notification-card-component [notification]="notification" (read)="read(notification)"></app-notification-card-component>
   }
-
 </div>
 
 @if(showNotificationModal) {

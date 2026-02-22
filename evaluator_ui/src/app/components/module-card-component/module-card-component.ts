@@ -25,15 +25,15 @@ export class ModuleCardComponent implements OnInit {
   @Input() data!: any;
 
   private readonly statusConfig: Record<string, { badge: string; text: string }> = {
-    "Outdated": {
+    'Outdated': {
       badge: 'alert-danger',
       text: 'Outdated'
     },
-    "Updated": {
+    'Updated': {
       badge: 'alert-success',
       text: 'Updated'
     },
-    "Self assessment": {
+    'Self assessment': {
       badge: 'alert-primary',
       text: 'Self assessment'
     },

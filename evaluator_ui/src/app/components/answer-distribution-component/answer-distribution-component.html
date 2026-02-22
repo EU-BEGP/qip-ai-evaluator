@@ -1,0 +1,71 @@
+<!-- Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP -->
+<!-- MIT License - See LICENSE file in the root directory -->
+<!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
+
+<p class="mb-2"><b>Answer distribution</b></p>
+
+<div class="container">
+  <div class="row my-1">
+    <div class="col-4 col-sm-3 col-md-3 text-center p-0 table-title">
+      <b>Answers</b>
+    </div>
+    <div class="col-6 col-sm-7 col-md-8 text-center px-1 table-title">
+      <b>Percentage</b>
+    </div>
+    <div class="col-2 col-sm-2 col-md-1 text-center p-0 table-title">
+      <b>Count</b>
+    </div>
+  </div>
+  <div class="row my-1">
+    <div class="col-4 col-sm-3 col-md-3 p-0">
+      <div class="alert alert-success border-0 rounded-2 px-2 py-1 m-0">Yes</div>
+    </div>
+    <div class="col-6 col-sm-7 col-md-8 px-1">
+      <div class="progress">
+        <div class="progress-bar" role="progressbar" [style.width.%]="yesPercentage" aria-valuenow="{{yesPercentage}}" aria-valuemin="0" aria-valuemax="100">{{yesPercentage}}%</div>
+      </div>
+    </div>
+    <div class="col-2 col-sm-2 col-md-1 text-end p-0">
+      <div class="alert alert-secondary border-0 rounded-2 px-2 py-1 m-0">{{answerDistribution.yes}}</div>
+    </div>
+  </div>
+  <div class="row my-1">
+    <div class="col-4 col-sm-3 col-md-3 p-0">
+      <div class="alert alert-danger border-0 rounded-2 px-2 py-1 m-0">No</div>
+    </div>
+    <div class="col-6 col-sm-7 col-md-8 px-1">
+      <div class="progress">
+        <div class="progress-bar" role="progressbar" [style.width.%]="noPercentage" aria-valuenow="{{noPercentage}}" aria-valuemin="0" aria-valuemax="100">{{noPercentage}}%</div>
+      </div>
+    </div>
+    <div class="col-2 col-sm-2 col-md-1 text-end p-0">
+      <div class="alert alert-secondary border-0 rounded-2 px-2 py-1 m-0">{{answerDistribution.no}}</div>
+    </div>
+  </div>
+  <div class="row my-1">
+    <div class="col-4 col-sm-3 col-md-3 p-0">
+      <div class="alert alert-primary border-0 rounded-2 px-2 py-1 m-0">Not Applicable</div>
+    </div>
+    <div class="col-6 col-sm-7 col-md-8 px-1">
+      <div class="progress">
+        <div class="progress-bar" role="progressbar" [style.width.%]="notApplicablePercentage" aria-valuenow="{{notApplicablePercentage}}" aria-valuemin="0" aria-valuemax="100">{{notApplicablePercentage}}%</div>
+      </div>
+    </div>
+    <div class="col-2 col-sm-2 col-md-1 text-end p-0">
+      <div class="alert alert-secondary border-0 rounded-2 px-2 py-1 m-0">{{answerDistribution.not_applicable}}</div>
+    </div>
+  </div>
+  <div class="row my-1">
+    <div class="col-4 col-sm-3 col-md-3 p-0">
+      <div class="alert alert-warning border-0 rounded-2 px-2 py-1 m-0">Unanswered</div>
+    </div>
+    <div class="col-6 col-sm-7 col-md-8 px-1">
+      <div class="progress">
+        <div class="progress-bar" role="progressbar" [style.width.%]="unansweredPercentage" aria-valuenow="{{unansweredPercentage}}" aria-valuemin="0" aria-valuemax="100">{{unansweredPercentage}}%</div>
+      </div>
+    </div>
+    <div class="col-2 col-sm-2 col-md-1 text-end p-0">
+      <div class="alert alert-secondary border-0 rounded-2 px-2 py-1 m-0">{{answerDistribution.unanswered}}</div>
+    </div>
+  </div>
+</div>
