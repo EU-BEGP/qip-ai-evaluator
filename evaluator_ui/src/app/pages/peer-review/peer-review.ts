@@ -90,47 +90,47 @@ export class SelfAssessment implements OnInit {
             {
               label: '0',
               value: 0,
-              state: c.user_selection.toLowerCase() === '0',
+              state: c.user_selection === '0',
             },
             {
               label: '0.5',
               value: 0.5,
-              state: c.user_selection.toLowerCase() === '0.5',
+              state: c.user_selection === '0.5',
             },
             {
               label: '1',
               value: 1,
-              state: c.user_selection.toLowerCase() === '1',
+              state: c.user_selection === '1',
             },
             {
               label: '1.5',
               value: 1.5,
-              state: c.user_selection.toLowerCase() === '1.5',
+              state: c.user_selection === '1.5',
             },
             {
               label: '2',
               value: 2,
-              state: c.user_selection.toLowerCase() === '2',
+              state: c.user_selection === '2',
             },
             {
               label: '3.5',
               value: 3.5,
-              state: c.user_selection.toLowerCase() === '3.5',
+              state: c.user_selection === '3.5',
             },
             {
               label: '4',
               value: 4,
-              state: c.user_selection.toLowerCase() === '4',
+              state: c.user_selection === '4',
             },
             {
               label: '4.5',
               value: 4.5,
-              state: c.user_selection.toLowerCase() === '4.5',
+              state: c.user_selection === '4.5',
             },
             {
               label: '5',
               value: 5,
-              state: c.user_selection.toLowerCase() === '5',
+              state: c.user_selection === '5',
             },
           ];
         });
