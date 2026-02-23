@@ -12,11 +12,21 @@
         <button
           type="button"
           class="list-group-item list-group-item-action"
-          *ngFor="let scan of scans"
+          *ngFor="let scan of scans; let i = index"
           [class.active]="currentScan && currentScan.id === scan.id"
-          (click)="selectScan(scan)"
+          [class.locked]="i > maxUnlockedIndex"
+          [disabled]="i > maxUnlockedIndex"
+          (click)="selectScan(scan, i)"
+          title="{{
+            i > maxUnlockedIndex
+              ? 'Locked until previous scan is completed'
+              : ''
+          }}"
         >
           {{ scan.name }}
+          <mat-icon *ngIf="i > maxUnlockedIndex" class="ms-2 text-muted"
+            >lock</mat-icon
+          >
         </button>
       </div>
       <div *ngIf="scans.length === 0" class="alert alert-info mt-3">
@@ -26,7 +36,13 @@
         <button class="btn btn-primary w-100">Results</button>
       </div>
       <div class="mt-3">
-        <button class="btn btn-primary w-100" disabled>Done</button>
+        <button
+          class="btn btn-primary w-100"
+          [disabled]="!doneEnabled"
+          (click)="onDone()"
+        >
+          Done
+        </button>
       </div>
     </div>
 

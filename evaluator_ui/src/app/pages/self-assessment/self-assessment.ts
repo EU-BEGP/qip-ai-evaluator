@@ -19,6 +19,10 @@ import { Router } from '@angular/router';
 export class SelfAssessment implements OnInit {
   scans: Array<{ id: number; name: string }> = [];
   currentScan: { id: number; name: string } | null = null;
+  currentScanIndex = 0;
+  maxUnlockedIndex = 0;
+  scanCompletion: { [scanId: number]: boolean } = {};
+  doneEnabled = false;
   criterions: Array<{
     id: number;
     question: string;
@@ -68,16 +72,23 @@ export class SelfAssessment implements OnInit {
     this.selfEval.getScans(evaluationId).subscribe({
       next: (res) => {
         this.scans = res;
+
+        this.maxUnlockedIndex = 0;
+        this.scanCompletion = {};
+        this.doneEnabled = false;
+
+        this.scans.forEach((s) => (this.scanCompletion[s.id] = false));
         if (res.length > 0) {
-          this.selectScan(res[0]);
+          this.selectScan(res[0], 0);
         }
       },
       error: (err) => console.error('Failed loading scans', err),
     });
   }
-
-  selectScan(scan: { id: number; name: string }) {
+  selectScan(scan: { id: number; name: string }, index: number) {
+    if (index > this.maxUnlockedIndex) return;
     this.currentScan = scan;
+    this.currentScanIndex = index;
     this.criterions = [];
     this.selectedCriterion = null;
     if (!scan || !scan.id) return;
@@ -90,23 +101,52 @@ export class SelfAssessment implements OnInit {
             {
               label: 'Yes',
               value: 'yes',
-              state: c.user_selection.toLowerCase() === 'yes',
+              state: (c.user_selection || '').toLowerCase() === 'yes',
             },
             {
               label: 'No',
               value: 'no',
-              state: c.user_selection.toLowerCase() === 'no',
+              state: (c.user_selection || '').toLowerCase() === 'no',
             },
             {
               label: 'Not applicable',
               value: 'not applicable',
-              state: c.user_selection.toLowerCase() === 'not applicable',
+              state:
+                (c.user_selection || '').toLowerCase() === 'not applicable',
             },
           ];
         });
+
+        this.updateScanCompletion(scan.id);
       },
       error: (err) => console.error('Failed loading criterions', err),
     });
+  }
+
+  private updateScanCompletion(scanId: number) {
+    const allDone =
+      this.criterions && this.criterions.length > 0
+        ? this.criterions.every(
+            (c) => !!c.buttons && c.buttons.some((b) => b.state),
+          )
+        : true; // if no criterions, treat as completed
+
+    this.scanCompletion[scanId] = allDone;
+
+    if (allDone && this.currentScanIndex === this.maxUnlockedIndex) {
+      if (this.maxUnlockedIndex < this.scans.length - 1) {
+        this.maxUnlockedIndex++;
+      }
+    }
+
+    const lastScan = this.scans.length
+      ? this.scans[this.scans.length - 1]
+      : null;
+    if (lastScan) {
+      this.doneEnabled = !!this.scanCompletion[lastScan.id];
+    } else {
+      this.doneEnabled = false;
+    }
   }
 
   selectCriterion(c: {
@@ -146,6 +186,10 @@ export class SelfAssessment implements OnInit {
         criterion.user_selection = event.value;
         criterion.buttons?.map((b) => (b.state = b.value === event.value));
         console.log('Criterion updated successfully');
+
+        if (this.currentScan && this.currentScan.id) {
+          this.updateScanCompletion(this.currentScan.id);
+        }
       },
       error: (err) => console.error('Failed updating criterion', err),
     });
@@ -162,9 +206,9 @@ export class SelfAssessment implements OnInit {
     } | null;
   }) {
     if (!this.currentScan || !criterion) return;
-    // auto-select the criterion immediately so the right column updates
+
     this.selectedCriterion = criterion as any;
-    // clear any previous suggestion while we fetch a new one
+
     criterion.suggestion = null as any;
 
     this.selfEval
@@ -178,7 +222,6 @@ export class SelfAssessment implements OnInit {
           const intervalId = setInterval(() => {
             this.selfEval.getAiSuggestion(String(criterion.id)).subscribe({
               next: (res: { result: string }) => {
-                // map service result into the UI shape
                 criterion.suggestion = {
                   result: res.result,
                   badge: (res.result || '')
@@ -188,7 +231,7 @@ export class SelfAssessment implements OnInit {
                 };
                 this.selectedCriterion = criterion as any;
                 console.log('AI suggestion updated', res);
-                // stop interval when suggestion is obtained
+
                 if (res && res.result) {
                   clearInterval(intervalId);
                 }
@@ -202,5 +245,10 @@ export class SelfAssessment implements OnInit {
         },
         error: (err) => console.error('AI suggestion failed', err),
       });
+  }
+
+  onDone() {
+    // Begin AI evaluation in bg
+    console.log('Going to results page for evaluation', this.evaluationId);
   }
 }
