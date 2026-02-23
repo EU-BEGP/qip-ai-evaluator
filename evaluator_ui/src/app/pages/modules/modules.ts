@@ -16,6 +16,7 @@ import { EvaluationListComponent } from '../../components/evaluation-list-compon
 import { NewEvaluationModalComponent } from '../../components/new-evaluation-modal-component/new-evaluation-modal-component';
 import { PeerReviewModalComponent } from '../../components/peer-review-modal-component/peer-review-modal-component';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
+import { PeerReviewersComponent } from '../../components/peer-reviewers-component/peer-reviewers-component';
 
 @Component({
   selector: 'app-modules',
@@ -31,7 +32,8 @@ import { PageTitleComponent } from '../../components/page-title-component/page-t
     EvaluationListComponent,
     NewEvaluationModalComponent,
     PeerReviewModalComponent,
-    PageTitleComponent
+    PageTitleComponent,
+    PeerReviewersComponent
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',
@@ -43,6 +45,7 @@ export class Modules implements OnInit {
   evaluationListByIndex: any = {};
   showNewEvalModal: boolean = false;
   showPeerReviewModal: boolean = false;
+  showInviteReviewersModal: boolean = false;
   selectedModule: any = null;
 
   constructor(
@@ -85,5 +88,14 @@ export class Modules implements OnInit {
 
   closePeerReviewModal() {
     this.showPeerReviewModal = false;
+  }
+  
+  closeInviteReviewersModal() {
+    this.showInviteReviewersModal = false;
+  }
+
+  inviteReviewers() {
+    this.closePeerReviewModal();
+    this.showInviteReviewersModal = true;
   }
 }

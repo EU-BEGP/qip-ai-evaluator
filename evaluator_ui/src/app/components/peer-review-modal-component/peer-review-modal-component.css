@@ -18,7 +18,7 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 }
 
 .reviewer-name {
-  max-width: 80%; /* ajusta el porcentaje que quieras */
+  max-width: 80%;
   overflow: hidden;
 }
 

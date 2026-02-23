@@ -2,18 +2,22 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
+@if(showPeerReviewModal) {
+  <peer-reviewers-component (closeModal)="closePeerReviewModal()"></peer-reviewers-component>
+}
+
 <app-page-title-component [title]="'Results'" [icon]="'equalizer'"></app-page-title-component>
 
 <div class="new-eval-button d-flex mx-5 mt-0 p-0 mb-4">
   <button mat-raised-button color="primary" (click)="goBack()">Go Back</button>
 </div>
 
-@if (allScans) {
+@if(allScans) {
   <div class="d-flex justify-content-center align-items-center flex-wrap flex-column mb-5 gap-4 all-scans-container">
     <div class="position-relative all-scans-card align-self-center">
       <app-result-card-component [data]="allScans" [isMain]="true"></app-result-card-component>
     </div> 
-    @if (allScans.answer_distribution.unanswered > 0 || allScans.answer_distribution.no > 0) {
+    @if(allScans.answer_distribution.unanswered > 0 || allScans.answer_distribution.no > 0) {
       <div class="alert alert-danger align-self-center m-0">
         <span class="text-danger alert-title"><b>The learning resource needs improvements for quality</b></span>
         <p class="mt-2 mb-0 alert-text">
@@ -28,7 +32,7 @@
           <b>The learning resource</b> satisfies the compliance requirements and you can invite external reviewers for quality.
           <br/>To ensure a thorough evaluation, please use the button below to send invitations to reviewers and gather their feedback.
         </p>
-        <button mat-raised-button class="bg-success text-white button-success">+ Invite Reviewers</button>
+        <button mat-raised-button class="bg-success text-white button-success" (click)="inviteReviewers()">+ Invite Reviewers</button>
       </div>
     }
   </div>

@@ -11,7 +11,7 @@
         <p>{{ item.description }}</p>
         <table class="table table-striped evaluation-table rounded-2">
           <colgroup>
-            @if (isAIEvaluation) {
+            @if(isAIEvaluation) {
               <col style="width:12%" />
               <col style="width:28%" />
               <col style="width:8%" />
@@ -43,7 +43,7 @@
                 <td>{{ criterion.name }}</td>
                 <td>{{ criterion.description }}</td>
                 <td class="text-center">{{ criterion.score }}</td>
-                @if (isAIEvaluation) {
+                @if(isAIEvaluation) {
                   <td>
                     <ul class="ps-3 mb-0">
                       @for(shortcoming of criterion.shortcomings; track shortcoming) {

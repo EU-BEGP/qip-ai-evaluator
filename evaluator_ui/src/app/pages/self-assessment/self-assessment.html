@@ -2,9 +2,9 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<div class="self-assessment container">
-  <h2 class="mb-3">Self Assessment</h2>
+<app-page-title-component [title]="'Self Assessment'" [icon]="'quiz'"></app-page-title-component>
 
+<div class="self-assessment container">
   <div class="row">
     <!-- Left: scans list -->
     <div class="col-3 sticky-left">
@@ -29,11 +29,11 @@
           >
         </button>
       </div>
-      <div *ngIf="scans.length === 0" class="alert alert-info mt-3">
+      <div *ngIf="scans.length === 0" class="alert alert-info">
         No scans available.
       </div>
       <div class="mt-3">
-        <button class="btn btn-primary w-100">Results</button>
+        <button class="btn btn-primary w-100" (click)="onResults()">Results</button>
       </div>
       <div class="mt-3">
         <button
@@ -60,7 +60,7 @@
             <app-criterion-card-component
               [question]="c.question"
               [description]="c.description"
-              [buttons]="c.buttons"
+              [buttons]="c.buttons || []"
               (buttonClick)="onCriterionAction($event, c)"
               (aiClick)="onAiSuggestion(c)"
             ></app-criterion-card-component>

@@ -22,6 +22,7 @@ import { Router } from '@angular/router';
 export class PeerReviewModalComponent implements OnInit {
   @Input() evaluationId!: string;
   @Output() closeModalEvent = new EventEmitter<void>();
+  @Output() inviteReviewersEvent = new EventEmitter<void>();
 
   reviews: Review[] = [];
 
@@ -42,6 +43,10 @@ export class PeerReviewModalComponent implements OnInit {
 
   closePeerReviewModal() {
     this.closeModalEvent.emit();
+  }
+
+  inviteReviewers() {
+    this.inviteReviewersEvent.emit();
   }
 
   goToPeerReview(evaluationId: string, reviewId: number) {

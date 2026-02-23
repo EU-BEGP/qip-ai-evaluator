@@ -8,10 +8,17 @@ import { ActivatedRoute } from '@angular/router';
 import { CriterionCardComponent } from '../../components/criterion-card-component/criterion-card-component';
 import { SelfEvaluationService } from '../../services/self-evaluation-service';
 import { Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 
 @Component({
   selector: 'app-self-assessment',
-  imports: [CommonModule, CriterionCardComponent],
+  imports: [
+    CommonModule, 
+    CriterionCardComponent,
+    MatIconModule,
+    PageTitleComponent
+  ],
   templateUrl: './self-assessment.html',
   styleUrls: ['./self-assessment.css'],
   standalone: true,
@@ -250,5 +257,9 @@ export class SelfAssessment implements OnInit {
   onDone() {
     // Begin AI evaluation in bg
     console.log('Going to results page for evaluation', this.evaluationId);
+  }
+
+  onResults() { 
+    this.router.navigate(['results'], { relativeTo: this.route }); 
   }
 }

@@ -8,13 +8,15 @@ import { MatButtonModule } from '@angular/material/button';
 import { SelfEvaluationService } from '../../services/self-evaluation-service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ResultCardComponent } from '../../components/result-card-component/result-card-component';
+import { PeerReviewersComponent } from '../../components/peer-reviewers-component/peer-reviewers-component';
 
 @Component({
   selector: 'app-results',
   imports: [
     PageTitleComponent,
     MatButtonModule,
-    ResultCardComponent
+    ResultCardComponent,
+    PeerReviewersComponent
   ],
   templateUrl: './results.html',
   styleUrl: './results.css',
@@ -23,6 +25,7 @@ export class Results implements OnInit {
   evaluationId?: string;
   allScans: any = null;
   scans: any[] = [];
+  showPeerReviewModal = false;
 
   constructor (
     private selfEvaluationService: SelfEvaluationService,
@@ -42,6 +45,14 @@ export class Results implements OnInit {
         console.error('Error fetching results:', error);
       }
     })
+  }
+
+  inviteReviewers(): void {
+    this.showPeerReviewModal = true;
+  }
+
+  closePeerReviewModal(): void {
+    this.showPeerReviewModal = false;
   }
 
   goBack(): void {

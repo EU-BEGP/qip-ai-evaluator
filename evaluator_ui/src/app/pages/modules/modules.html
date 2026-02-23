@@ -13,7 +13,11 @@
 }
 
 @if(showPeerReviewModal) {
-  <app-peer-review-modal-component (closeModalEvent)="closePeerReviewModal()" [evaluationId]="selectedModule.last_evaluation_id"></app-peer-review-modal-component>
+  <app-peer-review-modal-component (closeModalEvent)="closePeerReviewModal()" (inviteReviewersEvent)="inviteReviewers()" [evaluationId]="selectedModule.last_evaluation_id"></app-peer-review-modal-component>
+}
+
+@if(showInviteReviewersModal) {
+  <peer-reviewers-component (closeModal)="closeInviteReviewersModal()"></peer-reviewers-component>
 }
 
 <div class="modules-container space justify-content-center gap-5">

@@ -3,7 +3,7 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 <mat-card class="card bg-light px-4 pt-4 pb-2">
-  @if (!isMain) {
+  @if(!isMain) {
     <div class="d-flex justify-content-end">
       <div class="alert border-0 rounded-1 mb-2" [ngClass]="getClass()">{{ getText() }}</div>
     </div>
@@ -12,7 +12,7 @@
   <p class="scan-title mb-1"><b class="me-2">{{ isMain ? data.name : getShortName(data.name) }}</b></p>
   <p class="description text-muted mb-0"><i>{{ data.description }}</i></p>
 
-  @if (isMain) {
+  @if(isMain) {
     <p class="my-2"><b>Compliance Percentage</b></p>
     <app-evaluation-circle-component 
       [obtained]="totalPercentage"
