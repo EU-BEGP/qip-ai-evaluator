@@ -12,51 +12,57 @@ import { MainLayout } from './pages/main-layout/main-layout';
 import { SelfAssessment } from './pages/self-assessment/self-assessment';
 import { PeerReviewEvaluation } from './pages/peer-review-evaluation/peer-review-evaluation';
 import { Results } from './pages/results/results';
+import { PeerReview } from './pages/peer-review/peer-review';
 
 export const routes: Routes = [
   {
     path: '',
     component: MainLayout,
     children: [
-      { 
-        path: '', 
-        redirectTo: '/modules', 
-        pathMatch: 'full' 
+      {
+        path: '',
+        redirectTo: '/modules',
+        pathMatch: 'full',
       },
-      { 
-        path: 'modules', 
-        component: Modules, 
-        canActivate: [AuthGuard] 
+      {
+        path: 'modules',
+        component: Modules,
+        canActivate: [AuthGuard],
       },
-      { 
-        path: 'notifications', 
-        component: Notifications, 
-        canActivate: [AuthGuard] 
-      }, 
-      { 
-        path: 'evaluation/:id', 
-        component: EvaluationComponent, 
-        canActivate: [AuthGuard] 
+      {
+        path: 'notifications',
+        component: Notifications,
+        canActivate: [AuthGuard],
       },
-      { 
-        path: 'self-assessment/:id', 
-        component: SelfAssessment, 
-        canActivate: [AuthGuard] 
+      {
+        path: 'evaluation/:id',
+        component: EvaluationComponent,
+        canActivate: [AuthGuard],
+      },
+      {
+        path: 'self-assessment/:id',
+        component: SelfAssessment,
+        canActivate: [AuthGuard],
       },
       {
         path: 'self-assessment/:id/results',
         component: Results,
-        canActivate: [AuthGuard]
+        canActivate: [AuthGuard],
       },
-      { 
-        path: 'peer-review-evaluation/:id/review/:reviewId', 
-        component: PeerReviewEvaluation, 
-        canActivate: [AuthGuard] 
-      }
-    ]
+      {
+        path: 'peer-review-evaluation/:id/review/:reviewId',
+        component: PeerReviewEvaluation,
+        canActivate: [AuthGuard],
+      },
+      {
+        path: 'externalReview/:token',
+        component: PeerReview,
+        canActivate: [AuthGuard],
+      },
+    ],
   },
-  { 
-    path: 'login', 
-    component: LoginComponent 
-  }
+  {
+    path: 'login',
+    component: LoginComponent,
+  },
 ];

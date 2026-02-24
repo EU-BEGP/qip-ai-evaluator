@@ -82,8 +82,8 @@ export class SelfAssessment implements OnInit {
   loadScans(evaluationId: string) {
     this.selfEval.getScans(evaluationId).subscribe({
       next: (res) => {
-        this.scans = res;
-        this.isOutdated = res.outdated || false;
+        this.scans = res.slice(1);
+        this.isOutdated = res[0].outdated || false;
         this.maxUnlockedIndex = 0;
         this.scanCompletion = {};
 

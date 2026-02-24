@@ -55,7 +55,7 @@ export class PeerReview implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const peerToken = this.route.snapshot.paramMap.get('id');
+    const peerToken = this.route.snapshot.paramMap.get('token');
     if (peerToken) {
       this.peerRev.getEvaluationData(peerToken).subscribe({
         next: (res) => {
