@@ -68,12 +68,11 @@ export class PeerReviewService {
   }
 
   getEvaluationData(token: string): Observable<any> {
-    let URL = `${config.api.baseUrl}reviews/details/`;
-    const header = new HttpHeaders().set('X-Review-Token', `${token}`);
+    let URL = `${config.api.baseUrl}/reviews/details/${token}`;
 
     this.loaderService.show();
 
-    return this.http.get<any>(URL, { headers: header }).pipe(
+    return this.http.get<any>(URL).pipe(
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
@@ -89,13 +88,13 @@ export class PeerReviewService {
   }
 
   updatePeerCriterion(
-    token: string,
+    evaluationId: string,
     criterionId: string,
+    evaluatorId: string,
     value: number,
     note: string,
   ): Observable<void> {
-    const url = `${config.api.baseUrl}peer_review/reviews/criterion/${criterionId}`;
-    const header = new HttpHeaders().set('X-Review-Token', `${token}`);
-    return this.http.post<void>(url, { value, note }, { headers: header });
+    const url = `${config.api.baseUrl}/peer_review/reviews/${evaluationId}/criterion/${criterionId}?evaluator_id=${evaluatorId}`;
+    return this.http.post<void>(url, { value, note });
   }
 }

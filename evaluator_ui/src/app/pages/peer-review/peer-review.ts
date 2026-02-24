@@ -51,14 +51,17 @@ export class PeerReview implements OnInit {
     private route: ActivatedRoute,
     private selfEval: SelfEvaluationService,
     private peerRev: PeerReviewService,
+    private router: Router,
   ) {}
 
   ngOnInit(): void {
     const peerToken = this.route.snapshot.paramMap.get('token');
-    if (peerToken) {
-      this.token = peerToken;
-      this.loadScans('', this.token!);
+    if (!peerToken) {
+      this.router.navigate(['/']);
+      return;
     }
+    this.token = peerToken;
+    this.loadScans('', this.token!);
   }
 
   loadScans(evaluationId: string, token: string) {

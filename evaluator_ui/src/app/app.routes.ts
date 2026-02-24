@@ -57,7 +57,6 @@ export const routes: Routes = [
       {
         path: 'external-review/:token',
         component: PeerReview,
-        canActivate: [AuthGuard],
       },
     ],
   },
