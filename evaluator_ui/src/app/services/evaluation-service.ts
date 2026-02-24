@@ -57,17 +57,12 @@ export class EvaluationService {
   evaluate(scanRequest: ScanRequest): Observable<any> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
     const body = scanRequest;
-    this.loaderService.show();
 
     return this.http.post(URL, body, this.httpOptions).pipe(
       tap((response: any) => {
         this.storageService.addEvaluation(response.body.scan_id, body.scan_name);
-        this.toastr.success('Evaluation request successfully submitted.', 'Success');
-        this.loaderService.hide();
       }),
       catchError((err) => {
-        this.toastr.error('Please try again later.', 'Error');
-        this.loaderService.hide();
         return throwError(() => err);
       })
     );
@@ -80,29 +75,12 @@ export class EvaluationService {
 
     return this.http.post(URL, body, this.httpOptions).pipe(
       tap((response: any) => {
-        this.toastr.success('Evaluation request successfully submitted.', 'Success');
         this.loaderService.hide();
       }),
       catchError((err) => {
         this.toastr.error('Something went wrong while creating the evaluation. Please try again later.', 'Error');
         this.loaderService.hide();
         return throwError(() => err);
-      })
-    );
-  }
-
-  getEvaluationList(scanRequest: ScanRequest): Observable<any> {
-    const URL = `${config.api.baseUrl}${config.api.evaluation.list}`;
-    const body = scanRequest;
-    this.loaderService.show();
-
-    return this.http.post(URL, body, this.httpOptions).pipe(
-      catchError((err) => {
-        this.toastr.error('Could not load history.', 'Error');
-        return throwError(() => err);
-      }),
-      finalize(() => {
-        this.loaderService.hide();
       })
     );
   }

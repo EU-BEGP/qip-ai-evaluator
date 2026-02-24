@@ -9,6 +9,13 @@ import { SelfEvaluationService } from '../../services/self-evaluation-service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ResultCardComponent } from '../../components/result-card-component/result-card-component';
 import { PeerReviewersComponent } from '../../components/peer-reviewers-component/peer-reviewers-component';
+import { EvaluationService } from '../../services/evaluation-service';
+import { ScanRequest } from '../../interfaces/scan-request';
+import { firstValueFrom } from 'rxjs';
+import { ToastrService } from 'ngx-toastr';
+import { LoaderService } from '../../services/loader-service';
+import { AlertComponent } from '../../components/alert-component/alert-component';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-results',
@@ -16,35 +23,72 @@ import { PeerReviewersComponent } from '../../components/peer-reviewers-componen
     PageTitleComponent,
     MatButtonModule,
     ResultCardComponent,
-    PeerReviewersComponent
-  ],
+    PeerReviewersComponent,
+    AlertComponent,
+    CommonModule
+],
   templateUrl: './results.html',
   styleUrl: './results.css',
 })
 export class Results implements OnInit {
-  evaluationId?: string;
+  evaluationId?: number;
   allScans: any = null;
   scans: any[] = [];
   showPeerReviewModal = false;
+  email: string = '';
+  isAssessmentCompleted: boolean = false;
+  isOutdated: boolean = false;
+  message: string = 'This evaluation belongs to a previous module version. Please start a new evaluation to continue.';
+  loaded: boolean = false;
 
   constructor (
     private selfEvaluationService: SelfEvaluationService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private evaluationService: EvaluationService,
+    private toastr: ToastrService,
+    private loaderService: LoaderService
   ) {}
 
   ngOnInit(): void {
-    this.evaluationId = this.route.snapshot.paramMap.get('id') || undefined;
+    this.email = localStorage.getItem('accountEmail')!;
+    this.evaluationId = Number(this.route.snapshot.paramMap.get('id')) || undefined;
 
     this.selfEvaluationService.getResults(this.evaluationId!).subscribe({
       next: (response: any[]) => {
         this.allScans = response.find(scan => scan.name === 'All Scans') || null;
         this.scans = response.filter(scan => scan.name !== 'All Scans');
+        this.selfEvaluationService.getStatus(this.evaluationId!).subscribe({
+          next: (statusResponse: any) => {
+            this.isOutdated = statusResponse.outdated;
+            if (statusResponse.status !== 'Self Assessment') {
+              this.isAssessmentCompleted = true;
+            }
+            this.loaded = true;
+          }
+        });
       },
       error: (error) => {
         console.error('Error fetching results:', error);
       }
     })
+  }
+
+  completeAssessment(): void {
+    this.loaderService.show();
+    const evaluationRequests = this.scans.map(scan => 
+      firstValueFrom(this.evaluate(scan.name))
+    );
+
+    Promise.all(evaluationRequests).then(() => {
+      this.loaderService.hide();
+      this.toastr.success('Self assessment completed successfully.', 'Success');
+      this.isAssessmentCompleted = true;
+    }).catch((error) => {
+      this.loaderService.hide();
+      this.toastr.error('Something went wrong completing the self assessment.', 'Error');
+      console.error('Batch evaluation error:', error);
+    });
   }
 
   inviteReviewers(): void {
@@ -57,5 +101,15 @@ export class Results implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/self-assessment', this.evaluationId]);
+  }
+
+  evaluate(scanName: string): any {
+    const scanRequest: ScanRequest = { 
+      evaluation_id: this.evaluationId!,
+      email: this.email,
+      scan_name: scanName
+    }
+
+    return this.evaluationService.evaluate(scanRequest);
   }
 }

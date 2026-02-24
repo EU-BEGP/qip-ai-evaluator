@@ -49,9 +49,23 @@ export class SelfEvaluationService {
     }>(url);
   }
 
-  getResults(evaluationId: string) {
+  getResults(evaluationId: number) {
     let URL = `${config.api.baseUrl}${config.api.selfAssessment.results}`;
-    URL = URL.replace('{id}', evaluationId);
+    URL = URL.replace('{id}', evaluationId.toString());
+
+    this.loaderService.show();
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
+  }
+
+  getStatus(evaluationId: number) {
+    let URL = `${config.api.baseUrl}${config.api.selfAssessment.status}`;
+    URL = URL.replace('{id}', evaluationId.toString());
 
     this.loaderService.show();
 

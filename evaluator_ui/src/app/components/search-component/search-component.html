@@ -7,10 +7,6 @@
     <app-alert-component class="text-center space-top alert mb-0 p-0" [message]="message"></app-alert-component>
   }
 
-  @if(scanInformation.evaluable) {
-    <button class="text-center space-top" mat-raised-button color="primary" (click)="evaluate()">Evaluate</button>
-  }
-
   @if(isEvaluating) {
     <div class="ai-container">
       <app-evaluation-progress-bar-component></app-evaluation-progress-bar-component>

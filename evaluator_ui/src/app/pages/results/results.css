@@ -54,8 +54,20 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   font-size: 0.95rem;
 }
 
-.button-success {
-  width: 11rem;
+.button-success:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #b6babf !important;
+}
+
+.alert {
+  max-width: 90%;
+  display: block;
+  margin: 0 auto;
+}
+
+.space-top {
+  margin-top: 16px;
 }
 
 @media screen and (max-width: 1384px) {
@@ -81,5 +93,11 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 
   .all-scans-container > div {
     max-width: 90vw; 
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .buttons-container {
+    flex-direction: column;
   }
 }

@@ -39,7 +39,8 @@
       "reviewDetail": "peer_review/review_detail/{id}/"
     },
     "selfAssessment": {
-      "results": "evaluations/self_assessment/{id}/results/"
+      "results": "evaluations/self_assessment/{id}/results/",
+      "status": "evaluations/self_assessment/{id}/status/"
     },
     "extra": {
       "download": "evaluations/download_pdf/{id}/"

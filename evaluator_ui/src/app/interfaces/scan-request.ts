@@ -3,7 +3,7 @@
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 export interface ScanRequest {
-  course_link: string;
+  evaluation_id: number;
   email: string;
   scan_name: string;
 }

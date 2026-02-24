@@ -14,7 +14,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { EvaluationService } from '../../services/evaluation-service';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
-import { ScanRequest } from '../../interfaces/scan-request';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
 import { ScanItem } from '../../interfaces/scan-item';
 import { AlertComponent } from '../alert-component/alert-component';
@@ -72,10 +71,6 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
 
   ngOnInit(): void {
     this.tab = this.scanInformation.name;
-
-    if (this.scanInformation.status !== 'In Progress' && this.scanInformation.status !== 'Completed' && this.scanInformation.name !== 'All Scans') {
-      this.evaluate();
-    }
     
     if (this.scanInformation.evaluable === false || this.isAIEvaluation === false) {
       this.loadData();
@@ -104,25 +99,6 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
     }
   }
 
-  evaluate(): void {
-    const scanRequest: ScanRequest = { 
-      course_link: this.linkModule,
-      email: localStorage.getItem('accountEmail')!,
-      scan_name: this.tab
-    }
-
-    this.evaluationService.evaluate(scanRequest).subscribe({
-      next: (response) => {
-        this.startPolling.emit({ scan: { "scan_id": response.body.scan_id, "scan_name": scanRequest.scan_name }, refresh: true });
-        this.scanInformation.evaluable = false;
-        this.isEvaluating = true;
-      },
-      error: (error) => {
-        console.error('Evaluation error:', error);
-      }
-    });
-  }
-
   loadData(): void {
     this.isLoading = true;
     let request$;
@@ -135,8 +111,6 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
       request$ = this.peerReviewService.getReviewDetailScan(this.scanInformation.id!.toString());
     }
     
-
-
     request$.subscribe({
       next: (response) => {
         this.data = response;
