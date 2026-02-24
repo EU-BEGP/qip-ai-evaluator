@@ -10,6 +10,7 @@ import { SelfEvaluationService } from '../../services/self-evaluation-service';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
+import { AlertComponent } from '../../components/alert-component/alert-component';
 
 @Component({
   selector: 'app-self-assessment',
@@ -18,6 +19,7 @@ import { PageTitleComponent } from '../../components/page-title-component/page-t
     CriterionCardComponent,
     MatIconModule,
     PageTitleComponent,
+    AlertComponent,
   ],
   templateUrl: './self-assessment.html',
   styleUrls: ['./self-assessment.css'],

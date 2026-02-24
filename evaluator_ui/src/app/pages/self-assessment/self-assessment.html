@@ -7,6 +7,13 @@
   [icon]="'quiz'"
 ></app-page-title-component>
 
+@if (isOutdated) {
+  <app-alert-component
+    type="warning"
+    message="You are watching a previous self-assessment as the current module is Outdated."
+  ></app-alert-component>
+}
+
 <div class="self-assessment container">
   <div class="row">
     <!-- Left: scans list -->
