@@ -32,7 +32,6 @@ export class SelfAssessment implements OnInit {
   currentScanIndex = 0;
   maxUnlockedIndex = 0;
   scanCompletion: { [scanId: number]: boolean } = {};
-  doneEnabled = false;
   criterions: Array<{
     id: number;
     question: string;
@@ -42,6 +41,7 @@ export class SelfAssessment implements OnInit {
       label: string;
       value?: any;
       state?: boolean;
+      disabled?: boolean;
     }>;
     suggestion?: {
       result: string;
@@ -57,6 +57,7 @@ export class SelfAssessment implements OnInit {
       label: string;
       value?: any;
       state?: boolean;
+      disabled?: boolean;
     }>;
     suggestion?: {
       result: string;
@@ -85,7 +86,6 @@ export class SelfAssessment implements OnInit {
         this.isOutdated = res.outdated || false;
         this.maxUnlockedIndex = 0;
         this.scanCompletion = {};
-        this.doneEnabled = false;
 
         this.scans.forEach((s) => (this.scanCompletion[s.id] = false));
         if (res.length > 0) {
@@ -112,17 +112,20 @@ export class SelfAssessment implements OnInit {
               label: 'Yes',
               value: 'yes',
               state: (c.user_selection || '').toLowerCase() === 'yes',
+              disabled: this.isOutdated,
             },
             {
               label: 'No',
               value: 'no',
               state: (c.user_selection || '').toLowerCase() === 'no',
+              disabled: this.isOutdated,
             },
             {
               label: 'Not applicable',
               value: 'not applicable',
               state:
                 (c.user_selection || '').toLowerCase() === 'not applicable',
+              disabled: this.isOutdated,
             },
           ];
         });
@@ -148,15 +151,6 @@ export class SelfAssessment implements OnInit {
         this.maxUnlockedIndex++;
       }
     }
-
-    const lastScan = this.scans.length
-      ? this.scans[this.scans.length - 1]
-      : null;
-    if (lastScan) {
-      this.doneEnabled = !!this.scanCompletion[lastScan.id];
-    } else {
-      this.doneEnabled = false;
-    }
   }
 
   selectCriterion(c: {
@@ -168,6 +162,7 @@ export class SelfAssessment implements OnInit {
       label: string;
       value?: any;
       state?: boolean;
+      disabled?: boolean;
     }>;
     suggestion?: {
       result: string;
@@ -188,6 +183,7 @@ export class SelfAssessment implements OnInit {
         label: string;
         value?: any;
         state?: boolean;
+        disabled?: boolean;
       }>;
     },
   ) {
