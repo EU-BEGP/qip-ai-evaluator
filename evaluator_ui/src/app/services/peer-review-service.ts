@@ -86,4 +86,15 @@ export class PeerReviewService {
       result: string;
     }>(url, { evaluationId, emails });
   }
+
+  updatePeerCriterion(
+    evaluationId: string,
+    criterionId: string,
+    evaluatorId: string,
+    value: number,
+    note: string,
+  ): Observable<void> {
+    const url = `${config.api.baseUrl}/peer_review/reviews/${evaluationId}/criterion/${criterionId}?evaluator_id=${evaluatorId}`;
+    return this.http.post<void>(url, { value, note });
+  }
 }
