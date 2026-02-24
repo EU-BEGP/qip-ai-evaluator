@@ -21,10 +21,12 @@ export class SelfEvaluationService {
     );
   }
 
-  getCriterions(scanId: string): Observable<any> {
-    return this.http.get<any>(
-      `${this.base}/scans/${encodeURIComponent(scanId)}/criterions`,
-    );
+  getCriterions(scanId: string, evaluatorId?: string): Observable<any> {
+    let url = `${this.base}/scans/${encodeURIComponent(scanId)}/criterions`;
+    if (evaluatorId) {
+      url += `?evaluator_id=${encodeURIComponent(evaluatorId)}`;
+    }
+    return this.http.get<any>(url);
   }
 
   updateCriterion(criterionId: string, result: any): Observable<any> {
