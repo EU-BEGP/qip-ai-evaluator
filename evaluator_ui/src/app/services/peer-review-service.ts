@@ -81,7 +81,7 @@ export class PeerReviewService {
   }
 
   requestPeerReview(evaluationId: string, emails: string[]): Observable<any> {
-    const url = `${config.api.baseUrl}/evaluations/request_peer_reviews/`;
+    const url = `${config.api.baseUrl}reviews/request_peer_reviews/`;
     return this.http.post<{
       result: string;
     }>(url, { evaluationId, emails });
