@@ -20,17 +20,21 @@ export class CriterionCardComponent implements OnInit {
     label: string;
     value?: any;
     state?: boolean;
+    disabled?: boolean;
   }> = [];
+  @Input() hasAI: boolean = false;
+  @Input() hasNote: boolean = false;
 
   @Output() buttonClick = new EventEmitter<{ value: any }>();
   @Output() aiClick = new EventEmitter<void>();
+  @Output() noteFill = new EventEmitter<{ note: string }>();
 
   constructor() {}
 
   ngOnInit(): void {}
 
   onButtonClick(
-    btn: { label: string; value?: any; state?: boolean },
+    btn: { label: string; value?: any; state?: boolean; disabled?: boolean },
     event: MouseEvent,
   ) {
     event.stopPropagation();
@@ -38,11 +42,19 @@ export class CriterionCardComponent implements OnInit {
       this.buttons.forEach((b) => (b.state = false));
       btn.state = !btn.state;
     }
-    this.buttonClick.emit({ value: btn.value ?? btn.label });
+    if (!btn.disabled) {
+      this.buttonClick.emit({ value: btn.value ?? btn.label });
+    }
   }
 
   onAiClick(event: MouseEvent) {
     event.stopPropagation();
     this.aiClick.emit();
+  }
+
+  onNoteFill(event: InputEvent) {
+    event.stopPropagation();
+    const target = event.target as HTMLInputElement;
+    this.noteFill.emit({ note: target.value });
   }
 }

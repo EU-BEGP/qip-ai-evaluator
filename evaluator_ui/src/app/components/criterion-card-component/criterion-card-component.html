@@ -12,11 +12,13 @@
         [color]="b.state ? 'primary' : 'basic'"
         class="me-2"
         (click)="onButtonClick(b, $event)"
+        [disabled]="b.disabled"
       >
         {{ b.label }}
       </button>
     </ng-container>
     <button
+      *ngIf="hasAI"
       mat-mini-fab
       color="accent"
       class="ai-fab"
@@ -30,4 +32,18 @@
   <hr class="divider" />
 
   <div class="description mt-2">{{ description }}</div>
+
+  <hr class="divider" />
+
+  <div class="notes mt-2" *ngIf="hasNote">
+    <label for="notes-{{ question | slugify }}" class="form-label"
+      >Notes:</label
+    >
+    <textarea
+      id="notes-{{ question | slugify }}"
+      class="form-control"
+      rows="3"
+      (change)="onNoteFill($event)"
+    ></textarea>
+  </div>
 </mat-card>
