@@ -45,8 +45,7 @@ export class PeerReview implements OnInit {
       state?: boolean;
     }>;
   } | null = null;
-  evaluationId: string | null = null;
-  evaluatorId: string | null = null;
+  token: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -57,16 +56,8 @@ export class PeerReview implements OnInit {
   ngOnInit(): void {
     const peerToken = this.route.snapshot.paramMap.get('token');
     if (peerToken) {
-      this.peerRev.getEvaluationData(peerToken).subscribe({
-        next: (res) => {
-          if (res && res.evaluation_id && res.evaluatorId) {
-            this.evaluationId = res.evaluation_id;
-            this.evaluatorId = res.evaluatorId;
-            this.loadScans(res.evaluation_id);
-          }
-        },
-        error: (err) => console.error('Failed getting evaluation data', err),
-      });
+      this.token = peerToken;
+      this.loadScans('', this.token!);
     }
   }
 
@@ -88,63 +79,61 @@ export class PeerReview implements OnInit {
     this.selectedCriterion = null;
     if (!scan || !scan.id) return;
 
-    this.selfEval
-      .getCriterions(String(scan.id), String(this.evaluatorId))
-      .subscribe({
-        next: (res: any) => {
-          this.criterions = res.criterions || [];
-          this.criterions.map((c) => {
-            c.buttons = [
-              {
-                label: '0',
-                value: 0,
-                state: c.peer_selection === '0',
-              },
-              {
-                label: '0.5',
-                value: 0.5,
-                state: c.peer_selection === '0.5',
-              },
-              {
-                label: '1',
-                value: 1,
-                state: c.peer_selection === '1',
-              },
-              {
-                label: '1.5',
-                value: 1.5,
-                state: c.peer_selection === '1.5',
-              },
-              {
-                label: '2',
-                value: 2,
-                state: c.peer_selection === '2',
-              },
-              {
-                label: '3.5',
-                value: 3.5,
-                state: c.peer_selection === '3.5',
-              },
-              {
-                label: '4',
-                value: 4,
-                state: c.peer_selection === '4',
-              },
-              {
-                label: '4.5',
-                value: 4.5,
-                state: c.peer_selection === '4.5',
-              },
-              {
-                label: '5',
-                value: 5,
-                state: c.peer_selection === '5',
-              },
-            ];
-          });
-        },
-        error: (err) => console.error('Failed loading criterions', err),
-      });
+    this.selfEval.getCriterions(String(scan.id), this.token!).subscribe({
+      next: (res: any) => {
+        this.criterions = res.criterions || [];
+        this.criterions.map((c) => {
+          c.buttons = [
+            {
+              label: '0',
+              value: 0,
+              state: c.peer_selection === '0',
+            },
+            {
+              label: '0.5',
+              value: 0.5,
+              state: c.peer_selection === '0.5',
+            },
+            {
+              label: '1',
+              value: 1,
+              state: c.peer_selection === '1',
+            },
+            {
+              label: '1.5',
+              value: 1.5,
+              state: c.peer_selection === '1.5',
+            },
+            {
+              label: '2',
+              value: 2,
+              state: c.peer_selection === '2',
+            },
+            {
+              label: '3.5',
+              value: 3.5,
+              state: c.peer_selection === '3.5',
+            },
+            {
+              label: '4',
+              value: 4,
+              state: c.peer_selection === '4',
+            },
+            {
+              label: '4.5',
+              value: 4.5,
+              state: c.peer_selection === '4.5',
+            },
+            {
+              label: '5',
+              value: 5,
+              state: c.peer_selection === '5',
+            },
+          ];
+        });
+      },
+      error: (err) => console.error('Failed loading criterions', err),
+    });
   }
 
   selectCriterion(c: {
@@ -179,9 +168,8 @@ export class PeerReview implements OnInit {
   ) {
     this.peerRev
       .updatePeerCriterion(
-        this.evaluationId!,
+        this.token!,
         String(criterion.id),
-        this.evaluatorId!,
         event.value,
         criterion.peer_note || '',
       )
@@ -223,9 +211,8 @@ export class PeerReview implements OnInit {
 
     this.peerRev
       .updatePeerCriterion(
-        this.evaluationId!,
+        this.token!,
         String(criterion.id),
-        this.evaluatorId!,
         buttonValue,
         event.note,
       )

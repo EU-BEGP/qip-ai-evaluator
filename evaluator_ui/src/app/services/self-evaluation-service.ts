@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
 import config from '../config.json';
 import { LoaderService } from './loader-service';
@@ -15,18 +15,24 @@ export class SelfEvaluationService {
     private loaderService: LoaderService,
   ) {}
 
-  getScans(moduleId: string): Observable<any> {
-    return this.http.get<any>(
-      `${this.base}/evaluation_ids/${encodeURIComponent(moduleId)}`,
-    );
+  getScans(evalId: string, token: string): Observable<any> {
+    let url = `${this.base}/evaluation_ids/${encodeURIComponent(evalId)}`;
+
+    let header = new HttpHeaders();
+    if (token) {
+      header = header.set('X-Review-Token', `${token}`);
+    }
+    return this.http.get<any>(url, { headers: header });
   }
 
-  getCriterions(scanId: string, evaluatorId?: string): Observable<any> {
+  getCriterions(scanId: string, token: string): Observable<any> {
     let url = `${this.base}/scans/${encodeURIComponent(scanId)}/criterions`;
-    if (evaluatorId) {
-      url += `?evaluator_id=${encodeURIComponent(evaluatorId)}`;
+
+    let header = new HttpHeaders();
+    if (token) {
+      header = header.set('X-Review-Token', `${token}`);
     }
-    return this.http.get<any>(url);
+    return this.http.get<any>(url, { headers: header });
   }
 
   updateCriterion(criterionId: string, result: any): Observable<any> {
@@ -64,7 +70,7 @@ export class SelfEvaluationService {
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
-      })
+      }),
     );
   }
 
