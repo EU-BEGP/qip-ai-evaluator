@@ -8,28 +8,15 @@
 >
   <div class="card p-4 peer-review-modal-content">
     <h5 class="mb-3">Invite Reviewers</h5>
-    <button mat-icon-button class="close-button" (click)="closePeerReviewModal()" aria-label="Close">
+    <button
+      mat-icon-button
+      class="close-button"
+      (click)="closePeerReviewModal()"
+      aria-label="Close"
+    >
       <mat-icon>close</mat-icon>
     </button>
 
-    <div class="link-row d-flex align-items-center mb-3">
-      <label class="me-2 mb-0">Link:</label>
-      <div
-        class="form-control-plaintext link-text me-2"
-        tabindex="0"
-        aria-label="Invite link"
-      >
-        http://example.com/invite/abcd1234
-      </div>
-      <button
-        mat-icon-button
-        aria-label="Copy link"
-        class="me-1"
-        (click)="copyLink()"
-      >
-        <mat-icon>file_copy</mat-icon>
-      </button>
-    </div>
     <div *ngFor="let email of emails; let i = index" class="mb-2">
       <div class="invite-row d-flex align-items-center">
         <input
@@ -63,7 +50,14 @@
       <button mat-stroked-button (click)="closePeerReviewModal()">
         Cancel
       </button>
-      <button mat-flat-button color="primary" class="ms-2">Invite</button>
+      <button
+        mat-flat-button
+        color="primary"
+        class="ms-2"
+        (click)="sendInvites()"
+      >
+        Invite
+      </button>
     </div>
   </div>
 </div>

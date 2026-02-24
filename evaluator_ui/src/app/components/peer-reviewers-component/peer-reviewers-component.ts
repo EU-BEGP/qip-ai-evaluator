@@ -1,11 +1,12 @@
 // Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Output, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
+import { PeerReviewService } from '../../services/peer-review-service';
 
 @Component({
   standalone: true,
@@ -17,11 +18,10 @@ import { FormsModule } from '@angular/forms';
 export class PeerReviewersComponent {
   @Input() evaluationId: string = '';
   @Output() closeModal = new EventEmitter<void>();
-
-  inviteLink: string = 'http://example.com/invite/abcd1234';
+  @Input() evaluationId: string | null = null;
   emails: string[] = [''];
 
-  constructor() {}
+  constructor(private peerReviewService: PeerReviewService) {}
 
   private validateEmail(email: string): boolean {
     return (
@@ -47,22 +47,32 @@ export class PeerReviewersComponent {
     }
   }
 
-  copyLink() {
-    if (navigator && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(this.inviteLink).then(() => {
-        alert('Invite link copied to clipboard!');
-      });
-    } else {
-      const el = document.createElement('textarea');
-      el.value = this.inviteLink;
-      document.body.appendChild(el);
-      el.select();
-      try {
-        document.execCommand('copy');
-      } finally {
-        document.body.removeChild(el);
-      }
+  sendInvites() {
+    const validEmails = this.emails.filter((email) =>
+      this.validateEmail(email),
+    );
+    if (validEmails.length === 0) {
+      alert('Please enter at least one valid email address.');
+      return;
     }
+
+    if (!this.evaluationId) {
+      alert('Evaluation ID is missing. Cannot send invitations.');
+      return;
+    }
+
+    this.peerReviewService
+      .requestPeerReview(this.evaluationId, validEmails)
+      .subscribe({
+        next: () => {
+          alert('Invitations sent successfully!');
+          this.closePeerReviewModal();
+        },
+        error: (err) => {
+          console.error('Failed to send invitations', err);
+          alert('Failed to send invitations. Please try again later.');
+        },
+      });
   }
 
   closePeerReviewModal() {
