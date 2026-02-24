@@ -177,13 +177,64 @@ export class PeerReview implements OnInit {
       }>;
     },
   ) {
-    this.selfEval.updateCriterion(String(criterion.id), event.value).subscribe({
-      next: () => {
-        criterion.peer_selection = event.value;
-        criterion.buttons?.map((b) => (b.state = b.value === event.value));
-        console.log('Criterion updated successfully');
-      },
-      error: (err) => console.error('Failed updating criterion', err),
-    });
+    this.peerRev
+      .updatePeerCriterion(
+        this.evaluationId!,
+        String(criterion.id),
+        this.evaluatorId!,
+        event.value,
+        criterion.peer_note || '',
+      )
+      .subscribe({
+        next: () => {
+          criterion.peer_selection = event.value;
+          criterion.buttons?.map((b) => (b.state = b.value === event.value));
+          console.log('Criterion updated successfully');
+        },
+        error: (err) => console.error('Failed updating criterion', err),
+      });
+  }
+
+  onCriterionNoteFill(
+    event: { note: string },
+    criterion: {
+      id: number;
+      question: string;
+      description: string;
+      peer_selection?: string;
+      peer_note?: string;
+      buttons?: Array<{
+        label: string;
+        value?: any;
+        state?: boolean;
+      }>;
+    },
+  ) {
+    if (event.note) {
+      criterion.peer_note = event.note;
+    }
+
+    const buttonValue = criterion.buttons?.find((b) => b.state)?.value;
+
+    if (buttonValue === undefined) {
+      console.error('Cannot add note without selecting a value first');
+      return;
+    }
+
+    this.peerRev
+      .updatePeerCriterion(
+        this.evaluationId!,
+        String(criterion.id),
+        this.evaluatorId!,
+        buttonValue,
+        event.note,
+      )
+      .subscribe({
+        next: () => {
+          criterion.peer_note = event.note;
+          console.log('Criterion note updated successfully');
+        },
+        error: (err) => console.error('Failed updating criterion note', err),
+      });
   }
 }
