@@ -34,9 +34,9 @@
       "unreadQuantity": "notifications/notifications_unread/{email}/"
     },
     "peerReview": {
-      "reviews": "peer_review/reviews/{id}/",
-      "scansInfo": "peer_review/scans_info/{id}/",
-      "reviewDetail": "peer_review/review_detail/{id}/"
+      "reviews": "reviews/reviews/{id}/",
+      "scansInfo": "reviews/scans_info/{id}/",
+      "reviewDetail": "reviews/review_detail/{id}/"
     },
     "selfAssessment": {
       "results": "evaluations/self_assessment/{id}/results/",

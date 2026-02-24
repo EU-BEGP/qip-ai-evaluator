@@ -24,6 +24,6 @@ export class ModuleResultsComponent {
   }
 
   get shouldRender(): boolean {
-    return this.completedScans.length > 1;
+    return this.completedScans.length > 0;
   }
 }

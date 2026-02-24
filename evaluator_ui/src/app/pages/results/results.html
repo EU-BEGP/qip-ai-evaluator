@@ -3,7 +3,7 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 @if(showPeerReviewModal) {
-  <peer-reviewers-component (closeModal)="closePeerReviewModal()"></peer-reviewers-component>
+  <peer-reviewers-component (closeModal)="closePeerReviewModal()" [evaluationId]="evaluationId!.toString()"></peer-reviewers-component>
 }
 
 <app-page-title-component [title]="'Results'" [icon]="'equalizer'"></app-page-title-component>

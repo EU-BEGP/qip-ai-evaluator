@@ -1,7 +1,7 @@
 // Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,7 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./peer-reviewers-component.css'],
 })
 export class PeerReviewersComponent {
+  @Input() evaluationId: string = '';
   @Output() closeModal = new EventEmitter<void>();
 
   inviteLink: string = 'http://example.com/invite/abcd1234';

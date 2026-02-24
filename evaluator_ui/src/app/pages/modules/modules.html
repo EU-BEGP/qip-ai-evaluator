@@ -17,7 +17,7 @@
 }
 
 @if(showInviteReviewersModal) {
-  <peer-reviewers-component (closeModal)="closeInviteReviewersModal()"></peer-reviewers-component>
+  <peer-reviewers-component (closeModal)="closeInviteReviewersModal()" [evaluationId]="selectedModule.last_evaluation_id"></peer-reviewers-component>
 }
 
 <div class="modules-container space justify-content-center gap-5">
