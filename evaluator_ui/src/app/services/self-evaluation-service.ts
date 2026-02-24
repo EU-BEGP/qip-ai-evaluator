@@ -1,5 +1,3 @@
-
-
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
@@ -12,13 +10,14 @@ import { LoaderService } from './loader-service';
 export class SelfEvaluationService {
   private base = `${config.api.baseUrl}evaluations`;
 
-  constructor(private http: HttpClient,
-              private loaderService: LoaderService
+  constructor(
+    private http: HttpClient,
+    private loaderService: LoaderService,
   ) {}
 
   getScans(moduleId: string): Observable<any> {
     return this.http.get<any>(
-      `${this.base}/scans/${encodeURIComponent(moduleId)}`,
+      `${this.base}/evaluation_ids/${encodeURIComponent(moduleId)}`,
     );
   }
 
@@ -33,11 +32,15 @@ export class SelfEvaluationService {
     return this.http.put<any>(url, { result });
   }
 
-  requestAiSuggestion(criterionId: string, question: string, description: string): Observable<any> {
+  requestAiSuggestion(
+    criterionId: string,
+    question: string,
+    description: string,
+  ): Observable<any> {
     const url = `${this.base}/scans/criterions/${encodeURIComponent(criterionId)}/ai-suggestion/`;
     return this.http.post<{
       result: string;
-    }>(url, { question, description});
+    }>(url, { question, description });
   }
 
   getAiSuggestion(criterionId: string): Observable<{
@@ -73,7 +76,7 @@ export class SelfEvaluationService {
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
-      })
+      }),
     );
   }
 }
