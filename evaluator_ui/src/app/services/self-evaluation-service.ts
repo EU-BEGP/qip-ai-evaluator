@@ -15,7 +15,7 @@ export class SelfEvaluationService {
     private loaderService: LoaderService,
   ) {}
 
-  getScans(evalId: string, token: string): Observable<any> {
+  getScans(evalId: string, token?: string): Observable<any> {
     let url = `${this.base}/evaluation_ids/${encodeURIComponent(evalId)}`;
 
     let header = new HttpHeaders();
@@ -25,7 +25,7 @@ export class SelfEvaluationService {
     return this.http.get<any>(url, { headers: header });
   }
 
-  getCriterions(scanId: string, token: string): Observable<any> {
+  getCriterions(scanId: string, token?: string): Observable<any> {
     let url = `${this.base}/scans/${encodeURIComponent(scanId)}/criterions`;
 
     let header = new HttpHeaders();
