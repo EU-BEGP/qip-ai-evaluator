@@ -88,13 +88,13 @@ export class PeerReviewService {
   }
 
   updatePeerCriterion(
-    evaluationId: string,
+    token: string,
     criterionId: string,
-    evaluatorId: string,
     value: number,
     note: string,
   ): Observable<void> {
-    const url = `${config.api.baseUrl}/peer_review/reviews/${evaluationId}/criterion/${criterionId}?evaluator_id=${evaluatorId}`;
-    return this.http.post<void>(url, { value, note });
+    const url = `${config.api.baseUrl}reviews/criterion/${criterionId}`;
+    const headers = new HttpHeaders().set('X-Review-Token', `${token}`);
+    return this.http.post<void>(url, { value, note }, { headers });
   }
 }
