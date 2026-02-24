@@ -14,16 +14,17 @@ import { PageTitleComponent } from '../../components/page-title-component/page-t
 @Component({
   selector: 'app-self-assessment',
   imports: [
-    CommonModule, 
+    CommonModule,
     CriterionCardComponent,
     MatIconModule,
-    PageTitleComponent
+    PageTitleComponent,
   ],
   templateUrl: './self-assessment.html',
   styleUrls: ['./self-assessment.css'],
   standalone: true,
 })
 export class SelfAssessment implements OnInit {
+  isOutdated = false;
   scans: Array<{ id: number; name: string }> = [];
   currentScan: { id: number; name: string } | null = null;
   currentScanIndex = 0;
@@ -79,7 +80,7 @@ export class SelfAssessment implements OnInit {
     this.selfEval.getScans(evaluationId).subscribe({
       next: (res) => {
         this.scans = res;
-
+        this.isOutdated = res.outdated || false;
         this.maxUnlockedIndex = 0;
         this.scanCompletion = {};
         this.doneEnabled = false;
@@ -254,12 +255,7 @@ export class SelfAssessment implements OnInit {
       });
   }
 
-  onDone() {
-    // Begin AI evaluation in bg
-    console.log('Going to results page for evaluation', this.evaluationId);
-  }
-
-  onResults() { 
-    this.router.navigate(['results'], { relativeTo: this.route }); 
+  onResults() {
+    this.router.navigate(['results'], { relativeTo: this.route });
   }
 }
