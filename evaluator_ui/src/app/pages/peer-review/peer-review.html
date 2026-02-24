@@ -44,7 +44,7 @@
             <app-criterion-card-component
               [question]="c.question"
               [description]="c.description"
-              [buttons]="c.buttons"
+              [buttons]="c.buttons!"
               (buttonClick)="onCriterionAction($event, c)"
               [hasNote]="true"
               (noteFill)="onCriterionNoteFill($event, c)"

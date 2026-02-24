@@ -52,7 +52,7 @@ export class CriterionCardComponent implements OnInit {
     this.aiClick.emit();
   }
 
-  onNoteFill(event: InputEvent) {
+  onNoteFill(event: Event) {
     event.stopPropagation();
     const target = event.target as HTMLInputElement;
     this.noteFill.emit({ note: target.value });

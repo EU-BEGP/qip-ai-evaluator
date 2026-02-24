@@ -36,11 +36,11 @@
   <hr class="divider" />
 
   <div class="notes mt-2" *ngIf="hasNote">
-    <label for="notes-{{ question | slugify }}" class="form-label"
+    <label for="notes-{{ question }}" class="form-label"
       >Notes:</label
     >
     <textarea
-      id="notes-{{ question | slugify }}"
+      id="notes-{{ question }}"
       class="form-control"
       rows="3"
       (change)="onNoteFill($event)"

@@ -18,7 +18,6 @@ import { PeerReviewService } from '../../services/peer-review-service';
 export class PeerReviewersComponent {
   @Input() evaluationId: string = '';
   @Output() closeModal = new EventEmitter<void>();
-  @Input() evaluationId: string | null = null;
   emails: string[] = [''];
 
   constructor(private peerReviewService: PeerReviewService) {}
