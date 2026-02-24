@@ -15,7 +15,7 @@ export class PeerReviewService {
 
   constructor(
     private http: HttpClient,
-    private loaderService: LoaderService
+    private loaderService: LoaderService,
   ) {
     this.httpOptions = {
       headers: new HttpHeaders({
@@ -35,7 +35,7 @@ export class PeerReviewService {
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
-      })
+      }),
     );
   }
 
@@ -49,7 +49,7 @@ export class PeerReviewService {
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
-      })
+      }),
     );
   }
 
@@ -63,7 +63,27 @@ export class PeerReviewService {
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
-      })
+      }),
     );
+  }
+
+  getEvaluationData(token: string): Observable<any> {
+    let URL = `${config.api.baseUrl}/reviews/details/${token}`;
+
+    this.loaderService.show();
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      }),
+    );
+  }
+
+  requestPeerReview(evaluationId: string, emails: string[]): Observable<any> {
+    const url = `${config.api.baseUrl}/evaluations/request_peer_reviews/`;
+    return this.http.post<{
+      result: string;
+    }>(url, { evaluationId, emails });
   }
 }
