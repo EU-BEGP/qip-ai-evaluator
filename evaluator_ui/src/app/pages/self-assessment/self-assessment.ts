@@ -27,7 +27,6 @@ import { AlertComponent } from '../../components/alert-component/alert-component
 })
 export class SelfAssessment implements OnInit {
   isOutdated = false;
-  isCompleted = false;
   scans: Array<{ id: number; name: string }> = [];
   currentScan: { id: number; name: string } | null = null;
   currentScanIndex = 0;
@@ -82,20 +81,24 @@ export class SelfAssessment implements OnInit {
 
   checkCompletionStatus(evaluationId: string) {
     this.selfEval.getSelfAssessmentCompletionStatus(evaluationId).subscribe({
-      next: (res: { is_completed: boolean }) => {
-        this.isCompleted = res.is_completed;
-        this.loadScans(evaluationId);
+      next: (res: {
+        scanComplete: { name: string; isComplete: boolean }[];
+      }) => {
+        this.loadScans(
+          evaluationId,
+          res.scanComplete.filter((s) => s.isComplete).length,
+        );
       },
       error: (err) => console.error('Failed to check completion status', err),
     });
   }
 
-  loadScans(evaluationId: string) {
+  loadScans(evaluationId: string, countCompleted: number = 0) {
     this.selfEval.getScans(evaluationId).subscribe({
       next: (res) => {
         this.scans = res.slice(1);
         this.isOutdated = res[0].outdated || false;
-        this.maxUnlockedIndex = this.isCompleted ? this.scans.length - 1 : 0;
+        this.maxUnlockedIndex = countCompleted;
         this.scanCompletion = {};
 
         this.scans.forEach((s) => (this.scanCompletion[s.id] = false));
@@ -160,8 +163,6 @@ export class SelfAssessment implements OnInit {
     if (allDone && this.currentScanIndex === this.maxUnlockedIndex) {
       if (this.maxUnlockedIndex < this.scans.length - 1) {
         this.maxUnlockedIndex++;
-      } else {
-        this.isCompleted = true;
       }
     }
   }
