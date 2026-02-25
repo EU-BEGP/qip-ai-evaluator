@@ -227,4 +227,8 @@ export class PeerReview implements OnInit {
         error: (err) => console.error('Failed updating criterion note', err),
       });
   }
+
+  onDone() {
+    this.peerRev.endPeerReview(this.token!);
+  }
 }
