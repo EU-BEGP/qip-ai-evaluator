@@ -22,7 +22,7 @@ export class SelfEvaluationService {
     if (token) {
       header = header.set('X-Review-Token', `${token}`);
     }
-    return this.http.get<any>(url, { headers: header }).slice(1);
+    return this.http.get<any>(url, { headers: header });
   }
 
   getCriterions(scanId: string, token?: string): Observable<any> {

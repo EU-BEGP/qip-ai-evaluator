@@ -67,7 +67,7 @@ export class PeerReview implements OnInit {
   loadScans(evaluationId: string, token: string) {
     this.selfEval.getScans(evaluationId, token).subscribe({
       next: (res) => {
-        this.scans = res;
+        this.scans = res.slice(1);
         if (res.length > 0) {
           this.selectScan(res[0]);
         }
