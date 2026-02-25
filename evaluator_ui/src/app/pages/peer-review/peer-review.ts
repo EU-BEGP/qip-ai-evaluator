@@ -10,11 +10,16 @@ import { SelfEvaluationService } from '../../services/self-evaluation-service';
 import { PeerReviewService } from '../../services/peer-review-service';
 import { Router } from '@angular/router';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
-
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-peer-review',
-  imports: [CommonModule, CriterionCardComponent, PageTitleComponent, ],
+  imports: [
+    CommonModule,
+    CriterionCardComponent,
+    PageTitleComponent,
+    MatIconModule,
+  ],
   templateUrl: './peer-review.html',
   styleUrls: ['./peer-review.css'],
   standalone: true,
