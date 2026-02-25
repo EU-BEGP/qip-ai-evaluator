@@ -11,6 +11,7 @@ import { PeerReviewService } from '../../services/peer-review-service';
 import { Router } from '@angular/router';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 import { MatIconModule } from '@angular/material/icon';
+import { ToastService } from '../../services/toast-service';
 
 @Component({
   selector: 'app-peer-review',
@@ -19,6 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
     CriterionCardComponent,
     PageTitleComponent,
     MatIconModule,
+    ToastService,
   ],
   templateUrl: './peer-review.html',
   styleUrls: ['./peer-review.css'],
@@ -62,6 +64,7 @@ export class PeerReview implements OnInit {
     private selfEval: SelfEvaluationService,
     private peerRev: PeerReviewService,
     private router: Router,
+    private toast: ToastService,
   ) {}
 
   ngOnInit(): void {
@@ -252,5 +255,8 @@ export class PeerReview implements OnInit {
 
   onDone() {
     this.peerRev.endPeerReview(this.token!);
+    this.toast.show('Peer review completed successfully!', {
+      classname: 'bg-success text-light',
+    });
   }
 }
