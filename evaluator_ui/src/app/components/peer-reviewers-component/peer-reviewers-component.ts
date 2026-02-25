@@ -18,11 +18,27 @@ import { PeerReviewService } from '../../services/peer-review-service';
 export class PeerReviewersComponent {
   @Input() evaluationId: string = '';
   @Output() closeModal = new EventEmitter<void>();
-  emails: string[] = [''];
+  // Use objects with stable ids so Angular won't recreate DOM nodes
+  emails: { id: string; value: string }[] = [];
 
   constructor(private peerReviewService: PeerReviewService) {}
 
+  ngOnInit() {
+    if (this.emails.length === 0) {
+      this.emails.push({ id: this.generateId(), value: '' });
+    }
+  }
+
+  private generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  trackById(_index: number, item: { id: string; value: string }) {
+    return item.id;
+  }
+
   private validateEmail(email: string): boolean {
+    if (!email) return false;
     return (
       email.split('@').length === 2 &&
       email.split('@')[1].split('.').length >= 2
@@ -30,10 +46,11 @@ export class PeerReviewersComponent {
   }
 
   addEmail(index?: number) {
+    const item = { id: this.generateId(), value: '' };
     if (index === undefined || index === null) {
-      this.emails.push('');
+      this.emails.push(item);
     } else {
-      this.emails.splice(index + 1, 0, '');
+      this.emails.splice(index + 1, 0, item);
     }
   }
 
@@ -42,14 +59,14 @@ export class PeerReviewersComponent {
       this.emails.splice(index, 1);
     } else {
       // keep at least one empty row
-      this.emails[0] = '';
+      this.emails[0].value = '';
     }
   }
 
   sendInvites() {
-    const validEmails = this.emails.filter((email) =>
-      this.validateEmail(email),
-    );
+    const validEmails = this.emails
+      .map((e) => e.value.trim())
+      .filter((email) => this.validateEmail(email));
     if (validEmails.length === 0) {
       alert('Please enter at least one valid email address.');
       return;

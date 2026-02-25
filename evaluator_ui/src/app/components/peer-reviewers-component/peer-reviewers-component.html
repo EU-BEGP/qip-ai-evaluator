@@ -17,13 +17,16 @@
       <mat-icon>close</mat-icon>
     </button>
 
-    <div *ngFor="let email of emails; let i = index" class="mb-2">
+    <div
+      *ngFor="let email of emails; let i = index; trackBy: trackById"
+      class="mb-2"
+    >
       <div class="invite-row d-flex align-items-center">
         <input
           class="form-control email-input me-2"
           placeholder="Input a reviewer email..."
           aria-label="Invitee email"
-          [(ngModel)]="emails[i]"
+          [(ngModel)]="email.value"
         />
         <button
           mat-icon-button
