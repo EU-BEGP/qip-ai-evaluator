@@ -60,8 +60,7 @@ export class PeerReview implements OnInit {
     private route: ActivatedRoute,
     private selfEval: SelfEvaluationService,
     private peerRev: PeerReviewService,
-    private router: Router,
-    private toast: ToastrService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
