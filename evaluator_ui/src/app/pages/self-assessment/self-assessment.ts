@@ -48,6 +48,7 @@ export class SelfAssessment implements OnInit {
       badge: string;
     };
   }> = [];
+  aiLoading: { [criterionId: number]: boolean } = {};
   selectedCriterion: {
     id: number;
     question: string;
@@ -231,6 +232,9 @@ export class SelfAssessment implements OnInit {
 
     criterion.suggestion = null as any;
 
+    // set loading state for this criterion
+    this.aiLoading[criterion.id] = true;
+
     this.selfEval
       .requestAiSuggestion(
         String(criterion.id),
@@ -254,16 +258,22 @@ export class SelfAssessment implements OnInit {
 
                 if (res && res.result) {
                   clearInterval(intervalId);
+                  // clear loading state
+                  this.aiLoading[criterion.id] = false;
                 }
               },
               error: (err) => {
                 console.error('Failed to get AI suggestion', err);
                 clearInterval(intervalId);
+                this.aiLoading[criterion.id] = false;
               },
             });
           }, 3000);
         },
-        error: (err) => console.error('AI suggestion failed', err),
+        error: (err) => {
+          console.error('AI suggestion failed', err);
+          this.aiLoading[criterion.id] = false;
+        },
       });
   }
 

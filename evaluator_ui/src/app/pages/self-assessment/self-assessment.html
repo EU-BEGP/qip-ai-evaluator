@@ -67,6 +67,7 @@
               (buttonClick)="onCriterionAction($event, c)"
               (aiClick)="onAiSuggestion(c)"
               [hasAI]="true"
+              [aiLoading]="aiLoading[c.id] || false"
             ></app-criterion-card-component>
           </div>
         </div>

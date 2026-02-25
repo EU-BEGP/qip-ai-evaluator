@@ -24,8 +24,12 @@
       class="ai-fab"
       title="AI suggestion"
       (click)="onAiClick($event)"
+      [disabled]="aiLoading"
+      [class.loading]="aiLoading"
+      [attr.aria-busy]="aiLoading"
     >
-      AI
+      <span class="ai-label" *ngIf="!aiLoading">AI</span>
+      <span class="ai-label" *ngIf="aiLoading">AI</span>
     </button>
   </div>
 
@@ -36,9 +40,7 @@
   <hr class="divider" />
 
   <div class="notes mt-2" *ngIf="hasNote">
-    <label for="notes-{{ question }}" class="form-label"
-      >Notes:</label
-    >
+    <label for="notes-{{ question }}" class="form-label">Notes:</label>
     <textarea
       id="notes-{{ question }}"
       class="form-control"

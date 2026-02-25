@@ -89,7 +89,7 @@ export class SelfEvaluationService {
   }
 
   getSelfAssessmentCompletionStatus(evaluationId: string) {
-    let URL = `${config.api.baseUrl}/evaluations/self_assessment/${evaluationId}/completion_status`;
+    let URL = `${config.api.baseUrl}evaluations/self_assessment/${evaluationId}/completion_status`;
 
     this.loaderService.show();
 
