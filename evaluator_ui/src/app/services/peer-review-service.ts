@@ -103,4 +103,14 @@ export class PeerReviewService {
     const url = `${config.api.baseUrl}reviews/submit/`;
     return this.http.post<void>(url, {}, { headers });
   }
+
+  getPeerReviewCompletionStatus(
+    token: string,
+  ): Observable<{ scanComplete: { name: string; isComplete: boolean }[] }> {
+    const headers = new HttpHeaders().set('X-Review-Token', `${token}`);
+    const url = `${config.api.baseUrl}reviews/completion_status`;
+    return this.http.get<{
+      scanComplete: { name: string; isComplete: boolean }[];
+    }>(url, { headers });
+  }
 }

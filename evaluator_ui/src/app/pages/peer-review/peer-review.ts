@@ -65,15 +65,25 @@ export class PeerReview implements OnInit {
       return;
     }
     this.token = peerToken;
-    this.loadScans('', this.token!);
+    this.peerRev.getPeerReviewCompletionStatus(this.token!).subscribe({
+      next: (res) => {
+        if (res.scanComplete.length > 0) {
+          this.loadScans(
+            '',
+            this.token!,
+            res.scanComplete.filter((r) => r.isComplete).length,
+          );
+        }
+      },
+    });
   }
 
-  loadScans(evaluationId: string, token: string) {
+  loadScans(evaluationId: string, token: string, countCompleted: number = 0) {
     this.selfEval.getScans(evaluationId, token).subscribe({
       next: (res) => {
         this.scans = res.slice(1);
 
-        this.maxUnlockedIndex = 0;
+        this.maxUnlockedIndex = countCompleted;
         this.scanCompletion = {};
         this.doneEnabled = false;
         this.scans.forEach((s) => (this.scanCompletion[s.id] = false));
