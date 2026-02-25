@@ -21,6 +21,10 @@ import { PageTitleComponent } from '../../components/page-title-component/page-t
 export class PeerReview implements OnInit {
   scans: Array<{ id: number; name: string }> = [];
   currentScan: { id: number; name: string } | null = null;
+  currentScanIndex = 0;
+  maxUnlockedIndex = 0;
+  scanCompletion: { [scanId: number]: boolean } = {};
+  doneEnabled = false;
   criterions: Array<{
     id: number;
     question: string;
@@ -68,16 +72,22 @@ export class PeerReview implements OnInit {
     this.selfEval.getScans(evaluationId, token).subscribe({
       next: (res) => {
         this.scans = res.slice(1);
-        if (res.length > 0) {
-          this.selectScan(res[0]);
+
+        this.maxUnlockedIndex = 0;
+        this.scanCompletion = {};
+        this.doneEnabled = false;
+        this.scans.forEach((s) => (this.scanCompletion[s.id] = false));
+        if (this.scans.length > 0) {
+          this.selectScan(this.scans[0], 0);
         }
       },
       error: (err) => console.error('Failed loading scans', err),
     });
   }
-
-  selectScan(scan: { id: number; name: string }) {
+  selectScan(scan: { id: number; name: string }, index: number) {
+    if (index > this.maxUnlockedIndex) return;
     this.currentScan = scan;
+    this.currentScanIndex = index;
     this.criterions = [];
     this.selectedCriterion = null;
     if (!scan || !scan.id) return;
@@ -87,56 +97,48 @@ export class PeerReview implements OnInit {
         this.criterions = res.criterions || [];
         this.criterions.map((c) => {
           c.buttons = [
-            {
-              label: '0',
-              value: 0,
-              state: c.peer_selection === '0',
-            },
-            {
-              label: '0.5',
-              value: 0.5,
-              state: c.peer_selection === '0.5',
-            },
-            {
-              label: '1',
-              value: 1,
-              state: c.peer_selection === '1',
-            },
-            {
-              label: '1.5',
-              value: 1.5,
-              state: c.peer_selection === '1.5',
-            },
-            {
-              label: '2',
-              value: 2,
-              state: c.peer_selection === '2',
-            },
-            {
-              label: '3.5',
-              value: 3.5,
-              state: c.peer_selection === '3.5',
-            },
-            {
-              label: '4',
-              value: 4,
-              state: c.peer_selection === '4',
-            },
-            {
-              label: '4.5',
-              value: 4.5,
-              state: c.peer_selection === '4.5',
-            },
-            {
-              label: '5',
-              value: 5,
-              state: c.peer_selection === '5',
-            },
+            { label: '0', value: 0, state: c.peer_selection === '0' },
+            { label: '0.5', value: 0.5, state: c.peer_selection === '0.5' },
+            { label: '1', value: 1, state: c.peer_selection === '1' },
+            { label: '1.5', value: 1.5, state: c.peer_selection === '1.5' },
+            { label: '2', value: 2, state: c.peer_selection === '2' },
+            { label: '3.5', value: 3.5, state: c.peer_selection === '3.5' },
+            { label: '4', value: 4, state: c.peer_selection === '4' },
+            { label: '4.5', value: 4.5, state: c.peer_selection === '4.5' },
+            { label: '5', value: 5, state: c.peer_selection === '5' },
           ];
         });
+
+        this.updateScanCompletion(scan.id);
       },
       error: (err) => console.error('Failed loading criterions', err),
     });
+  }
+
+  private updateScanCompletion(scanId: number) {
+    const allDone =
+      this.criterions && this.criterions.length > 0
+        ? this.criterions.every(
+            (c) => !!c.buttons && c.buttons.some((b) => b.state),
+          )
+        : true;
+
+    this.scanCompletion[scanId] = allDone;
+
+    if (allDone && this.currentScanIndex === this.maxUnlockedIndex) {
+      if (this.maxUnlockedIndex < this.scans.length - 1) {
+        this.maxUnlockedIndex++;
+      }
+    }
+
+    const lastScan = this.scans.length
+      ? this.scans[this.scans.length - 1]
+      : null;
+    if (lastScan) {
+      this.doneEnabled = !!this.scanCompletion[lastScan.id];
+    } else {
+      this.doneEnabled = false;
+    }
   }
 
   selectCriterion(c: {
@@ -181,6 +183,10 @@ export class PeerReview implements OnInit {
           criterion.peer_selection = event.value;
           criterion.buttons?.map((b) => (b.state = b.value === event.value));
           console.log('Criterion updated successfully');
+
+          if (this.currentScan && this.currentScan.id) {
+            this.updateScanCompletion(this.currentScan.id);
+          }
         },
         error: (err) => console.error('Failed updating criterion', err),
       });
