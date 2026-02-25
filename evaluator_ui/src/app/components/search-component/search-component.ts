@@ -46,6 +46,7 @@ import { PeerReviewService } from '../../services/peer-review-service';
   styleUrl: './search-component.css',
 })
 export class SearchComponent implements OnInit, DoCheck, OnChanges {
+  @Input() evaluationId!: string;
   @Input() linkModule!: string;
   @Input() scanInformation!: Scan;
   @Input() isAIEvaluation: boolean = true;
@@ -108,7 +109,7 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
         ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id!, true)
         : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id!, true);
     } else {
-      request$ = this.peerReviewService.getReviewDetailScan(this.scanInformation.id!.toString());
+      request$ = this.peerReviewService.getReviewDetailScan(this.evaluationId , this.scanInformation.id!.toString());
     }
     
     request$.subscribe({

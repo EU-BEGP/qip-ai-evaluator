@@ -36,7 +36,7 @@
     "peerReview": {
       "reviews": "reviews/reviews/{id}/",
       "scansInfo": "reviews/scans_info/{id}/",
-      "reviewDetail": "reviews/review_detail/{id}/"
+      "reviewDetail": "reviews/review_detail/{reviewerId}/{scanId}"
     },
     "selfAssessment": {
       "results": "evaluations/self_assessment/{id}/results/",

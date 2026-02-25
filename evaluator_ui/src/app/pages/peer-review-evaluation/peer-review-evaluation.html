@@ -21,7 +21,8 @@
       </ng-template>
 
       @if(scan.name !== 'All Scans') {
-        <app-search-component 
+        <app-search-component
+          [evaluationId]="evaluationId!" 
           [scanInformation]="scan"
           [isAIEvaluation]="false"
         ></app-search-component>  

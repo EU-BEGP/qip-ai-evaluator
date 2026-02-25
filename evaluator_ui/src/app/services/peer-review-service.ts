@@ -53,9 +53,10 @@ export class PeerReviewService {
     );
   }
 
-  getReviewDetailScan(scanId: string): Observable<any> {
+  getReviewDetailScan(reviewId: string, scanId: string): Observable<any> {
     let URL = `${config.api.baseUrl}${config.api.peerReview.reviewDetail}`;
-    URL = URL.replace('{id}', scanId);
+    URL = URL.replace('{reviewerId}', reviewId);
+    URL = URL.replace('{scanId}', scanId);
 
     this.loaderService.show();
 
