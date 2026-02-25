@@ -6,7 +6,6 @@ import config from '../config.json';
 import { throwError } from 'rxjs/internal/observable/throwError';
 import { catchError } from 'rxjs/internal/operators/catchError';
 import { finalize } from 'rxjs/internal/operators/finalize';
-import { ToastrService } from 'ngx-toastr';
 
 @Injectable({
   providedIn: 'root',
@@ -17,7 +16,6 @@ export class PeerReviewService {
   constructor(
     private http: HttpClient,
     private loaderService: LoaderService,
-    private toast: ToastrService,
   ) {
     this.httpOptions = {
       headers: new HttpHeaders({
@@ -104,7 +102,6 @@ export class PeerReviewService {
   endPeerReview(token: string): Observable<void> {
     const headers = new HttpHeaders().set('X-Review-Token', `${token}`);
     const url = `${config.api.baseUrl}reviews/submit/`;
-    this.toast.show('Peer review completed successfully!');
     return this.http.post<void>(url, {}, { headers });
   }
 

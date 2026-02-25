@@ -10,6 +10,7 @@ import { SelfEvaluationService } from '../../services/self-evaluation-service';
 import { PeerReviewService } from '../../services/peer-review-service';
 import { Router } from '@angular/router';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
+import { ToastrService } from 'ngx-toastr';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
@@ -18,7 +19,7 @@ import { MatIconModule } from '@angular/material/icon';
     CommonModule,
     CriterionCardComponent,
     PageTitleComponent,
-    MatIconModule
+    MatIconModule,
   ],
   templateUrl: './peer-review.html',
   styleUrls: ['./peer-review.css'],
@@ -60,7 +61,8 @@ export class PeerReview implements OnInit {
     private route: ActivatedRoute,
     private selfEval: SelfEvaluationService,
     private peerRev: PeerReviewService,
-    private router: Router
+    private router: Router,
+    private toast: ToastrService,
   ) {}
 
   ngOnInit(): void {
@@ -250,6 +252,14 @@ export class PeerReview implements OnInit {
   }
 
   onDone() {
-    this.peerRev.endPeerReview(this.token!);
+    this.peerRev.endPeerReview(this.token!).subscribe({
+      next: () => {
+        this.toast.success('Peer review completed successfully!');
+      },
+      error: (err) => {
+        console.error('Failed submitting peer review', err);
+        this.toast.error('Failed to submit peer review');
+      },
+    });
   }
 }
