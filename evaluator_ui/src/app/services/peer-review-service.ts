@@ -95,6 +95,6 @@ export class PeerReviewService {
   ): Observable<void> {
     const url = `${config.api.baseUrl}reviews/criterion/${criterionId}`;
     const headers = new HttpHeaders().set('X-Review-Token', `${token}`);
-    return this.http.post<void>(url, { value, note }, { headers });
+    return this.http.put<void>(url, { value, note }, { headers });
   }
 }
