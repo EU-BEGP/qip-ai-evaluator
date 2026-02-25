@@ -30,7 +30,6 @@
 
       @if(scan.name !== 'All Scans') {
         <app-search-component 
-          [evaluationId]="evaluationId!"
           [scanInformation]="scan"
           [linkModule]="linkModule"
           (startPolling)="startPolling($event)"
