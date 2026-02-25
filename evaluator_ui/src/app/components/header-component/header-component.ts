@@ -22,10 +22,26 @@ import { CommonModule } from '@angular/common';
   styleUrl: './header-component.css',
 })
 export class HeaderComponent {
+  email!: string;
+
   constructor (
     private router: Router,
     public notificationService: NotificationService
-  ) {}
+  ) {
+    this.email = localStorage.getItem('accountEmail')!
+  }
+
+  toggleAuth(): void {
+    if (this.email) {
+      this.logout();
+    } else {
+      this.goToLogin();
+    }
+  }
+
+  goToLogin(): void {
+    this.router.navigateByUrl('login');
+  }
 
   logout(): void {
     localStorage.removeItem('token');

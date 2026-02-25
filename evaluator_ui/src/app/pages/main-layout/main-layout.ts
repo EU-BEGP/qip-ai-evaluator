@@ -34,8 +34,11 @@ export class MainLayout {
   ) {}
 
   ngOnInit(): void {
-    this.startNotificationPolling();
     this.email = localStorage.getItem('accountEmail')!
+
+    if (this.email) {
+      this.startNotificationPolling();
+    }
   }
 
   startNotificationPolling() {

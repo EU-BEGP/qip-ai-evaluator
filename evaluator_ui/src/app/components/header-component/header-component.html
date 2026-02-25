@@ -12,18 +12,21 @@
 
   <span class="spacer"></span>
 
-  <button mat-icon-button aria-label="Notifications" class="me-1 notifications-button" (click)="navigateToNotifications()">
-    <mat-icon class="bell">notifications</mat-icon>
+  @if(email) {
+    <button mat-icon-button aria-label="Notifications" class="me-1 notifications-button" (click)="navigateToNotifications()">
+      <mat-icon class="bell">notifications</mat-icon>
 
-    @if(notificationService.unreadCount() > 0) {
-      <span class="badge">
-        {{ notificationService.unreadCount() }}
-      </span>
-    }
+      @if(notificationService.unreadCount() > 0) {
+        <span class="badge">
+          {{ notificationService.unreadCount() }}
+        </span>
+      }
+    </button>
+  }
+
+  <button mat-button aria-label="Auth icon" (click)="toggleAuth()">
+    <mat-icon class="icon">{{ email ? 'logout' : 'login' }}</mat-icon>
+    <span class="logout-text">{{ email ? 'Logout' : 'Login' }}</span>
   </button>
 
-  <button mat-button aria-label="Logout icon" (click)="logout()">
-    <mat-icon class="icon">logout</mat-icon>
-    <span class="logout-text">Logout</span>
-  </button>
 </mat-toolbar>
