@@ -11,7 +11,7 @@ import { PeerReviewService } from '../../services/peer-review-service';
 import { Router } from '@angular/router';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 import { MatIconModule } from '@angular/material/icon';
-import { ToastService } from '../../services/toast-service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-peer-review',
@@ -20,7 +20,7 @@ import { ToastService } from '../../services/toast-service';
     CriterionCardComponent,
     PageTitleComponent,
     MatIconModule,
-    ToastService,
+    ToastrService,
   ],
   templateUrl: './peer-review.html',
   styleUrls: ['./peer-review.css'],
@@ -64,7 +64,7 @@ export class PeerReview implements OnInit {
     private selfEval: SelfEvaluationService,
     private peerRev: PeerReviewService,
     private router: Router,
-    private toast: ToastService,
+    private toast: ToastrService,
   ) {}
 
   ngOnInit(): void {
@@ -116,15 +116,15 @@ export class PeerReview implements OnInit {
         this.criterions = res.criterions || [];
         this.criterions.map((c) => {
           c.buttons = [
-            { label: '0', value: 0, state: c.peer_selection === '0' },
+            { label: '0', value: 0, state: c.peer_selection === '0.0' },
             { label: '0.5', value: 0.5, state: c.peer_selection === '0.5' },
-            { label: '1', value: 1, state: c.peer_selection === '1' },
+            { label: '1', value: 1, state: c.peer_selection === '1.0' },
             { label: '1.5', value: 1.5, state: c.peer_selection === '1.5' },
-            { label: '2', value: 2, state: c.peer_selection === '2' },
+            { label: '2', value: 2, state: c.peer_selection === '2.0' },
             { label: '3.5', value: 3.5, state: c.peer_selection === '3.5' },
-            { label: '4', value: 4, state: c.peer_selection === '4' },
+            { label: '4', value: 4, state: c.peer_selection === '4.0' },
             { label: '4.5', value: 4.5, state: c.peer_selection === '4.5' },
-            { label: '5', value: 5, state: c.peer_selection === '5' },
+            { label: '5', value: 5, state: c.peer_selection === '5.0' },
           ];
         });
 
