@@ -87,4 +87,17 @@ export class SelfEvaluationService {
       }),
     );
   }
+
+  getSelfAssessmentCompletionStatus(evaluationId: string) {
+    let URL = `${config.api.baseUrl}/evaluations/self_assessment/${evaluationId}/completion_status`;
+
+    this.loaderService.show();
+
+    return this.http.get<any>(URL).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      }),
+    );
+  }
 }
