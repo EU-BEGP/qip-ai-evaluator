@@ -62,8 +62,9 @@
               [description]="c.description"
               [buttons]="c.buttons!"
               (buttonClick)="onCriterionAction($event, c)"
-              [hasNote]="true"
-              (noteFill)="onCriterionNoteFill($event, c)"
+                [hasNote]="true"
+                [peerNote]="c.peer_note"
+                (noteFill)="onCriterionNoteFill($event, c)"
             ></app-criterion-card-component>
           </div>
         </div>

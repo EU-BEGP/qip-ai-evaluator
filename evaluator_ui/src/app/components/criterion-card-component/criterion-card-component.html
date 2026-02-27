@@ -39,12 +39,13 @@
 
   <hr class="divider" />
 
-  <div class="notes mt-2" *ngIf="hasNote">
+  <div class="notes mt-2" *ngIf="hasNote || peerNote">
     <label for="notes-{{ question }}" class="form-label">Notes:</label>
     <textarea
       id="notes-{{ question }}"
       class="form-control"
       rows="3"
+      [value]="peerNote"
       (change)="onNoteFill($event)"
     ></textarea>
   </div>

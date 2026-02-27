@@ -24,6 +24,7 @@ export class CriterionCardComponent implements OnInit {
   }> = [];
   @Input() hasAI: boolean = false;
   @Input() hasNote: boolean = false;
+  @Input() peerNote: string = '';
   @Input() aiLoading: boolean = false;
 
   @Output() buttonClick = new EventEmitter<{ value: any }>();
