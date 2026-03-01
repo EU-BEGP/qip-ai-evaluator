@@ -31,6 +31,8 @@ export class PeerReview implements OnInit {
   maxUnlockedIndex = 0;
   scanCompletion: { [scanId: number]: boolean } = {};
   doneEnabled = false;
+
+  highlightedIndex: number | null = null;
   criterions: Array<{
     id: number;
     question: string;
@@ -107,6 +109,10 @@ export class PeerReview implements OnInit {
     this.currentScanIndex = index;
     this.criterions = [];
     this.selectedCriterion = null;
+
+    if (this.highlightedIndex === index) {
+      this.highlightedIndex = null;
+    }
     if (!scan || !scan.id) return;
 
     this.selfEval.getCriterions(String(scan.id), this.token!).subscribe({
@@ -143,8 +149,11 @@ export class PeerReview implements OnInit {
     this.scanCompletion[scanId] = allDone;
 
     if (allDone && this.currentScanIndex === this.maxUnlockedIndex) {
-      if (this.maxUnlockedIndex < this.scans.length - 1) {
-        this.maxUnlockedIndex++;
+      const nextIndex = this.maxUnlockedIndex + 1;
+      if (nextIndex < this.scans.length) {
+        this.maxUnlockedIndex = nextIndex;
+        // highlight unlocked scan
+        this.highlightedIndex = nextIndex;
       }
     }
 
