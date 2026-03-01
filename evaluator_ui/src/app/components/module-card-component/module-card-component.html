@@ -8,49 +8,49 @@
   </div>
 
   <p class="card-title w-100"><b class="me-2">{{ data.title }}</b></p>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">vpn_key</mat-icon>
-    <p class="mb-0"><b>Keywords:</b></p>
+    <p class="mb-0 text"><b>Keywords:</b></p>
     @for(keyword of data.keywords; track $index) {
       <span class="badge bg-primary">{{keyword}}</span>
     }
   </div>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">link</mat-icon>
-    <span><b>Link:</b></span>
-    <span class="link-text">{{ data.link }}</span>
+    <span class="text"><b>Link:</b></span>
+    <span class="link-text text">{{ data.link }}</span>
   </div>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">access_time</mat-icon>
-    <span><b>Last Modify:</b></span>
-    <span>{{ data.last_modify }}</span>
+    <span class="text"><b>Last Modify:</b></span>
+    <span class="text">{{ data.last_modify }}</span>
   </div>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">access_time</mat-icon>
-    <span><b>Evaluation Date:</b></span>
-    <span>{{ data.last_evaluation }}</span>
+    <span class="text"><b>Evaluation Date:</b></span>
+    <span class="text">{{ data.last_evaluation }}</span>
   </div>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">check_circle_outline</mat-icon>
-    <span><b>Compliance Score:</b></span>
-    <span>{{ data.self_assessment_compliance ? data.self_assessment_compliance : '- %' }}</span>
+    <span class="text"><b>Compliance Score:</b></span>
+    <span class="text">{{ data.self_assessment_compliance ? data.self_assessment_compliance : '- %' }}</span>
   </div>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">auto_awesome</mat-icon>
-    <span><b>AI Evaluation Score:</b></span>
-    <span>{{ data.ai_review ? data.ai_review : '-' }}/{{ data.last_max }}</span>
+    <span class="text"><b>AI Evaluation Score:</b></span>
+    <span class="text">{{ data.ai_review ? data.ai_review : '-' }}/{{ data.last_max }}</span>
   </div>
-  <div class="d-flex gap-2 flex-wrap mb-3">
+  <div class="d-flex gap-2 flex-wrap mb-2">
     <mat-icon class="icon">group</mat-icon>
-    <span><b>Peer Reviews:</b></span>
-    <span>{{ data.peer_reviews }}</span>
+    <span class="text"><b>Peer Reviews:</b></span>
+    <span class="text">{{ data.peer_reviews }}</span>
   </div>
   <div class="d-flex gap-2 mb-2 w-100">
     <mat-icon class="icon">assessment</mat-icon>
-    <span><b>Average Score:</b></span>
-    <span>{{ data.last_average ? data.last_average : '-' }}/{{ data.last_max }}</span>
+    <span class="text"><b>Average Score:</b></span>
+    <span class="text">{{ data.last_average ? data.last_average : '-' }}/{{ data.last_max }}</span>
   </div>
-  <div class="d-flex justify-content-center w-100 mb-1">
+  <div class="d-flex justify-content-center w-100 mb-0">
     @if(data.last_average !== null) {
       <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
     } @else {
