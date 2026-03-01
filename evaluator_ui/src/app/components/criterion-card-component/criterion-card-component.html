@@ -52,17 +52,34 @@
     </div>
   </mat-card>
 
-  <div *ngIf="suggestion" class="suggestion-popup">
+  <div
+    *ngIf="suggestion && showSuggestion"
+    class="suggestion-popup"
+    (mouseenter)="pauseAutoCloseTimer(); pauseStreaming()"
+    (mouseleave)="resumeAutoCloseTimer(); resumeStreaming()"
+    (focusin)="pauseAutoCloseTimer(); pauseStreaming()"
+    (focusout)="resumeAutoCloseTimer(); resumeStreaming()"
+    tabindex="0"
+  >
     <div
-      class="suggestion-card p-3"
+      class="suggestion-card p-3 position-relative"
       [ngClass]="{
         'ai-yes': suggestion.badge === 'yes',
         'ai-no': suggestion.badge === 'no',
         'ai-na': suggestion.badge === 'partial',
       }"
     >
+      <button
+        type="button"
+        class="btn-close close-btn"
+        aria-label="Close suggestion"
+        (click)="closeSuggestion($event)"
+      ></button>
       <div class="fw-bold mb-2 text-capitalize">{{ suggestion.badge }}</div>
-      <div class="explanation">{{ suggestion.result }}</div>
+      <div class="explanation">
+        {{ displayedSuggestionText
+        }}<span class="stream-cursor" *ngIf="isStreaming">|</span>
+      </div>
     </div>
   </div>
 </div>

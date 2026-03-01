@@ -112,3 +112,36 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
     margin-top: 8px;
   }
 }
+
+.suggestion-popup .close-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.suggestion-popup .btn-close::before {
+  content: "✕";
+  display: inline-block;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.suggestion-popup .suggestion-card {
+  padding-top: 12px;
+}
+
+.stream-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+  color: rgba(0,0,0,0.7);
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
