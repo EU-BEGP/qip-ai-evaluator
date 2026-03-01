@@ -50,7 +50,7 @@
     </div>
 
     <!-- Middle: criterion cards -->
-    <div class="col-6">
+    <div class="col-9">
       <ng-container *ngIf="currentScan; else empty">
         <h3 class="mb-3">{{ currentScan.name }}</h3>
 
@@ -68,6 +68,7 @@
               (aiClick)="onAiSuggestion(c)"
               [hasAI]="true"
               [aiLoading]="aiLoading[c.id] || false"
+              [suggestion]="c.suggestion || null"
             ></app-criterion-card-component>
           </div>
         </div>
@@ -76,34 +77,6 @@
       <ng-template #empty>
         <div class="alert alert-secondary">
           Select a scan to view its criterions.
-        </div>
-      </ng-template>
-    </div>
-
-    <!-- Right: AI suggestion panel for selected criterion -->
-    <div class="col-3">
-      <div *ngIf="selectedCriterion && selectedCriterion.suggestion; else hint">
-        <h5 class="mb-2">AI Suggestion</h5>
-        <div
-          class="suggestion-card p-3"
-          [ngClass]="{
-            'ai-yes': selectedCriterion.suggestion.badge === 'yes',
-            'ai-no': selectedCriterion.suggestion.badge === 'no',
-            'ai-na': selectedCriterion.suggestion.badge === 'partial',
-          }"
-        >
-          <div class="fw-bold mb-2 text-capitalize">
-            {{ selectedCriterion.suggestion.badge }}
-          </div>
-          <div class="explanation">
-            {{ selectedCriterion.suggestion.result }}
-          </div>
-        </div>
-      </div>
-
-      <ng-template #hint>
-        <div class="alert alert-light">
-          Select a criterion and request an AI suggestion (click the AI button).
         </div>
       </ng-template>
     </div>

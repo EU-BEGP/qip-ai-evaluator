@@ -2,51 +2,67 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<mat-card class="criterion-card card bg-light px-3 pt-3 pb-2 clickable">
-  <div class="question mb-2">{{ question }}</div>
+<div class="criterion-wrapper">
+  <mat-card class="criterion-card card bg-light px-3 pt-3 pb-2 clickable">
+    <div class="question mb-2">{{ question }}</div>
 
-  <div class="button-row mb-2">
-    <ng-container *ngFor="let b of buttons; let i = index">
+    <div class="button-row mb-2">
+      <ng-container *ngFor="let b of buttons; let i = index">
+        <button
+          mat-raised-button
+          [color]="b.state ? 'primary' : 'basic'"
+          class="me-2"
+          (click)="onButtonClick(b, $event)"
+          [disabled]="b.disabled"
+        >
+          {{ b.label }}
+        </button>
+      </ng-container>
       <button
-        mat-raised-button
-        [color]="b.state ? 'primary' : 'basic'"
-        class="me-2"
-        (click)="onButtonClick(b, $event)"
-        [disabled]="b.disabled"
+        *ngIf="hasAI"
+        mat-mini-fab
+        color="accent"
+        class="ai-fab"
+        title="AI suggestion"
+        (click)="onAiClick($event)"
+        [disabled]="aiLoading"
+        [class.loading]="aiLoading"
+        [attr.aria-busy]="aiLoading"
       >
-        {{ b.label }}
+        <span class="ai-label" *ngIf="!aiLoading">AI</span>
+        <span class="ai-label" *ngIf="aiLoading">AI</span>
       </button>
-    </ng-container>
-    <button
-      *ngIf="hasAI"
-      mat-mini-fab
-      color="accent"
-      class="ai-fab"
-      title="AI suggestion"
-      (click)="onAiClick($event)"
-      [disabled]="aiLoading"
-      [class.loading]="aiLoading"
-      [attr.aria-busy]="aiLoading"
+    </div>
+
+    <hr class="divider" />
+
+    <div class="description mt-2">{{ description }}</div>
+
+    <hr class="divider" />
+
+    <div class="notes mt-2" *ngIf="hasNote || peerNote">
+      <label for="notes-{{ question }}" class="form-label">Notes:</label>
+      <textarea
+        id="notes-{{ question }}"
+        class="form-control"
+        rows="3"
+        [value]="peerNote"
+        (change)="onNoteFill($event)"
+      ></textarea>
+    </div>
+  </mat-card>
+
+  <div *ngIf="suggestion" class="suggestion-popup">
+    <div
+      class="suggestion-card p-3"
+      [ngClass]="{
+        'ai-yes': suggestion.badge === 'yes',
+        'ai-no': suggestion.badge === 'no',
+        'ai-na': suggestion.badge === 'partial',
+      }"
     >
-      <span class="ai-label" *ngIf="!aiLoading">AI</span>
-      <span class="ai-label" *ngIf="aiLoading">AI</span>
-    </button>
+      <div class="fw-bold mb-2 text-capitalize">{{ suggestion.badge }}</div>
+      <div class="explanation">{{ suggestion.result }}</div>
+    </div>
   </div>
-
-  <hr class="divider" />
-
-  <div class="description mt-2">{{ description }}</div>
-
-  <hr class="divider" />
-
-  <div class="notes mt-2" *ngIf="hasNote || peerNote">
-    <label for="notes-{{ question }}" class="form-label">Notes:</label>
-    <textarea
-      id="notes-{{ question }}"
-      class="form-control"
-      rows="3"
-      [value]="peerNote"
-      (change)="onNoteFill($event)"
-    ></textarea>
-  </div>
-</mat-card>
+</div>
