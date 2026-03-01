@@ -68,12 +68,13 @@ export class PeerReviewService {
     );
   }
 
-  getEvaluationData(token: string): Observable<any> {
-    let URL = `${config.api.baseUrl}/reviews/details/${token}`;
+  getModuleName(token: string): Observable<any> {
+    const headers = new HttpHeaders().set('X-Review-Token', `${token}`);
+    let URL = `${config.api.baseUrl}/reviews/details/`;
 
     this.loaderService.show();
 
-    return this.http.get<any>(URL).pipe(
+    return this.http.get<any>(URL, { headers }).pipe(
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();

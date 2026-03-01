@@ -2,6 +2,13 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
+@if (finished) {
+  <app-peer-review-message-model
+    [message]="modalMessage"
+    (close)="finished = false"
+  ></app-peer-review-message-model>
+}
+
 <app-page-title-component
   [title]="'Peer Review'"
   [icon]="'quiz'"
@@ -71,9 +78,9 @@
               [description]="c.description"
               [buttons]="c.buttons!"
               (buttonClick)="onCriterionAction($event, c)"
-                [hasNote]="true"
-                [peerNote]="c.peer_note!"
-                (noteFill)="onCriterionNoteFill($event, c)"
+              [hasNote]="true"
+              [peerNote]="c.peer_note!"
+              (noteFill)="onCriterionNoteFill($event, c)"
             ></app-criterion-card-component>
           </div>
         </div>
