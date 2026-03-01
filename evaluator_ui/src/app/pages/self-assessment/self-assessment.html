@@ -25,6 +25,7 @@
           *ngFor="let scan of scans; let i = index"
           [class.active]="currentScan && currentScan.id === scan.id"
           [class.locked]="i > maxUnlockedIndex"
+          [class.highlighted]="i === highlightedIndex"
           [disabled]="i > maxUnlockedIndex"
           (click)="selectScan(scan, i)"
           title="{{
@@ -33,7 +34,15 @@
               : ''
           }}"
         >
-          {{ scan.name }}
+          <span class="scan-name">{{ scan.name }}</span>
+
+          <!-- animated attention marker for newly unlocked scans -->
+          <span class="attention" *ngIf="i === highlightedIndex">
+            <span class="outer-square">
+              <span class="inner-square"></span>
+            </span>
+          </span>
+
           <mat-icon *ngIf="i > maxUnlockedIndex" class="ms-2 text-muted"
             >lock</mat-icon
           >
