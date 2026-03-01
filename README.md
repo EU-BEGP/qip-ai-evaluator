@@ -57,15 +57,14 @@ Additionally, for efficient handling of HTTP traffic, consider incorporating Ngi
 
 ## Acknowledgments
 
-This work was partially funded by the Erasmus+ Project “EUBBC-Digital” (No.
-618925-EPP-1-2020-1-BR-EPPKA2-CBHE-JP)
+This work was partially funded by the Erasmus+ Project “EU-BEGP” (No. 101081473).
 
 <p align="center">
-  <img src="assets/erasmus.jpeg"/>
+  <img src="assets/erasmus.jpg"/>
 </p>
 
 ## License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## More Information
-For more information about the project, please visit our [website](https://eubbc-digital.upb.edu/).
+For more information about the project, please visit our [website](https://eu-begp.org/).
