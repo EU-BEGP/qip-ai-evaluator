@@ -1,0 +1,6 @@
+<div class="prm-backdrop" *ngIf="visible" (click)="close()">
+  <div class="prm-modal" (click)="$event.stopPropagation()">
+    <div class="prm-message">{{ message }}</div>
+    <button class="prm-close" (click)="close()">Close</button>
+  </div>
+</div>

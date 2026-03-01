@@ -12,6 +12,7 @@ import { Router } from '@angular/router';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 import { ToastrService } from 'ngx-toastr';
 import { MatIconModule } from '@angular/material/icon';
+import { PeerReviewMessageModelComponent } from '../../components/peer-review-message-model-component/peer-review-message-model-component';
 
 @Component({
   selector: 'app-peer-review',
@@ -20,6 +21,7 @@ import { MatIconModule } from '@angular/material/icon';
     CriterionCardComponent,
     PageTitleComponent,
     MatIconModule,
+    PeerReviewMessageModelComponent,
   ],
   templateUrl: './peer-review.html',
   styleUrls: ['./peer-review.css'],
@@ -31,6 +33,9 @@ export class PeerReview implements OnInit {
   maxUnlockedIndex = 0;
   scanCompletion: { [scanId: number]: boolean } = {};
   doneEnabled = false;
+  moduleName: string = '';
+  finished = false;
+  modalMessage = '';
 
   highlightedIndex: number | null = null;
   criterions: Array<{
@@ -83,6 +88,23 @@ export class PeerReview implements OnInit {
             res.scanComplete.filter((r) => r.isComplete).length,
           );
         }
+      },
+    });
+  }
+
+  getModuleName(token: string) {
+    this.peerRev.getModuleName(token).subscribe({
+      next: (res) => {
+        this.moduleName = res.module_name;
+      },
+      error: (err) => {
+        if (err.status === 404) {
+          this.finished = true;
+          this.modalMessage =
+            'No evaluation found for this peer review. It is possible that the evaluation has already been completed or that the peer review link is invalid. Please contact the administrator for more information.';
+          return;
+        }
+        console.error('Failed to get module name', err);
       },
     });
   }
@@ -263,6 +285,8 @@ export class PeerReview implements OnInit {
   onDone() {
     this.peerRev.endPeerReview(this.token!).subscribe({
       next: () => {
+        this.finished = true;
+        this.modalMessage = `Thank you so much for completing the peer review for the ${this.moduleName} module! Your feedback has been submitted.`;
         this.toast.success('Peer review completed successfully!');
       },
       error: (err) => {
