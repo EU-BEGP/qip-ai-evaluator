@@ -9,6 +9,10 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   padding: 0.16rem 0.6rem;
 }
 
+.badge {
+  padding: 0.36rem 0.6rem;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -34,7 +38,22 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   margin: 0px auto 12px auto;
 }
 
-@media (min-width: 1000px) {
+.card-title {
+  font-size: 1.25rem;
+  color: #3F51B5;
+}
+
+.icon {
+  color: #36363a;
+}
+
+.link-text {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+}
+
+@media (min-width: 1384px) {
   .card-title {
     white-space: nowrap;
     overflow: hidden;
