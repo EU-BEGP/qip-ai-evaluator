@@ -3,7 +3,7 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 from django.contrib import admin
-from .models import Module, Evaluation, Scan, UserModule, Criterion, Rubric
+from .models import Module, Evaluation, Scan, UserModule, Criterion, Rubric, Certificate
 
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
@@ -45,3 +45,7 @@ class CriterionAdmin(admin.ModelAdmin):
     # Admin for Criterion
     list_display = ('id', 'scan', 'criterion_name', 'status')
     list_filter = ('scan__scan_type', 'status')
+
+@admin.register(Certificate)
+class CertificateAdmin(admin.ModelAdmin):
+    list_display = ('id', 'evaluation', 'public_token', 'issued_at')

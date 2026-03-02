@@ -6,6 +6,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+import uuid
 
 class Rubric(models.Model):
     # Represents the rubric that contains scans and criteria (based on JSON)
@@ -188,3 +189,13 @@ class Criterion(models.Model):
 
     def __str__(self):
         return f"{self.criterion_name}: {self.status}"
+
+class Certificate(models.Model):
+    # Represent the certificate for a specific evaluation
+    id = models.AutoField(primary_key=True)
+    evaluation = models.OneToOneField(Evaluation, on_delete=models.CASCADE, related_name="certificate")
+    public_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    issued_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Badge for Eval {self.evaluation.id}"
