@@ -43,4 +43,7 @@ urlpatterns = [
     path('scans/<int:scan_id>/criterions/', views.get_scan_criterions, name='get_scan_criterions'),
     path('scans/criterions/<int:criterion_id>/', views.update_criterion_selection, name='update_criterion_selection'),
     path('self_assessment/<int:evaluation_id>/results/', views.get_self_assessment_results, name='get_self_assessment_results'),
+
+    # Certificate
+    path('self_assessment/<int:evaluation_id>/certificate/', views.download_badge_certificate, name='download_badge_certificate'),
 ]

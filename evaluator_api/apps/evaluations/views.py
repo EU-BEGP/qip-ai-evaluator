@@ -19,11 +19,12 @@ import tempfile
 import os
 import json
 
-from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion
+from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion, Certificate
 from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer, SelfAssessmentResultSerializer, SelfAssessmentStatusSerializer
-from .services import EvaluationService, RagService
+from .services import EvaluationService, RagService, CertificateService
 from evaluation.report_manager import ReportManager 
 from .security import verify_rag_callback 
+from django.http import FileResponse
 
 logger = logging.getLogger(__name__)
 
@@ -679,3 +680,16 @@ def evaluation_callback(request):
         return Response({"message": "Failure processed (Partial)"}, status=status.HTTP_200_OK)
 
     return Response(status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_badge_certificate(request, evaluation_id):
+    # Create a certificate for an evaluation
+    evaluation = get_object_or_404(Evaluation, pk=evaluation_id)
+    pdf_buffer = CertificateService.generate_badge_pdf(evaluation)
+    return FileResponse(
+        pdf_buffer, 
+        as_attachment=True, 
+        filename=f"EEDA_Quality_Badge_{evaluation_id}.pdf",
+        content_type='application/pdf'
+    )

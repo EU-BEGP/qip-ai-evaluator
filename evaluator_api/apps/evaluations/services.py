@@ -6,11 +6,21 @@ import requests
 import logging
 from django.conf import settings
 from django.utils import timezone
-from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion
+from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion, Certificate
 from apps.notifications.models import Message
 from dateutil.parser import isoparse
 import datetime
 from django.shortcuts import get_object_or_404
+# Certificate Imports:
+import io
+import os
+import tempfile
+import qrcode
+import textwrap
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib.units import inch
+from reportlab.lib.colors import HexColor
 
 logger = logging.getLogger(__name__)
 
@@ -239,9 +249,10 @@ class EvaluationService:
     def handle_evaluation_completion(evaluation, result_payload):
         # 1. Update Title if provided
         if result_payload.get('title'):
-            evaluation.title = result_payload['title']
+            clean_title = RagService.clean_title(result_payload['title'])
+            evaluation.title = clean_title
             if evaluation.module:
-                evaluation.module.title = result_payload['title']
+                evaluation.module.title = clean_title
                 evaluation.module.save()
 
         # 2. Update ONLY the scans that are actually present in this payload
@@ -334,7 +345,7 @@ class EvaluationService:
             evaluation.refresh_from_db()
             # Create title for the evaluation
             if evaluation.metadata_json and 'title' in evaluation.metadata_json:
-                new_title = evaluation.metadata_json['title']
+                new_title = RagService.clean_title(evaluation.metadata_json['title'])
                 evaluation.title = new_title
                 module.title = new_title
                 module.save()
@@ -433,7 +444,7 @@ class EvaluationService:
     
     @staticmethod
     def get_self_assessment_completion_status(evaluation_id):
-        # Verifica si todos los criterios de cada scan han sido respondidos
+        # Verifies if all criterion were answered
         from django.shortcuts import get_object_or_404
         from .models import Evaluation
         
@@ -457,3 +468,72 @@ class EvaluationService:
                 })
                 
         return {"scanComplete": scan_complete_list}
+
+class CertificateService:
+    # Business logic for managing certificates
+
+    @staticmethod
+    def generate_badge_pdf(evaluation):        
+        # Creates QR badge for the evaluation
+        certificate, created = Certificate.objects.get_or_create(evaluation=evaluation)
+        client_url = getattr(settings, 'CLIENT_PUBLIC_URL', 'http://localhost:4200')
+        validation_url = f"{client_url}/verify-badge/{certificate.public_token}"
+
+        # Generate Image
+        qr = qrcode.QRCode(version=1, box_size=10, border=1)
+        qr.add_data(validation_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            img.save(tmp.name)
+            qr_path = tmp.name
+
+        buffer = io.BytesIO()
+        
+        # Dimensions and configurations
+        width, height = 400, 600
+        c = canvas.Canvas(buffer, pagesize=(width, height))
+        c.setFillColor(HexColor('#2384C6'))
+        c.rect(0, 0, width, height, fill=1, stroke=0)
+        module_title = evaluation.title or evaluation.module.title or "Untitled Module"
+        c.setFillColor(HexColor('#FFFFFF'))
+
+        # EEDA Header
+        c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(width / 2.0, height - 60, "Explore Energy Digital Academy")
+        c.setFont("Helvetica-Bold", 14)
+        c.drawCentredString(width / 2.0, height - 85, "Quality Badge for Digital Learning Resources")
+        
+        # Module Title
+        c.setFont("Helvetica-Oblique", 18)
+        title_lines = textwrap.wrap(module_title, width=32)
+        current_y = height - 140
+        for line in title_lines:
+            c.drawCentredString(width / 2.0, current_y, line)
+            current_y -= 22
+        
+        # Description for Certificate
+        c.setFont("Helvetica", 12)
+        desc_text = "This educational resource has gone through an extensive quality assessment process and fulfills all the relevant quality criteria for digital learning resources"
+        desc_lines = textwrap.wrap(desc_text, width=45)
+        current_y -= 15
+        for line in desc_lines:
+            c.drawCentredString(width / 2.0, current_y, line)
+            current_y -= 16
+
+        c.setFont("Helvetica-Bold", 11)
+        current_y -= 20
+        c.drawCentredString(width / 2.0, current_y, "For more information scan the QR code below")
+
+        # QR code
+        qr_size = 1.5 * inch
+        qr_y = current_y - qr_size - 30
+        c.drawImage(qr_path, (width - qr_size) / 2.0, qr_y, width=qr_size, height=qr_size)
+
+        c.showPage()
+        c.save()
+        os.remove(qr_path) 
+        
+        buffer.seek(0)
+        return buffer
