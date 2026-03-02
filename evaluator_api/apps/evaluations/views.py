@@ -20,7 +20,7 @@ import os
 import json
 
 from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion, Certificate
-from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer, SelfAssessmentResultSerializer, SelfAssessmentStatusSerializer
+from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer, SelfAssessmentResultSerializer, SelfAssessmentStatusSerializer, DashboardModuleSerializer
 from .services import EvaluationService, RagService, CertificateService
 from evaluation.report_manager import ReportManager 
 from .security import verify_rag_callback 
@@ -250,58 +250,10 @@ def evaluation_status_scan(request, pk):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_modules(request, email):
-    # Returns the list of modules for a specific user; determines status (Outdated, Updated, Self assessment)
-    user_modules = UserModule.objects.filter(user__email=email).select_related('module')
-    response_data = []
-
-    for um in user_modules:
-        module = um.module
-        last_eval = Evaluation.objects.filter(module=module).order_by('-created_at').first()
-        
-        last_modify = None
-        last_evaluation_date = None
-        last_avg = None
-        last_eval_id = None
-        status_label = "Updated"
-
-        # 1. Check if this evaluation is outdated based on Learnify date
-        rag_date = RagService.get_last_modified(module.course_key)
-        if rag_date:
-            last_modify = rag_date.date().isoformat()
-            
-            if last_eval:
-                last_eval_id = last_eval.id
-                last_evaluation_date = last_eval.created_at.date().isoformat()
-
-                # Self assessment check (overrides updated/outdated label)
-                if last_eval.status == Evaluation.Status.SELF_ASSESSMENT:
-                    status_label = "Self assessment"
-                
-                # Outdated check
-                if last_eval.module_last_modified:
-                    learnify_ts = rag_date.replace(second=0, microsecond=0)
-                    stored_ts = last_eval.module_last_modified.replace(second=0, microsecond=0)
-                    if learnify_ts > stored_ts:
-                        status_label = "Outdated"
-                
-                # Calculate average
-                if last_eval.result_json:
-                    total, count = EvaluationService.calculate_score_from_json(last_eval.result_json)
-                    if count > 0:
-                        last_avg = round(total / count, 2)
-
-        response_data.append({
-            "title": module.title,
-            "link": module.course_key,
-            "last_modify": last_modify,
-            "last_evaluation": last_evaluation_date,
-            "last_average": last_avg,
-            "last_max": 5.0,
-            "last_evaluation_id": last_eval_id,
-            "status": status_label
-        })
-
-    return Response(response_data, status=status.HTTP_200_OK)
+    # Returns the list of modules for a specific user formatted for the dashboard
+    modules_data = EvaluationService.get_user_dashboard_modules_data(email)
+    serializer = DashboardModuleSerializer(modules_data, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

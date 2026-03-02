@@ -33,7 +33,7 @@ def verify_jwt_or_review_token(view_func):
                 if review_session.is_completed:
                     return Response( 
                         {"error": "This review session has already been completed."}, 
-                        status=status.HTTP_410_GONE
+                        status=status.HTTP_404_NOT_FOUND
                     )
                 # External reviewer case
                 return view_func(request, review_session=review_session, *args, **kwargs)

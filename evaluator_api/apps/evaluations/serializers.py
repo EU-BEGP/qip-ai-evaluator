@@ -139,3 +139,18 @@ class SelfAssessmentStatusSerializer(serializers.Serializer):
     # Serializes the status and outdated check for a self-assessment
     status = serializers.CharField()
     outdated = serializers.BooleanField()
+
+class DashboardModuleSerializer(serializers.Serializer):
+    # Serializa la información extendida de los módulos para el dashboard
+    title = serializers.CharField(allow_null=True)
+    link = serializers.CharField()
+    last_modify = serializers.CharField(allow_null=True)
+    last_evaluation = serializers.CharField(allow_null=True)
+    last_average = serializers.FloatField(allow_null=True)
+    last_max = serializers.FloatField()
+    last_evaluation_id = serializers.IntegerField(allow_null=True)
+    status = serializers.CharField()
+    self_assessment_compliance = serializers.CharField()
+    ai_review = serializers.FloatField(allow_null=True)
+    peer_reviews = serializers.IntegerField()
+    keywords = serializers.ListField(child=serializers.CharField(), allow_empty=True)

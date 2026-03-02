@@ -468,6 +468,129 @@ class EvaluationService:
                 })
                 
         return {"scanComplete": scan_complete_list}
+    
+    @staticmethod
+    def _determine_module_status(latest_eval, rag_date):
+        if not latest_eval:
+            return "Updated"
+        if latest_eval.status == Evaluation.Status.SELF_ASSESSMENT:
+            return "Self assessment"
+        if rag_date and latest_eval.module_last_modified:
+            learnify_ts = rag_date.replace(second=0, microsecond=0)
+            stored_ts = latest_eval.module_last_modified.replace(second=0, microsecond=0)
+            if learnify_ts > stored_ts:
+                return "Outdated"
+        return "Updated"
+    
+    @staticmethod
+    def _calculate_ai_average(latest_eval):
+        if not latest_eval or not latest_eval.result_json:
+            return None
+        total, count = EvaluationService.calculate_score_from_json(latest_eval.result_json)
+        return round(total / count, 2) if count > 0 else None
+    
+    @staticmethod
+    def _calculate_peer_average_and_count(latest_eval):
+        if not latest_eval:
+            return None, 0
+            
+        from django.db.models import Avg
+        from apps.reviews.models import CriterionFeedback
+        
+        peer_reviews_count = latest_eval.external_reviews.filter(is_completed=True).count()
+        peer_avg = None
+        
+        if peer_reviews_count > 0:
+            avg_result = CriterionFeedback.objects.filter(
+                review__evaluation=latest_eval,
+                review__is_completed=True
+            ).aggregate(Avg('score'))
+            
+            if avg_result['score__avg'] is not None:
+                peer_avg = float(avg_result['score__avg'])
+                
+        return peer_avg, peer_reviews_count
+    
+    @staticmethod
+    def _calculate_global_average(ai_avg, peer_avg):
+        if ai_avg is not None and peer_avg is not None:
+            return round((ai_avg + peer_avg) / 2.0, 2)
+        elif ai_avg is not None:
+            return ai_avg
+        elif peer_avg is not None:
+            return round(peer_avg, 2)
+        return None
+    
+    @staticmethod
+    def _calculate_sa_compliance(latest_eval):
+        if not latest_eval:
+            return "0%"
+            
+        yes_count = 0
+        total_answered = 0
+        scans = latest_eval.scans.prefetch_related('criteria_results').all()
+        
+        for scan in scans:
+            for c in scan.criteria_results.all():
+                if c.user_selection == 'YES':
+                    yes_count += 1
+                    total_answered += 1
+                elif c.user_selection == 'NO':
+                    total_answered += 1
+        
+        if total_answered > 0:
+            compliance_val = int(round((yes_count / total_answered) * 100))
+            return f"{compliance_val}%"
+        return "0%"
+    
+    @staticmethod
+    def _extract_keywords(latest_eval):
+        if not latest_eval or not latest_eval.metadata_json:
+            return []
+        raw_keywords = latest_eval.metadata_json.get('keywords', [])
+        if isinstance(raw_keywords, str):
+            return [k.strip() for k in raw_keywords.split(',') if k.strip()]
+        elif isinstance(raw_keywords, list):
+            return raw_keywords
+        return []
+    
+    @staticmethod
+    def get_user_dashboard_modules_data(email):
+        # Create a user dashboard
+        user_modules = UserModule.objects.filter(user__email=email).select_related('module')
+        response_data = []
+
+        for um in user_modules:
+            module = um.module
+            latest_eval = Evaluation.objects.filter(module=module).order_by('-created_at').first()
+            rag_date = RagService.get_last_modified(module.course_key)
+            last_modify = rag_date.date().isoformat() if rag_date else None
+            last_eval_date = latest_eval.created_at.date().isoformat() if latest_eval else None
+            last_eval_id = latest_eval.id if latest_eval else None
+            # Get info by service
+            status_label = EvaluationService._determine_module_status(latest_eval, rag_date)
+            ai_avg = EvaluationService._calculate_ai_average(latest_eval)
+            peer_avg, peer_count = EvaluationService._calculate_peer_average_and_count(latest_eval)
+            global_avg = EvaluationService._calculate_global_average(ai_avg, peer_avg)
+            sa_compliance = EvaluationService._calculate_sa_compliance(latest_eval)
+            keywords = EvaluationService._extract_keywords(latest_eval)
+
+            response_data.append({
+                "title": module.title,
+                "link": module.course_key,
+                "last_modify": last_modify,
+                "last_evaluation": last_eval_date,
+                "last_average": global_avg,
+                "last_max": 5.0,
+                "last_evaluation_id": last_eval_id,
+                "status": status_label,
+                "self_assessment_compliance": sa_compliance,
+                "ai_review": ai_avg,
+                "peer_reviews": peer_count,
+                "keywords": keywords
+            })
+            
+        return response_data
 
 class CertificateService:
     # Business logic for managing certificates
