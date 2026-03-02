@@ -4,9 +4,11 @@
 
 from rest_framework.request import Request
 from django.conf import settings
+from django.core.exceptions import ValidationError
 import functools
 from rest_framework.response import Response
 from rest_framework import status
+from apps.reviews.models import ExternalReview
 
 def verify_rag_callback(view_func):
     @functools.wraps(view_func)
@@ -16,4 +18,41 @@ def verify_rag_callback(view_func):
         if not provided_secret or provided_secret != expected_secret:
             return Response({"error": "Unauthorized callback"}, status=status.HTTP_403_FORBIDDEN)
         return view_func(request, *args, **kwargs)
+    return _wrapped_view
+
+def verify_jwt_or_review_token(view_func):
+    # Checks access by X-Review-Token (Priority) or JWT
+    @functools.wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        # 1. Try by Magic Token first (Priority for external reviewers)
+        token = request.headers.get('X-Review-Token')
+        if token:
+            try:
+                review_session = ExternalReview.objects.get(token=token)
+                
+                if review_session.is_completed:
+                    return Response( 
+                        {"error": "This review session has already been completed."}, 
+                        status=status.HTTP_410_GONE
+                    )
+                # External reviewer case
+                return view_func(request, review_session=review_session, *args, **kwargs)
+                
+            # 1.2 Catch the formatting errors
+            except (ExternalReview.DoesNotExist, ValidationError, ValueError):
+                return Response(
+                    {"error": "Invalid or non-existent review token."}, 
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+        # 2. Try by JWT validation (Fallback for admins/owners)
+        if request.user and request.user.is_authenticated:
+            return view_func(request, review_session=None, *args, **kwargs)
+
+        # 3. No credentials provided
+        return Response(
+            {"error": "Authentication required. Provide a valid Bearer JWT or X-Review-Token."}, 
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+        
     return _wrapped_view
