@@ -5,6 +5,8 @@ from django.db.models import Avg
 from django.utils import timezone
 from .models import ExternalReview 
 from apps.evaluations.services import EvaluationService
+from apps.evaluations.models import UserModule
+from apps.notifications.models import Message
 
 logger = logging.getLogger(__name__)
 
@@ -282,8 +284,32 @@ class ReviewService:
 
     @staticmethod
     def submit_review(review_session):
-        # Locks the review session by marking it as completed
+        # Locks the review session by marking it as completed and creates notifications for the module owners
         review_session.mark_as_completed()
+        try:            
+            evaluation = review_session.evaluation
+            module = evaluation.module
+            module_title = module.title or "Untitled Module"
+            reviewer_email = review_session.reviewer_email
+            # Get all users linked with the module
+            user_modules = UserModule.objects.filter(module=module).select_related('user')
+            # Prepare message
+            messages_to_create = []
+            for um in user_modules:
+                messages_to_create.append(
+                    Message(
+                        user=um.user,
+                        title="Peer Review Completed",
+                        content=f"The external reviewer {reviewer_email} has submitted their feedback for the module '{module_title}'.",
+                        evaluation=evaluation
+                    )
+                )
+            if messages_to_create:
+                Message.objects.bulk_create(messages_to_create)
+                logger.info(f"Notifications sent for module {module.id} after review {review_session.id}")
+                
+        except Exception as e:
+            logger.error(f"Failed to create notifications for review {review_session.id}: {e}")
 
     @staticmethod
     def get_completion_status(review_session):
