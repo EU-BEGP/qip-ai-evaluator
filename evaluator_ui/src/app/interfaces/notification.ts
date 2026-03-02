@@ -10,4 +10,6 @@ export interface Notification {
   read: boolean;
   evaluation_id: number;
   scan_name: string;
+  reviewer_id: number;
+  type: string;
 }

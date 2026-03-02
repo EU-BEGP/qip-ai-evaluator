@@ -11,7 +11,7 @@
     <p class="mb-3">{{ selectedNotification!.content }}</p>
     <div class="d-flex justify-content-end mt-3">
       <button mat-stroked-button (click)="closeNotificationModal()" class="me-2">Close</button>
-      <button mat-raised-button color="primary" (click)="goToEvaluation(selectedNotification!.evaluation_id, selectedNotification!.scan_name)">Go to evaluation</button>
+      <button mat-raised-button color="primary" (click)="goToEvaluation()">Go to evaluation</button>
     </div>
   </div>
 </div>

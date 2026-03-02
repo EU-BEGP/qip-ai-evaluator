@@ -25,10 +25,14 @@ export class NotificationModalComponent {
     private router: Router
   ) {}
 
-  goToEvaluation(id: number, scanName: string): void {
-    this.router.navigate(['/evaluation', id], {
-      queryParams: { scan: scanName }
-    });
+  goToEvaluation(): void {
+    if (this.selectedNotification!.type === 'AI Review') {
+      this.router.navigate(['/evaluation', this.selectedNotification!.evaluation_id], {
+        queryParams: { scan: this.selectedNotification!.scan_name }
+      });
+    } else if (this.selectedNotification!.type === 'Peer Review') {
+      this.router.navigate(['/peer-review-evaluation', this.selectedNotification!.evaluation_id, 'review', this.selectedNotification!.reviewer_id]);
+    }
   }
 
   closeNotificationModal(): void {
