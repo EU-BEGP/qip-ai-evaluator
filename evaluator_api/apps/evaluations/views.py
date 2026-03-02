@@ -3,7 +3,8 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from .security import verify_jwt_or_review_token
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
@@ -19,7 +20,7 @@ import os
 import json
 
 from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion
-from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer
+from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer, SelfAssessmentResultSerializer, SelfAssessmentStatusSerializer
 from .services import EvaluationService, RagService
 from evaluation.report_manager import ReportManager 
 from .security import verify_rag_callback 
@@ -38,13 +39,16 @@ def start_evaluation(request):
     data = serializer.validated_data
     user = request.user
     course_link = data.get('course_link')
+    evaluation_id = data.get('evaluation_id')
 
-    # 1. Get module link
-    clean_key = course_link.split('?')[0]
-    module = get_object_or_404(Module, course_key=clean_key)
-
-    # 2. Retrieve Evaluation
-    evaluation = Evaluation.objects.filter(module=module).order_by('-created_at').first()
+    # 1. Get module and evaluation prioritizing evaluation_id
+    if evaluation_id:
+        evaluation = get_object_or_404(Evaluation, id=evaluation_id)
+        module = evaluation.module
+    else:
+        clean_key = course_link.split('?')[0]
+        module = get_object_or_404(Module, course_key=clean_key)
+        evaluation = Evaluation.objects.filter(module=module).order_by('-created_at').first()
     
     if not evaluation:
         return Response(
@@ -57,7 +61,7 @@ def start_evaluation(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # 3. Prepare Scans
+    # 2. Prepare Scans
     scans_to_run, partial_id, is_all = EvaluationService.prepare_scans_and_placeholders(
         evaluation, request.data.get('scan_name'), request.user
     )
@@ -76,7 +80,7 @@ def start_evaluation(request):
             evaluation.module_last_modified = rag_date
         evaluation.save(update_fields=['module_last_modified'])
 
-    # 4. Trigger RAG
+    # 3. Trigger RAG
     payload = {
         "evaluation_id": evaluation.id,
         "course_key": evaluation.module.course_key,
@@ -93,7 +97,7 @@ def start_evaluation(request):
         evaluation.save()
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # 5. Response
+    # 4. Response
     return Response({
         "message": "Evaluation started.", 
         "evaluation_id": str(evaluation.id),
@@ -101,19 +105,26 @@ def start_evaluation(request):
     }, status=status.HTTP_202_ACCEPTED)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_evaluation_ids(request, pk):
+@permission_classes([AllowAny])
+@verify_jwt_or_review_token     # Hybrid Guard
+def get_evaluation_ids(request, pk=None, review_session=None):
     # Returns status/evaluability of all scans; checks for outdated content
-    evaluation = get_object_or_404(Evaluation, pk=pk)
+    # 1. Determine evaluation based on auth method
+    if review_session:
+        evaluation = review_session.evaluation
+    else:
+        if not pk:
+            return Response({"error": "Evaluation ID is required when not using a review token."}, status=status.HTTP_400_BAD_REQUEST)
+        evaluation = get_object_or_404(Evaluation, pk=pk)
     
     rag_date = RagService.get_last_modified(evaluation.module.course_key)
     is_outdated = False
 
-    # 1. Check if this evaluation is the most recent one in the DB
+    # 2. Check if this evaluation is the most recent one in the DB
     latest_local = Evaluation.objects.filter(module=evaluation.module).order_by('-created_at').first()
     if latest_local and latest_local.id != evaluation.id:
         is_outdated = True
-    # 2. If it is the latest, check if the module content in Learnify is newer
+    # 3. If it is the latest, check if the module content in Learnify is newer
     elif rag_date and rag_date.replace(second=0, microsecond=0) > evaluation.created_at.replace(second=0, microsecond=0):
         is_outdated = True
 
@@ -444,13 +455,29 @@ def get_scans(request, module_id=None):
         return Response(data, status=status.HTTP_200_OK)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_scan_criterions(request, scan_id):
+@permission_classes([AllowAny])
+@verify_jwt_or_review_token     # Hybrid Guard
+def get_scan_criterions(request, scan_id, review_session=None):
     # Returns the list of criteria for a specific scan
     scan = get_object_or_404(Scan, pk=scan_id)
     criterions = scan.criteria_results.all().order_by('id')
-    serializer = CriterionListSerializer(criterions, many=True)
+    evaluator_id = review_session.id if review_session else request.query_params.get('evaluator_id')
     
+    if evaluator_id:
+        from django.db.models import Prefetch
+        from apps.reviews.models import CriterionFeedback
+        criterions = criterions.prefetch_related(
+            Prefetch(
+                'external_feedbacks',
+                queryset=CriterionFeedback.objects.filter(review_id=evaluator_id),
+                to_attr='filtered_feedbacks'
+            )
+        )
+    serializer = CriterionListSerializer(
+        criterions, 
+        many=True, 
+        context={'request': request, 'evaluator_id': evaluator_id}
+    )
     return Response({"criterions": serializer.data}, status=status.HTTP_200_OK)
 
 @api_view(['PUT'])
@@ -516,6 +543,43 @@ def get_evaluation_basic_info(request, evaluation_id):
     }
 
     return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_self_assessment_results(request, evaluation_id):
+    # Returns the consolidated self-assessment summary counting Yes/No/NA answer    
+    get_object_or_404(Evaluation, pk=evaluation_id)
+    raw_data = EvaluationService.get_self_assessment_results(evaluation_id)
+    serializer = SelfAssessmentResultSerializer(raw_data, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_self_assessment_status(request, evaluation_id):
+    # Check status and outdated for evaluation
+    evaluation = get_object_or_404(Evaluation, pk=evaluation_id)
+    
+    is_outdated = False
+    latest_local = Evaluation.objects.filter(module=evaluation.module).order_by('-created_at').first()
+    if latest_local and latest_local.id != evaluation.id:
+        is_outdated = True
+    else:
+        rag_date = RagService.get_last_modified(evaluation.module.course_key)
+        if rag_date and rag_date.replace(second=0, microsecond=0) > evaluation.created_at.replace(second=0, microsecond=0):
+            is_outdated = True
+    data = {
+        "status": evaluation.get_status_display(),
+        "outdated": is_outdated
+    }
+    serializer = SelfAssessmentStatusSerializer(data)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_self_assessment_completion_status(request, evaluation_id):
+    # Returns true/false for each scan if all criteria have been answered
+    result = EvaluationService.get_self_assessment_completion_status(evaluation_id)
+    return Response(result, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @verify_rag_callback

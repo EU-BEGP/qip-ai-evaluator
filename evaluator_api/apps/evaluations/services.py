@@ -10,6 +10,7 @@ from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion
 from apps.notifications.models import Message
 from dateutil.parser import isoparse
 import datetime
+from django.shortcuts import get_object_or_404
 
 logger = logging.getLogger(__name__)
 
@@ -368,3 +369,91 @@ class EvaluationService:
             Criterion.objects.bulk_create(criteria_objs)
         
         return evaluation, True
+    
+    @staticmethod
+    def get_self_assessment_results(evaluation_id):
+        # Calculates the distribution of user answers across all scans
+        evaluation = get_object_or_404(Evaluation, pk=evaluation_id)
+    
+        # 1. Extract scan descriptions
+        scan_descriptions = {}
+        if evaluation.rubric and evaluation.rubric.content:
+            content = evaluation.rubric.content
+            if isinstance(content, list):
+                for s in content:
+                    if isinstance(s, dict) and 'scan' in s:
+                        scan_descriptions[s['scan']] = s.get('description', '')
+            elif isinstance(content, dict):
+                scans_dict = content.get('scans', {})
+                if isinstance(scans_dict, dict):
+                    for k, v in scans_dict.items():
+                        if isinstance(v, dict):
+                            scan_descriptions[k] = v.get('description', '')
+
+        # 2. Consult all scans
+        scans = evaluation.scans.prefetch_related('criteria_results').all()
+        all_scans_dist = {"yes": 0, "no": 0, "not_applicable": 0, "unanswered": 0, "total": 0}
+        results = []
+        
+        # 3. Calculate distribution of answers
+        for scan in scans:
+            dist = {"yes": 0, "no": 0, "not_applicable": 0, "unanswered": 0, "total": 0}
+            criteria = scan.criteria_results.all()
+            
+            for c in criteria:
+                dist["total"] += 1
+                all_scans_dist["total"] += 1
+                
+                sel = c.user_selection
+                if sel == 'YES':
+                    dist["yes"] += 1
+                    all_scans_dist["yes"] += 1
+                elif sel == 'NO':
+                    dist["no"] += 1
+                    all_scans_dist["no"] += 1
+                elif sel == 'NOT APPLICABLE':
+                    dist["not_applicable"] += 1
+                    all_scans_dist["not_applicable"] += 1
+                else:
+                    dist["unanswered"] += 1
+                    all_scans_dist["unanswered"] += 1
+            results.append({
+                "name": scan.scan_type,
+                "description": scan_descriptions.get(scan.scan_type, ""),
+                "answer_distribution": dist
+            })
+            
+        # 4. All scans case
+        all_scans_block = {
+            "name": "All Scans",
+            "description": "All scans have been consolidated here, and the information provided offers a general overview of the module.",
+            "answer_distribution": all_scans_dist
+        }
+        return [all_scans_block] + results
+    
+    @staticmethod
+    def get_self_assessment_completion_status(evaluation_id):
+        # Verifica si todos los criterios de cada scan han sido respondidos
+        from django.shortcuts import get_object_or_404
+        from .models import Evaluation
+        
+        evaluation = get_object_or_404(Evaluation, pk=evaluation_id)
+        scans = evaluation.scans.prefetch_related('criteria_results').all()
+        
+        scan_complete_list = []
+        
+        for scan in scans:
+            criteria = scan.criteria_results.all()
+            if not criteria:
+                scan_complete_list.append({
+                    "name": scan.scan_type, 
+                    "isComplete": False
+                })
+            else:
+                is_complete = all(bool(c.user_selection) for c in criteria)
+                scan_complete_list.append({
+                    "name": scan.scan_type, 
+                    "isComplete": is_complete
+                })
+                
+        return {"scanComplete": scan_complete_list}

@@ -11,6 +11,7 @@ urlpatterns = [
     path('scans/criterions/<int:criterion_id>/ai-suggestion/', views.get_criterion_ai_suggestion, name='get_criterion_ai_suggestion'),
     path('verify_metadata/', views.validate_module_metadata, name='validate_module_metadata'),
     path('create_evaluation/', views.create_evaluation, name='create_evaluation'),
+    path('self_assessment/<int:evaluation_id>/status/', views.get_self_assessment_status, name='get_self_assessment_status'),
     
     # Lists & Dashboard
     path('list_evaluations/', views.list_evaluations, name='list_evaluations'),
@@ -18,12 +19,14 @@ urlpatterns = [
     
     # Status & Details
     path('evaluation_ids/<int:pk>/', views.get_evaluation_ids, name='get_evaluation_ids'),
+    path('evaluation_ids/', views.get_evaluation_ids, name='get_evaluation_ids_token'),
     path('link_module/<int:pk>/', views.get_module_link, name='get_module_link'),
     path('evaluation_status/module/<int:pk>/', views.evaluation_status_module, name='evaluation_status_module'),
     path('evaluation_status/scan/<int:pk>/', views.evaluation_status_scan, name='evaluation_status_scan'),
     path('scans/', views.get_scans, name='get_rubric_scans'),
     path('scans/<int:module_id>/', views.get_scans, name='get_module_scans'),
     path('scans/criterions/<int:criterion_id>/result/', views.get_criterion_result, name='get_criterion_result'),
+    path('self_assessment/<int:evaluation_id>/completion_status/', views.get_self_assessment_completion_status, name='get_self_assessment_completion_status'),
     
     # Results JSON
     path('evaluation_detail/module/<int:pk>/', views.evaluation_detail_module, name='evaluation_detail_module'),
@@ -39,4 +42,5 @@ urlpatterns = [
     # Criterion
     path('scans/<int:scan_id>/criterions/', views.get_scan_criterions, name='get_scan_criterions'),
     path('scans/criterions/<int:criterion_id>/', views.update_criterion_selection, name='update_criterion_selection'),
+    path('self_assessment/<int:evaluation_id>/results/', views.get_self_assessment_results, name='get_self_assessment_results'),
 ]

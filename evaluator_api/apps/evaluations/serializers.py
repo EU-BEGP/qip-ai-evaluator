@@ -39,19 +39,31 @@ class EvaluationDetailSerializer(serializers.ModelSerializer):
 
 class StartEvaluationSerializer(serializers.Serializer):
     # Serializes the Evaluation
-    course_link = serializers.URLField(required=True)
+    course_link = serializers.URLField(required=False, allow_null=True, allow_blank=True)
     email = serializers.EmailField(required=True)
     scan_name = serializers.CharField(required=False, allow_null=True)
     evaluation_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate(self, data):
+        if not data.get('course_link') and not data.get('evaluation_id'):
+            raise serializers.ValidationError(
+                {"error": "Either course_link or evaluation_id must be provided."}
+            )
+        return data
 
 class CriterionListSerializer(serializers.ModelSerializer):
     # Serialize the criteria
     question = serializers.SerializerMethodField()
     description = serializers.SerializerMethodField()
+    peer_selection = serializers.SerializerMethodField()
+    peer_note = serializers.SerializerMethodField()
 
     class Meta:
         model = Criterion
-        fields = ['id', 'criterion_name', 'question', 'description', 'user_selection']
+        fields = [
+            'id', 'criterion_name', 'question', 'description', 
+            'user_selection', 'peer_selection', 'peer_note'
+        ]
 
     def get_rubric_data(self, obj):
         # Helper, search data from rubric
@@ -79,9 +91,51 @@ class CriterionListSerializer(serializers.ModelSerializer):
 
     def get_description(self, obj):
         return self.get_rubric_data(obj).get('description', '')
+    
+    def get_peer_selection(self, obj):
+        if hasattr(obj, 'filtered_feedbacks') and obj.filtered_feedbacks:
+            score = obj.filtered_feedbacks[0].score
+            return str(score) if score is not None else None
+        return None
+
+    def get_peer_note(self, obj):
+        if hasattr(obj, 'filtered_feedbacks') and obj.filtered_feedbacks:
+            comment = obj.filtered_feedbacks[0].comment
+            return comment if comment else ""
+        if self.context.get('evaluator_id'):
+            return ""
+            
+        return None
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not self.context.get('evaluator_id'):
+            data.pop('peer_selection', None)
+            data.pop('peer_note', None)
+            
+        return data
 
 class CriterionUpdateSerializer(serializers.Serializer):
     # Validate user choice
     result = serializers.ChoiceField(
         choices=['YES', 'NO', 'NOT APPLICABLE', 'Yes', 'No', 'Not applicable', 'yes', 'no', 'not applicable']
     )
+
+class AnswerDistributionSerializer(serializers.Serializer):
+    # Serializes the count of answers for self-assessment
+    yes = serializers.IntegerField()
+    no = serializers.IntegerField()
+    not_applicable = serializers.IntegerField()
+    unanswered = serializers.IntegerField()
+    total = serializers.IntegerField()
+
+class SelfAssessmentResultSerializer(serializers.Serializer):
+    # Serializes the consolidated self-assessment results per scan
+    name = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    answer_distribution = AnswerDistributionSerializer()
+
+class SelfAssessmentStatusSerializer(serializers.Serializer):
+    # Serializes the status and outdated check for a self-assessment
+    status = serializers.CharField()
+    outdated = serializers.BooleanField()
