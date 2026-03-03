@@ -7,6 +7,9 @@ from django.conf import settings
 
 class Message(models.Model):
     # Represents a notification sent to a user regarding an evaluation update
+    class MessageType(models.TextChoices):
+        AI_REVIEW = 'AI Review', 'AI Review'
+        PEER_REVIEW = 'Peer Review', 'Peer Review'
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='messages')
     title = models.CharField(max_length=255)
@@ -21,6 +24,12 @@ class Message(models.Model):
         related_name='messages'
     )
     scan_type = models.CharField(max_length=100, null=True, blank=True)
+    type = models.CharField(
+        max_length=50, 
+        choices=MessageType.choices, 
+        default=MessageType.AI_REVIEW
+    )
+    reviewer_id = models.IntegerField(null=True, blank=True)
     class Meta:
         ordering = ['-created_at']
 

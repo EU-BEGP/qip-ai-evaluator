@@ -301,7 +301,9 @@ class ReviewService:
                         user=um.user,
                         title="Peer Review Completed",
                         content=f"The external reviewer {reviewer_email} has submitted their feedback for the module '{module_title}'.",
-                        evaluation=evaluation
+                        evaluation=evaluation,
+                        type='Peer Review',
+                        reviewer_id=review_session.id
                     )
                 )
             if messages_to_create:

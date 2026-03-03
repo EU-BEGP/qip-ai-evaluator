@@ -27,7 +27,9 @@ def get_user_mailbox(request, email):
             "read": msg.is_read,
             "created_at": msg.created_at,
             "evaluation_id": msg.evaluation_id,
-            "scan_name": msg.scan_type
+            "scan_name": msg.scan_type,
+            "reviewer_id": msg.reviewer_id,
+            "type": msg.type
         }
         for msg in messages
     ]

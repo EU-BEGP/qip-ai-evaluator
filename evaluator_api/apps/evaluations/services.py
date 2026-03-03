@@ -277,10 +277,12 @@ class EvaluationService:
                         user=evaluation.triggered_by, 
                         evaluation=evaluation, 
                         scan_type=s_name,
+                        type='AI Review',
                         defaults={
                             "title": f"{s_name} Finished: {title_text}", 
                             "content": f"The {s_name} has finished successfully.", 
-                            "is_read": False
+                            "is_read": False,
+                            "reviewer_id": None
                         }
                     )
 

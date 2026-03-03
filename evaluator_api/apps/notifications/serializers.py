@@ -18,7 +18,9 @@ class MessageSerializer(serializers.ModelSerializer):
             'is_read', 
             'created_at', 
             'evaluation_id', 
-            'scan_name'
+            'scan_name',
+            'reviewer_id',
+            'type'
         ]
 
 class MarkReadSerializer(serializers.Serializer):
