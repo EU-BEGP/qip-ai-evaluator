@@ -43,7 +43,8 @@
       "status": "evaluations/self_assessment/{id}/status/"
     },
     "extra": {
-      "download": "evaluations/download_pdf/{id}/"
+      "download": "evaluations/download_pdf/{id}/",
+      "downloadBadge": "evaluations/self_assessment/{id}/certificate/"
     }
   }
 }

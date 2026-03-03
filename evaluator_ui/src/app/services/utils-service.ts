@@ -32,6 +32,21 @@ export class UtilsService {
     );
   }
 
+  downloadBadge(id: string): Observable<Blob> {
+    let URL = `${config.api.baseUrl}${config.api.extra.downloadBadge}`;
+    URL = URL.replace('{id}', String(id));
+    this.loaderService.show();
+
+    return this.http.get(URL, {
+      responseType: 'blob'
+    }).pipe(
+      catchError((err) => throwError(() => err)),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
+  }
+
   parseDate(date: string): Date {
     const [datePart, timePart] = date.split(' ');
     const [year, month, day] = datePart.split('-').map(Number);

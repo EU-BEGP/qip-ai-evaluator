@@ -203,7 +203,7 @@ export class EvaluationComponent {
         const link = document.createElement('a');
 
         link.href = pdfUrl;
-        link.download = 'report.pdf';
+        link.download = `EEDA_Report_${this.evaluationId!}.pdf`;
         link.click();
 
         window.URL.revokeObjectURL(pdfUrl);

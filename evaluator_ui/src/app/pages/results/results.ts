@@ -16,6 +16,7 @@ import { ToastrService } from 'ngx-toastr';
 import { LoaderService } from '../../services/loader-service';
 import { AlertComponent } from '../../components/alert-component/alert-component';
 import { CommonModule } from '@angular/common';
+import { UtilsService } from '../../services/utils-service';
 
 @Component({
   selector: 'app-results',
@@ -47,7 +48,8 @@ export class Results implements OnInit {
     private router: Router,
     private evaluationService: EvaluationService,
     private toastr: ToastrService,
-    private loaderService: LoaderService
+    private loaderService: LoaderService,
+    private utilsService: UtilsService
   ) {}
 
   ngOnInit(): void {
@@ -111,5 +113,23 @@ export class Results implements OnInit {
     }
 
     return this.evaluationService.evaluate(scanRequest);
+  }
+
+  download(): void {
+    this.utilsService.downloadBadge(this.evaluationId!.toString()).subscribe({
+      next: (data: Blob) => {
+        const pngUrl = window.URL.createObjectURL(data);
+        const link = document.createElement('a');
+
+        link.href = pngUrl;
+        link.download = `EEDA_Quality_Badge_${this.evaluationId!}.png`;
+        link.click();
+
+        window.URL.revokeObjectURL(pngUrl);
+      },
+      error: (err) => {
+        this.toastr.error('Error downloading Quality Badge.', 'Error');
+      }
+    });
   }
 }

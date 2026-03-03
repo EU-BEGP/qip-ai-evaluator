@@ -96,7 +96,7 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   }
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (max-width: 580px) {
   .buttons-container {
     flex-direction: column;
   }

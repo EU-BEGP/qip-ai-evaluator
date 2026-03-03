@@ -34,12 +34,14 @@
         <div class="alert alert-success align-self-center m-0">
           <span class="text-success alert-title"><b>Great work! The learning resource has passed the initial quality checks!</b></span>
           <p class="mt-2 alert-text">
-            <b>The learning resource</b> satisfies the compliance requirements and you can invite external reviewers for quality.
+            <b>The learning resource</b> satisfies the compliance requirements and you can invite external reviewers for quality assurance.
             <br/>Before inviting external reviewers, please ensure the assessment is fully completed by clicking the <b>Complete Assessment</b> button if required.
+            <br/>To download the Quality Badge for the module, please click the <b>Download</b> button.
           </p>
           <div class="d-flex gap-2 buttons-container">
             <button mat-raised-button class="bg-success text-white button-success" (click)="completeAssessment()" [disabled]="isAssessmentCompleted">Complete Assessment</button>
             <button mat-raised-button class="bg-success text-white button-success" (click)="inviteReviewers()" [disabled]="!isAssessmentCompleted">+ Invite Reviewers</button>
+            <button mat-raised-button class="bg-success text-white button-success" (click)="download()" [disabled]="!isAssessmentCompleted">Download</button>
           </div>
         </div>
       }
