@@ -9,6 +9,7 @@ import functools
 from rest_framework.response import Response
 from rest_framework import status
 from apps.reviews.models import ExternalReview
+from .models import Certificate 
 
 def verify_rag_callback(view_func):
     @functools.wraps(view_func)
@@ -55,4 +56,32 @@ def verify_jwt_or_review_token(view_func):
             status=status.HTTP_401_UNAUTHORIZED
         )
         
+    return _wrapped_view
+
+def verify_badge_token(view_func):
+    # Validates the X-Badge-Token header and injects the Certificate object
+    @functools.wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        token = request.headers.get('X-Badge-Token')
+        if not token:
+            return Response(
+                {"error": "X-Badge-Token header is missing"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            certificate = Certificate.objects.get(public_token=token)
+            return view_func(request, certificate=certificate, *args, **kwargs)
+            
+        except (ValueError, ValidationError):
+            # Catch Errors
+            return Response(
+                {"error": "Invalid badge token format"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception:
+            # Certificate does not exist
+            return Response(
+                {"error": "Badge token not found or expired"}, 
+                status=status.HTTP_404_NOT_FOUND
+            ) 
     return _wrapped_view

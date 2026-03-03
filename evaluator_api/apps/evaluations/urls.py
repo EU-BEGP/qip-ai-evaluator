@@ -46,4 +46,5 @@ urlpatterns = [
 
     # Certificate
     path('self_assessment/<int:evaluation_id>/certificate/', views.download_badge_certificate, name='download_badge_certificate'),
+    path('badge/', views.verify_badge, name='verify_badge'),
 ]

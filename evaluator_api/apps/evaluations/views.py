@@ -2,9 +2,8 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .security import verify_jwt_or_review_token
 from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
@@ -23,7 +22,7 @@ from .models import Module, Evaluation, Scan, UserModule, Rubric, Criterion, Cer
 from .serializers import StartEvaluationSerializer, EvaluationDetailSerializer, CriterionListSerializer, CriterionUpdateSerializer, SelfAssessmentResultSerializer, SelfAssessmentStatusSerializer, DashboardModuleSerializer
 from .services import EvaluationService, RagService, CertificateService
 from evaluation.report_manager import ReportManager 
-from .security import verify_rag_callback 
+from .security import verify_rag_callback, verify_jwt_or_review_token, verify_badge_token
 from django.http import FileResponse
 
 logger = logging.getLogger(__name__)
@@ -638,10 +637,29 @@ def evaluation_callback(request):
 def download_badge_certificate(request, evaluation_id):
     # Create a certificate for an evaluation
     evaluation = get_object_or_404(Evaluation, pk=evaluation_id)
-    pdf_buffer = CertificateService.generate_badge_pdf(evaluation)
+    png_buffer = CertificateService.generate_badge_png(evaluation)
     return FileResponse(
-        pdf_buffer, 
+        png_buffer, 
         as_attachment=True, 
-        filename=f"EEDA_Quality_Badge_{evaluation_id}.pdf",
-        content_type='application/pdf'
+        filename=f"EEDA_Quality_Badge_{evaluation_id}.png",
+        content_type='image/png'
     )
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@authentication_classes([]) 
+@verify_badge_token
+def verify_badge(request, certificate):
+    # Endpoint to get data from certificate
+    evaluation = certificate.evaluation
+    module_name = evaluation.title or evaluation.module.title or "Untitled Module"
+    ai_avg = EvaluationService._calculate_ai_average(evaluation)
+    peer_avg, _ = EvaluationService._calculate_peer_average_and_count(evaluation)
+    global_avg = EvaluationService._calculate_global_average(ai_avg, peer_avg)
+    
+    return Response({
+        "module_name": module_name,
+        "rating": global_avg,
+        "teachers": ["santiago almancy", "sebastian itamari", "alex villazon"],
+        "badge": "https://picsum.photos/id/10/367/267"
+    }, status=status.HTTP_200_OK)

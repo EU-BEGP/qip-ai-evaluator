@@ -17,10 +17,7 @@ import os
 import tempfile
 import qrcode
 import textwrap
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import landscape, A4
-from reportlab.lib.units import inch
-from reportlab.lib.colors import HexColor
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
@@ -277,10 +274,12 @@ class EvaluationService:
                         user=evaluation.triggered_by, 
                         evaluation=evaluation, 
                         scan_type=s_name,
+                        type='AI Review',
                         defaults={
                             "title": f"{s_name} Finished: {title_text}", 
                             "content": f"The {s_name} has finished successfully.", 
-                            "is_read": False
+                            "is_read": False,
+                            "reviewer_id": None
                         }
                     )
 
@@ -596,67 +595,68 @@ class CertificateService:
     # Business logic for managing certificates
 
     @staticmethod
-    def generate_badge_pdf(evaluation):        
-        # Creates QR badge for the evaluation
+    def generate_badge_png(evaluation):        
+        # Creates QR badge for the evaluation in PNG format
         certificate, created = Certificate.objects.get_or_create(evaluation=evaluation)
         client_url = getattr(settings, 'CLIENT_PUBLIC_URL', 'http://localhost:4200')
         validation_url = f"{client_url}/verify-badge/{certificate.public_token}"
 
-        # Generate Image
-        qr = qrcode.QRCode(version=1, box_size=10, border=1)
+        # Generate QR Image
+        qr = qrcode.QRCode(version=1, box_size=5, border=1)
         qr.add_data(validation_url)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+        qr_img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            img.save(tmp.name)
-            qr_path = tmp.name
-
-        buffer = io.BytesIO()
-        
         # Dimensions and configurations
         width, height = 400, 600
-        c = canvas.Canvas(buffer, pagesize=(width, height))
-        c.setFillColor(HexColor('#2384C6'))
-        c.rect(0, 0, width, height, fill=1, stroke=0)
+        img = Image.new('RGB', (width, height), color='#2384C6')
+        draw = ImageDraw.Draw(img)
+
+        # Setup fonts
+        font_title = ImageFont.load_default(size=20)
+        font_sub = ImageFont.load_default(size=14)
+        font_mod = ImageFont.load_default(size=18)
+        font_desc = ImageFont.load_default(size=12)
+        font_bold = ImageFont.load_default(size=11)
+
         module_title = evaluation.title or evaluation.module.title or "Untitled Module"
-        c.setFillColor(HexColor('#FFFFFF'))
+
+        # Helper function to center text
+        def draw_centered_text(y, text, font):
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_w = bbox[2] - bbox[0]
+            x = (width - text_w) / 2
+            draw.text((x, y), text, fill="#FFFFFF", font=font)
 
         # EEDA Header
-        c.setFont("Helvetica-Bold", 20)
-        c.drawCentredString(width / 2.0, height - 60, "Explore Energy Digital Academy")
-        c.setFont("Helvetica-Bold", 14)
-        c.drawCentredString(width / 2.0, height - 85, "Quality Badge for Digital Learning Resources")
+        draw_centered_text(60, "Explore Energy Digital Academy", font_title)
+        draw_centered_text(85, "Quality Badge for Digital Learning Resources", font_sub)
         
         # Module Title
-        c.setFont("Helvetica-Oblique", 18)
         title_lines = textwrap.wrap(module_title, width=32)
-        current_y = height - 140
+        current_y = 140
         for line in title_lines:
-            c.drawCentredString(width / 2.0, current_y, line)
-            current_y -= 22
+            draw_centered_text(current_y, line, font_mod)
+            current_y += 24
         
         # Description for Certificate
-        c.setFont("Helvetica", 12)
         desc_text = "This educational resource has gone through an extensive quality assessment process and fulfills all the relevant quality criteria for digital learning resources"
         desc_lines = textwrap.wrap(desc_text, width=45)
-        current_y -= 15
+        current_y += 20
         for line in desc_lines:
-            c.drawCentredString(width / 2.0, current_y, line)
-            current_y -= 16
+            draw_centered_text(current_y, line, font_desc)
+            current_y += 18
 
-        c.setFont("Helvetica-Bold", 11)
-        current_y -= 20
-        c.drawCentredString(width / 2.0, current_y, "For more information scan the QR code below")
+        current_y += 25
+        draw_centered_text(current_y, "For more information scan the QR code below", font_bold)
 
-        # QR code
-        qr_size = 1.5 * inch
-        qr_y = current_y - qr_size - 30
-        c.drawImage(qr_path, (width - qr_size) / 2.0, qr_y, width=qr_size, height=qr_size)
+        # Paste QR code
+        qr_w, qr_h = qr_img.size
+        qr_y = current_y + 30
+        img.paste(qr_img, ((width - qr_w) // 2, qr_y))
 
-        c.showPage()
-        c.save()
-        os.remove(qr_path) 
-        
+        # Save to buffer
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
         buffer.seek(0)
         return buffer
