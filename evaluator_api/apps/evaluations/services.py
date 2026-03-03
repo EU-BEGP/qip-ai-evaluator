@@ -599,7 +599,7 @@ class CertificateService:
         # Creates QR badge for the evaluation in PNG format
         certificate, created = Certificate.objects.get_or_create(evaluation=evaluation)
         client_url = getattr(settings, 'CLIENT_PUBLIC_URL', 'http://localhost:4200')
-        validation_url = f"{client_url}/verify-badge/{certificate.public_token}"
+        validation_url = f"{client_url}/badge/{certificate.public_token}"
 
         # Generate QR Image
         qr = qrcode.QRCode(version=1, box_size=5, border=1)
