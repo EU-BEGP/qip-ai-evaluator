@@ -14,7 +14,7 @@ export class BadgeService {
   ) {}
 
   retrieveBadgeData(token: string): Observable<any> {
-    let URL = `${config.api.baseUrl}badge`;
+    let URL = `${config.api.baseUrl}evaluations/badge`;
     const headers = new HttpHeaders({
       'X-Badge-Token': `${token}`,
     });
