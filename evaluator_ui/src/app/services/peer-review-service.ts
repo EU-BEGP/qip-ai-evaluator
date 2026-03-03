@@ -70,7 +70,7 @@ export class PeerReviewService {
 
   getModuleName(token: string): Observable<any> {
     const headers = new HttpHeaders().set('X-Review-Token', `${token}`);
-    let URL = `${config.api.baseUrl}/reviews/details/`;
+    let URL = `${config.api.baseUrl}reviews/details/`;
 
     this.loaderService.show();
 
