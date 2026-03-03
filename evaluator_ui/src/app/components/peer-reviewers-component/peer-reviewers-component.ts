@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 import { PeerReviewService } from '../../services/peer-review-service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   standalone: true,
@@ -21,7 +22,10 @@ export class PeerReviewersComponent {
   // Use objects with stable ids so Angular won't recreate DOM nodes
   emails: { id: string; value: string }[] = [];
 
-  constructor(private peerReviewService: PeerReviewService) {}
+  constructor(
+    private peerReviewService: PeerReviewService,
+    private toastr: ToastrService,
+  ) {}
 
   ngOnInit() {
     if (this.emails.length === 0) {
@@ -68,12 +72,12 @@ export class PeerReviewersComponent {
       .map((e) => e.value.trim())
       .filter((email) => this.validateEmail(email));
     if (validEmails.length === 0) {
-      alert('Please enter at least one valid email address.');
+      this.toastr.error('Please enter at least one valid email address.');
       return;
     }
 
     if (!this.evaluationId) {
-      alert('Evaluation ID is missing. Cannot send invitations.');
+      this.toastr.error('Evaluation ID is missing. Cannot send invitations.');
       return;
     }
 
@@ -81,12 +85,14 @@ export class PeerReviewersComponent {
       .requestPeerReview(this.evaluationId, validEmails)
       .subscribe({
         next: () => {
-          alert('Invitations sent successfully!');
+          this.toastr.success('Invitations sent successfully!');
           this.closePeerReviewModal();
         },
         error: (err) => {
           console.error('Failed to send invitations', err);
-          alert('Failed to send invitations. Please try again later.');
+          this.toastr.error(
+            'Failed to send invitations. Please try again later.',
+          );
         },
       });
   }

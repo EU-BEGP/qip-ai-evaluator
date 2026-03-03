@@ -13,6 +13,7 @@ import { SelfAssessment } from './pages/self-assessment/self-assessment';
 import { PeerReviewEvaluation } from './pages/peer-review-evaluation/peer-review-evaluation';
 import { Results } from './pages/results/results';
 import { PeerReview } from './pages/peer-review/peer-review';
+import { Badge } from './pages/badge/badge';
 
 export const routes: Routes = [
   {
@@ -57,6 +58,10 @@ export const routes: Routes = [
       {
         path: 'external-review/:token',
         component: PeerReview,
+      },
+      {
+        path: 'badge/:token',
+        component: Badge,
       },
     ],
   },

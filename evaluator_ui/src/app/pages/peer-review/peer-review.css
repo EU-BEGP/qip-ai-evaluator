@@ -129,12 +129,13 @@
 .list-group-item.highlighted::after {
   content: "";
   position: absolute;
-  left: -8px;
+  left: -12px;
   top: 50%;
-  transform: translateY(-50%) rotate(-15deg);
-  width: 10px;
-  height: 10px;
-  border-top: 2px solid rgba(25, 118, 210, 0.9);
-  border-right: 2px solid rgba(25, 118, 210, 0.9);
-  opacity: 0.9;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 12px solid rgba(25, 118, 210, 0.95);
+  opacity: 0.95;
 }

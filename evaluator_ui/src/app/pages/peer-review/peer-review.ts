@@ -79,33 +79,47 @@ export class PeerReview implements OnInit {
       return;
     }
     this.token = peerToken;
-    this.peerRev.getPeerReviewCompletionStatus(this.token!).subscribe({
-      next: (res) => {
-        if (res.scanComplete.length > 0) {
-          this.loadScans(
-            '',
-            this.token!,
-            res.scanComplete.filter((r) => r.isComplete).length,
-          );
-        }
-      },
-    });
-  }
-
-  getModuleName(token: string) {
-    this.peerRev.getModuleName(token).subscribe({
-      next: (res) => {
-        this.moduleName = res.module_name;
-      },
-      error: (err) => {
-        if (err.status === 404) {
-          this.finished = true;
-          this.modalMessage =
-            'No evaluation found for this peer review. It is possible that the evaluation has already been completed or that the peer review link is invalid. Please contact the administrator for more information.';
+    this.getModuleName(peerToken)
+      .then((ok) => {
+        if (!ok) {
           return;
         }
+        this.peerRev.getPeerReviewCompletionStatus(this.token!).subscribe({
+          next: (res) => {
+            if (res.scanComplete.length > 0) {
+              this.loadScans(
+                '',
+                this.token!,
+                res.scanComplete.filter((r) => r.isComplete).length,
+              );
+            }
+          },
+        });
+      })
+      .catch((err) => {
         console.error('Failed to get module name', err);
-      },
+        this.router.navigate(['/']);
+      });
+  }
+
+  getModuleName(token: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      this.peerRev.getModuleName(token).subscribe({
+        next: (res) => {
+          this.moduleName = res.module_name;
+          resolve(true);
+        },
+        error: (err) => {
+          if (err.status === 404) {
+            this.finished = true;
+            this.modalMessage =
+              'Unauthorized access. Please check your peer review link or contact the administrator for assistance.';
+            resolve(false);
+            return;
+          }
+          reject(err);
+        },
+      });
     });
   }
 
