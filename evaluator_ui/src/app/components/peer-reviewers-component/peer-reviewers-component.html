@@ -58,6 +58,7 @@
         color="primary"
         class="ms-2"
         (click)="sendInvites()"
+        [disabled]="!sendEnabled"
       >
         Invite
       </button>

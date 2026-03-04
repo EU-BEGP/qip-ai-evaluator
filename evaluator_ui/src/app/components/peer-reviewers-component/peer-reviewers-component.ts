@@ -21,6 +21,7 @@ export class PeerReviewersComponent {
   @Output() closeModal = new EventEmitter<void>();
   // Use objects with stable ids so Angular won't recreate DOM nodes
   emails: { id: string; value: string }[] = [];
+  sendEnabled: boolean = false;
 
   constructor(
     private peerReviewService: PeerReviewService,
@@ -56,6 +57,7 @@ export class PeerReviewersComponent {
     } else {
       this.emails.splice(index + 1, 0, item);
     }
+    this.sendEnabled = this.emails.some((e) => this.validateEmail(e.value));
   }
 
   deleteEmail(index: number) {
@@ -65,9 +67,11 @@ export class PeerReviewersComponent {
       // keep at least one empty row
       this.emails[0].value = '';
     }
+    this.sendEnabled = this.emails.some((e) => this.validateEmail(e.value));
   }
 
   sendInvites() {
+    this.sendEnabled = false;
     const validEmails = this.emails
       .map((e) => e.value.trim())
       .filter((email) => this.validateEmail(email));
@@ -85,8 +89,8 @@ export class PeerReviewersComponent {
       .requestPeerReview(this.evaluationId, validEmails)
       .subscribe({
         next: () => {
-          this.toastr.success('Invitations sent successfully!');
           this.closePeerReviewModal();
+          this.toastr.success('Invitations sent successfully!');
         },
         error: (err) => {
           console.error('Failed to send invitations', err);
