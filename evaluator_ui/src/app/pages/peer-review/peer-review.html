@@ -5,7 +5,7 @@
 @if (finished) {
   <app-peer-review-message-model
     [message]="modalMessage"
-    (close)="finished = false"
+    (close)="onCloseModal()"
   ></app-peer-review-message-model>
 }
 

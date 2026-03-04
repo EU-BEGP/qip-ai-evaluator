@@ -112,8 +112,7 @@ export class PeerReview implements OnInit {
         error: (err) => {
           if (err.status === 404) {
             this.finished = true;
-            this.modalMessage =
-              'Unauthorized access. Please check your peer review link or contact the administrator for assistance.';
+            this.modalMessage = err.message || err.error?.message;
             resolve(false);
             return;
           }
@@ -308,5 +307,10 @@ export class PeerReview implements OnInit {
         this.toast.error('Failed to submit peer review');
       },
     });
+  }
+
+  onCloseModal() {
+    this.finished = false;
+    this.router.navigate(['/']);
   }
 }
