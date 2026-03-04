@@ -13,6 +13,7 @@ export class Badge {
   badge: string = '';
   teachers: string[] = [];
   rating: number = 0;
+  ratingsCount: number = 0;
 
   constructor(
     private badgeService: BadgeService,
@@ -32,6 +33,7 @@ export class Badge {
         this.badge = data.badge;
         this.teachers = data.teachers;
         this.rating = data.rating;
+        this.ratingsCount = data.total_reviews;
       },
       error: (err) => {
         console.error('Error retrieving badge data:', err);

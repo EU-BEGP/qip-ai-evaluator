@@ -1,10 +1,33 @@
 <div class="badge-container">
-  <h2>{{ moduleName }}</h2>
   <div class="badge-info">
     <img [src]="badge" alt="Badge Image" class="badge-image" />
-    <div class="badge-details">
-      <p><strong>Teachers:</strong> <span>{{ teachers }}</span></p>
-      <p><strong>Rating:</strong> <span>{{ rating }}</span></p>
+    <h2 id="badge-title">{{ moduleName }}</h2>
+    <div class="badge-details" aria-labelledby="badge-title">
+      <p>
+        <strong>Teachers:</strong> <span>{{ teachers.join(", ") }}</span>
+      </p>
+      <p>
+        <strong>Rating:</strong> <span>{{ rating }}</span> from
+        {{ ratingsCount }} ratings
+      </p>
     </div>
+  </div>
+  <div class="badge-description">
+    <p>
+      The Standard Quality Badge means that this open educational resource has
+      gone through an extensive self-evaluation process and fulfills all the
+      relevant quality criteria for open educational resources.
+    </p>
+    <p>
+      This learning resource is part of the
+      <strong>"EXPLORE Energy"</strong> international Challenge-Based Innovative
+      and Entrepreneurial educational collaboration concept in Circular Economy
+      Towards Energy.
+    </p>
+    <p>
+      In this concept a large number of teachers and instructors from different
+      organizations collaborate towards a common repository of high-quality
+      reviewed Open Educational Resources.
+    </p>
   </div>
 </div>
