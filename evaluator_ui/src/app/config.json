@@ -4,6 +4,7 @@
     "acronym": "UPB",
     "name": "Universidad Privada Boliviana"
   },
+  "registerLink": "https://eubbc-digital.upb.edu/booking/access",
   "time": {
     "notificationPolling": 3,
     "evaluationPolling": 5

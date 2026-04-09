@@ -4,7 +4,7 @@
 
 <div class="main-container">
   <mat-card class="card">
-    <h2 class="title">Login</h2>
+    <h2 class="title">QIP AI Evaluator <br> Login</h2>
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <mat-form-field class="input-field">
         <mat-label>Email</mat-label>
@@ -26,6 +26,13 @@
         {{ getPasswordErrorMessage() }}
         </mat-error>
       </mat-form-field>
+
+      <p class="caption mb-0">
+        Create an account or reset your password
+        <a class="text-primary" [href]="registerLink" target="_blank">
+          here.
+        </a>
+      </p>
 
       <button class="access-button" type="submit" mat-raised-button color="primary">
         Sign In
