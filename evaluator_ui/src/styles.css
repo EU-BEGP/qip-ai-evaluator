@@ -97,6 +97,13 @@ input[type="password"]::-ms-clear {
   padding-top: 30px;
 }
 
+.subtitle {
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px !important;
+  padding-top: 8px;
+}
+
 .mat-mdc-form-field-error-wrapper {
   padding: 0px !important;
 }

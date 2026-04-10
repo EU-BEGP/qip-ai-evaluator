@@ -5,10 +5,13 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
 .main-container {
+  position: relative;
   width: 100%;
   min-height: 100vh;
   height: auto;
-  background-color: #5262BC;
+  padding: 32px 20px;
+  background:
+    linear-gradient(135deg, #3f51b5 0%, #334caa 45%, #2a3992 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -17,8 +20,50 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 .card {
   width: 600px;
   max-width: 90vw;
-  max-height: 80vh; 
-  overflow-y: auto; 
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.login-card {
+  border-radius: 10px;
+}
+
+.login-header {
+  padding: 0;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  color: #13204f;
+}
+
+.subtitle {
+  margin: 0;
+  color: #3147a6;
+}
+
+.helper-text {
+  margin-top: 2px;
+  color: #5f6b91;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.support-link {
+  color: #3147a6;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.support-link:hover {
+  color: #22348b;
+  text-decoration: underline;
+}
+
+.access-button {
+  margin-top: 20px;
+  width: 100%;
 }
 
 @media screen and (max-width: 768px) {

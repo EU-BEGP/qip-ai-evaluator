@@ -15,7 +15,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth-service';
 import { AccountCredentials } from '../../interfaces/account-credentials';
 import { ToastrService } from 'ngx-toastr';
-import config from '../../../../config.json'
+import config from '../../config.json';
 
 @Component({
   selector: 'app-login',
