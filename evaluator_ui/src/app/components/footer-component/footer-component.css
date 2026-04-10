@@ -7,3 +7,18 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 .footer-content {
   font-size: 14px;
 }
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: -3px;
+  margin-left: 6px;
+  color: #666;
+  transition: color 0.3s ease;
+  vertical-align: middle;
+}
+
+.github-link:hover {
+  color: #333;
+  transform: translateY(-1px);
+}
