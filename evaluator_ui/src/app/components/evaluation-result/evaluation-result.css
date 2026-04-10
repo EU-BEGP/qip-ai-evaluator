@@ -25,6 +25,7 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   min-width: 840px;
   border-collapse: separate;
   border-spacing: 0;
+  border-radius: 8px;
   font-size: 0.95rem;
   background-color: #fff;
   overflow: hidden;

@@ -3,15 +3,19 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 <div class="main-container">
-  <mat-card class="card">
-    <h2 class="title">Login</h2>
+  <mat-card class="card login-card">
+    <div class="login-header">
+      <h2 class="title">QIP AI Evaluator</h2>
+      <h3 class="subtitle">Login</h3>
+    </div>
+
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <mat-form-field class="input-field">
         <mat-label>Email</mat-label>
         <input matInput placeholder="user@gmail.com" formControlName="email" />
         <mat-icon matSuffix>email</mat-icon>
         <mat-error *ngIf="emailControl.invalid">
-        {{ getEmailErrorMessage() }}
+          {{ getEmailErrorMessage() }}
         </mat-error>
       </mat-form-field>
 
@@ -19,13 +23,20 @@
         <mat-label>Password</mat-label>
         <input matInput [type]="hide ? 'password' : 'text'" formControlName="password" autocomplete="on" />
         <button mat-icon-button matSuffix type="button" (click)="hide = !hide" [attr.aria-label]="'Hide password'"
-        [attr.aria-pressed]="hide" tabindex="-1">
-        <mat-icon>{{ hide ? "visibility_off" : "visibility" }}</mat-icon>
+          [attr.aria-pressed]="hide" tabindex="-1">
+          <mat-icon>{{ hide ? "visibility_off" : "visibility" }}</mat-icon>
         </button>
         <mat-error *ngIf="passwordControl.invalid">
-        {{ getPasswordErrorMessage() }}
+          {{ getPasswordErrorMessage() }}
         </mat-error>
       </mat-form-field>
+
+      <p class="caption mb-0 helper-text">
+        Create an account or reset your password
+        <a class="support-link" [href]="registerLink" target="_blank">
+          here.
+        </a>
+      </p>
 
       <button class="access-button" type="submit" mat-raised-button color="primary">
         Sign In

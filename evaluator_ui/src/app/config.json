@@ -1,9 +1,10 @@
 {
-  "version": "1.9.0",
+  "version": "1.9.1",
   "organizationData": {
     "acronym": "UPB",
     "name": "Universidad Privada Boliviana"
   },
+  "registerLink": "https://eubbc-digital.upb.edu/booking/access",
   "time": {
     "notificationPolling": 3,
     "evaluationPolling": 5
