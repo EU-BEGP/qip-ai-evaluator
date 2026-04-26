@@ -2,8 +2,7 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-@if (loaderService.loading$ | async) {
-  <div class="loader-overlay">
-    <div class="spinner"></div>
-  </div>
-}
+<div class="section-title-pill rounded-5">
+  <mat-icon>{{icon}}</mat-icon>
+  {{title}}
+</div>

@@ -27,7 +27,11 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 }
 
 .new-eval-button {
+  position: sticky;
+  top: 80px;
+  z-index: 199;
   justify-content: flex-end;
+  padding-bottom: 8px;
 }
 
 .evaluation-card {

@@ -2,19 +2,25 @@
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { AccountCredentials } from '../interfaces/account-credentials';
 import { catchError, Observable, tap } from 'rxjs';
 import { ToastrService } from 'ngx-toastr';
 import config from '../config.json';
 import { LoaderService } from './loader-service';
+import { AuthTokens } from '../interfaces/auth-tokens';
+
+interface ResponseHttpOptions {
+  headers: HttpHeaders;
+  observe: 'response';
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private httpOptions = <any>{};
+  private httpOptions: ResponseHttpOptions;
 
   constructor(
     private http: HttpClient,
@@ -25,30 +31,34 @@ export class AuthService {
       headers: new HttpHeaders({
         'Content-Type': 'application/json',
       }),
-      observe: 'response' as 'response',
+      observe: 'response',
     };
   }
 
-  login(account: AccountCredentials): Observable<any> {
+  login(account: AccountCredentials): Observable<HttpResponse<AuthTokens>> {
     const URL = `${config.api.baseUrl}${config.api.users.login}`;
     this.loaderService.show();
     return this.http
-      .post(URL, account, this.httpOptions)
+      .post<AuthTokens>(URL, account, this.httpOptions)
       .pipe(
-        tap((response: any) => {
-          const token = response.body.access;
+        tap((response: HttpResponse<AuthTokens>) => {
+          const token = response.body?.access;
+          const refreshToken = response.body?.refresh;
           localStorage.setItem('accountEmail', account.email);
-          localStorage.setItem('token', token);
+          if (token && refreshToken) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('refresh', refreshToken);
+          }
           this.toastr.success(`Welcome ${account.email}`);
           this.loaderService.hide();
         }),
-        catchError((err) => { 
+        catchError((err) => {
           this.toastr.error(
             'Please make sure the credentials are correct.',
             'Wrong credentials'
           );
           this.loaderService.hide();
-          throw err; 
+          throw err;
         })
       );
   }

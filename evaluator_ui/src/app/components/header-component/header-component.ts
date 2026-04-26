@@ -29,6 +29,7 @@ export class HeaderComponent {
 
   logout(): void {
     localStorage.removeItem('token');
+    localStorage.removeItem('refresh');
     localStorage.removeItem('accountEmail');
     this.router.navigateByUrl('login');
   }

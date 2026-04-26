@@ -5,6 +5,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { EvaluationListItem } from '../../interfaces/evaluation-list-item';
 
 @Component({
   selector: 'app-evaluation-list-component',
@@ -16,10 +17,10 @@ import { MatIconModule } from '@angular/material/icon';
   styleUrl: './evaluation-list-component.css',
 })
 export class EvaluationListComponent {
-  @Input() evaluationList: any[] = [];
-  @Output() selectEvaluation = new EventEmitter<any>();
+  @Input() evaluationList: EvaluationListItem[] = [];
+  @Output() selectEvaluation = new EventEmitter<EvaluationListItem>();
 
-  clickEvaluation(item: any) {
+  clickEvaluation(item: EvaluationListItem) {
     this.selectEvaluation.emit(item);
   }
 }

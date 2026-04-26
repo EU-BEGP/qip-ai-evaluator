@@ -22,6 +22,7 @@ import { Scan } from '../../interfaces/scan';
 import { UtilsService } from '../../services/utils-service';
 import { ScanItem } from '../../interfaces/scan-item';
 import { ToastrService } from 'ngx-toastr';
+import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 
 @Component({
   selector: 'app-evaluation',
@@ -37,6 +38,7 @@ import { ToastrService } from 'ngx-toastr';
     MatSelectModule,
     MatTabsModule,
     SearchComponent,
+    PageTitleComponent
   ],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',

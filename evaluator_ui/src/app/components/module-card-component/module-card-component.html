@@ -3,12 +3,45 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 <mat-card class="card bg-light px-4 pt-4 pb-2 clickable" (click)="onClickCard(data.link)">
-  <p><b class="me-2">Title:</b>{{ data.title }}</p>
-  <p><b class="me-2">Link:</b>{{ data.link }}</p>
-  <p><b class="me-2">Last Modify:</b>{{ data.last_modify }}</p>
-  <p><b class="me-2">Last Evaluation:</b>{{ data.last_evaluation }}</p>
-  <p class="mb-0"><b>Last Average:</b> {{ data.last_average }}/{{ data.last_max }}
-    <app-evaluation-circle-component [obtained]="data.last_average" [max]="data.last_max" [small]="true"></app-evaluation-circle-component>
+  <p class="card-title w-100">
+    <b class="me-2">{{ data.title }}</b>
   </p>
-  <button mat-flat-button color="primary" class="mb-2" *ngIf="showEvaluateUpdatedButton" (click)="onClickEvaluateUpdatedVersion(data.link, $event)">Evaluate Updated Version</button>
+  <div class="d-flex gap-2 flex-wrap mb-2">
+    <mat-icon class="icon">link</mat-icon>
+    <span class="text"><b>Module Link:</b></span>
+    <span class="link-text text">{{ data.link }}</span>
+  </div>
+    <div class="d-flex gap-2 flex-wrap mb-2">
+    <mat-icon class="icon">access_time</mat-icon>
+    <span class="text"><b>Last Modified:</b></span>
+    <span class="text">{{ data.last_modify }}</span>
+  </div>
+    <div class="d-flex gap-2 flex-wrap mb-2">
+    <mat-icon class="icon">access_time</mat-icon>
+    <span class="text"><b>Last Evaluation Date:</b></span>
+    <span class="text">{{ data.last_evaluation }}</span>
+  </div>
+  <div class="d-flex gap-2 mb-2 w-100">
+    <mat-icon class="icon">assessment</mat-icon>
+    <span class="text"><b>Average Score:</b></span>
+    <span class="text"
+      >{{ data.last_average ? data.last_average : "-" }}/{{
+        data.last_max
+      }}</span
+    >
+  </div>
+  <div class="d-flex justify-content-center w-100 mb-0">
+    @if (data.last_average !== null) {
+      <app-evaluation-circle-component
+        [obtained]="data.last_average"
+        [max]="data.last_max"
+        [small]="true"
+      ></app-evaluation-circle-component>
+    } @else {
+      <img src="evaluation.png" alt="No Score" class="no-score-img" />
+    }
+  </div>
+  @if (showEvaluateUpdatedButton) {
+    <button mat-flat-button color="primary" class="mb-2" (click)="onClickEvaluateUpdatedVersion(data.link, $event)">Evaluate Updated Version</button>
+  }
 </mat-card>

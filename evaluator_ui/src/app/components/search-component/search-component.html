@@ -3,18 +3,32 @@
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
 <div class="d-flex flex-column align-items-center justify-content-start m-0 p-0 evaluation-container">
-  <app-alert-component class="text-center space-top alert mb-0 p-0" [message]="message" *ngIf="scanInformation.outdated"></app-alert-component>
-  <button class="text-center space-top" mat-raised-button color="primary" [disabled]="disableEvaluateButton" *ngIf="scanInformation.evaluable" (click)="evaluate()">Evaluate</button>
-  <button class="text-center space-top" mat-raised-button color="primary" *ngIf="download" (click)="downloadPDF()">Download PDF</button>
+  @if (scanInformation.outdated) {
+    <app-alert-component class="text-center space-top alert mb-0 p-0" [message]="message"></app-alert-component>
+  }
+  @if (scanInformation.evaluable) {
+    <button class="text-center space-top" mat-raised-button color="primary" [disabled]="disableEvaluateButton" (click)="evaluate()">Evaluate</button>
+  }
+  @if (download) {
+    <button class="text-center space-top" mat-raised-button color="primary" (click)="downloadPDF()">Download PDF</button>
+  }
 
-  <div class="ai-container" *ngIf="isEvaluating">
-    <app-evaluation-progress-bar-component></app-evaluation-progress-bar-component>
-  </div>
-  
-  <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true" *ngIf="isFinished"></app-evaluation-circle-component>
-  <app-evaluation-result-component [data]="data" *ngIf="data !== null && !isLoading" class="m-0"></app-evaluation-result-component>
+  @if (isEvaluating) {
+    <div class="ai-container">
+      <app-evaluation-progress-bar-component></app-evaluation-progress-bar-component>
+    </div>
+  }
 
-  <div class="ai-container mb-5" *ngIf="isEvaluating">
-    <app-evaluation-progress-dots-component></app-evaluation-progress-dots-component>
-  </div>
+  @if (isFinished) {
+    <app-evaluation-circle-component class="space-top" [obtained]="scanInformation.scan_average ?? 0" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true"></app-evaluation-circle-component>
+  }
+  @if (data !== null && !isLoading) {
+    <app-evaluation-result-component [data]="data" class="m-0"></app-evaluation-result-component>
+  }
+
+  @if (isEvaluating) {
+    <div class="ai-container mb-5">
+      <app-evaluation-progress-dots-component></app-evaluation-progress-dots-component>
+    </div>
+  }
 </div>

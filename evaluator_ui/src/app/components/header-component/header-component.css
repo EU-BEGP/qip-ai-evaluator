@@ -4,6 +4,12 @@ MIT License - See LICENSE file in the root directory
 Sebastian Itamari, Santiago Almancy, Alex Villazon
 */
 
+:host {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+
 .notification-button {
   position: relative;
 }

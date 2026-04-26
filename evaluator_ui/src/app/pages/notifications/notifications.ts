@@ -9,6 +9,7 @@ import { Notification } from '../../interfaces/notification';
 import { NotificationService } from '../../services/notification-service';
 import { NotificationModalComponent } from '../../components/notification-modal-component/notification-modal-component';
 import { NotificationCardComponent } from '../../components/notification-card-component/notification-card-component';
+import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 
 @Component({
   selector: 'app-notifications',
@@ -16,13 +17,14 @@ import { NotificationCardComponent } from '../../components/notification-card-co
     MatListModule,
     CommonModule,
     NotificationModalComponent,
-    NotificationCardComponent
+    NotificationCardComponent,
+    PageTitleComponent
   ],
   templateUrl: './notifications.html',
   styleUrl: './notifications.css',
 })
 export class Notifications {
-  notifications: any[] = [];
+  notifications: Notification[] = [];
   email: string = '';
   showNotificationModal: boolean = false;
   selectedNotification: Notification | null = null;

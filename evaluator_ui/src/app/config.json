@@ -1,5 +1,5 @@
 {
-  "version": "1.9.1",
+  "version": "1.9.2",
   "organizationData": {
     "acronym": "UPB",
     "name": "Universidad Privada Boliviana"
@@ -12,7 +12,8 @@
   "api": {
     "baseUrl": "https://eu-begp.upb.edu/evaluator/api/",
     "users": {
-      "login": "users/auth/login/"
+      "login": "users/auth/login/",
+      "refresh": "users/auth/refresh/"
     },
     "evaluation": {
       "evaluate": "evaluations/evaluate/",

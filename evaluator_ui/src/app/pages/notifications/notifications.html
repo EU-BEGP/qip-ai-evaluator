@@ -2,9 +2,14 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
+<app-page-title-component [title]="'Notifications'" [icon]="'notifications'"></app-page-title-component>
+
 <div class="notification-container my-5">
-  <h3 class="text-center">Notifications</h3>
-  <app-notification-card-component *ngFor="let notification of notifications" [notification]="notification" (read)="read(notification)"></app-notification-card-component>
+  @for (notification of notifications; track $index) {
+    <app-notification-card-component [notification]="notification" (read)="read(notification)"></app-notification-card-component>
+  }
 </div>
 
-<app-notification-modal-component *ngIf="showNotificationModal" [selectedNotification]="selectedNotification" (close)="closeNotificationModal()" ></app-notification-modal-component>
+@if (showNotificationModal) {
+  <app-notification-modal-component [selectedNotification]="selectedNotification" (close)="closeNotificationModal()"></app-notification-modal-component>
+}

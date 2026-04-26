@@ -1,0 +1,33 @@
+/*
+Copyright (c) Universidad Privada Boliviana (UPB) - EU-BEGP
+MIT License - See LICENSE file in the root directory
+Sebastian Itamari, Santiago Almancy, Alex Villazon
+*/
+
+.section-title-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  font-size: 1.45rem;
+  font-weight: 600;
+  background: #e9f1ff;
+  color: #3F51B5;
+  width: 40%;
+  margin: 16px auto;
+}
+
+@media screen and (max-width: 1000px) {
+  .section-title-pill {
+    width: 80%;
+    font-size: 1.35rem;
+  }
+}
+
+@media screen and (max-width: 500px) {
+  .section-title-pill {
+    width: 94%;
+    font-size: 1.25rem;
+  }
+}

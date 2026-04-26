@@ -8,6 +8,8 @@ import { CommonModule } from '@angular/common';
 import { EvaluationCircleComponent } from '../evaluation-circle-component/evaluation-circle-component';
 import { MatButtonModule } from '@angular/material/button';
 import { UtilsService } from '../../services/utils-service';
+import { ModuleDashboardItem } from '../../interfaces/module-dashboard-item';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-module-card-component',
@@ -15,7 +17,8 @@ import { UtilsService } from '../../services/utils-service';
     MatCardModule,
     CommonModule,
     EvaluationCircleComponent,
-    MatButtonModule
+    MatButtonModule,
+    MatIconModule
   ],
   templateUrl: './module-card-component.html',
   styleUrl: './module-card-component.css',
@@ -23,7 +26,7 @@ import { UtilsService } from '../../services/utils-service';
 export class ModuleCardComponent implements OnInit {
   @Output() onClick = new EventEmitter<string>();
   @Output() onClickEvaluateUpdated = new EventEmitter<string>();
-  @Input() data!: any;
+  @Input() data!: ModuleDashboardItem;
 
   showEvaluateUpdatedButton: boolean = false;
 

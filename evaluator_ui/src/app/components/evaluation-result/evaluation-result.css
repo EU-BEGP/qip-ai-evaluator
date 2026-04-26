@@ -62,6 +62,49 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   background-color: #f8f9fc;
 }
 
+.scan-item {
+  width: 100%;
+  min-width: 1040px;
+}
+
+.classification-no-issues,
+.classification-minor-shortcoming,
+.classification-shortcoming,
+.classification-minor-weakness,
+.classification-weakness {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.classification-no-issues {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.classification-minor-shortcoming {
+  background-color: #fff3e0;
+  color: #e65e41;
+}
+
+.classification-shortcoming {
+  background-color: #ffe0b2;
+  color: #e46326;
+}
+
+.classification-minor-weakness {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.classification-weakness {
+  background-color: #ffcdd2;
+  color: #bf2e3e;
+}
+
 @media screen and (max-width: 1000px) {
   .container {
     width: 91vw;

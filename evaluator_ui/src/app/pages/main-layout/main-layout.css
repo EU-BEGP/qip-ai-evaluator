@@ -7,7 +7,7 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
 :host {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 100vh;
 }
 
 router-outlet ~ * {

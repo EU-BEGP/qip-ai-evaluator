@@ -2,13 +2,9 @@
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-export interface Notification {
-  id: number;
-  user_id: number;
-  title: string;
-  content: string;
-  read: boolean;
-  created_at: string;
-  evaluation_id: number;
+export interface EvaluationStatus {
+  status: string;
+  course_key: string;
   scan_name: string;
+  evaluation_id: string;
 }

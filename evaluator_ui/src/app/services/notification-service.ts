@@ -2,18 +2,26 @@
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { MessageRequest } from '../interfaces/message-request';
-import { catchError, finalize, Observable, tap, throwError } from 'rxjs';
+import { catchError, finalize, Observable, throwError } from 'rxjs';
 import config from '../config.json';
 import { LoaderService } from './loader-service';
+import { Notification } from '../interfaces/notification';
+import { ApiMessage } from '../interfaces/api-message';
+import { UnreadCount } from '../interfaces/unread-count';
+
+interface ResponseHttpOptions {
+  headers: HttpHeaders;
+  observe: 'response';
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class NotificationService {
-  private httpOptions = <any>{};
+  private httpOptions: ResponseHttpOptions;
   unreadCount = signal(0);
 
   constructor(
@@ -24,28 +32,28 @@ export class NotificationService {
       headers: new HttpHeaders({
         'Content-Type': 'application/json',
       }),
-      observe: 'response' as 'response',
+      observe: 'response',
     };
   }
 
-  readMessage(messageRequest: MessageRequest): Observable<any> {
+  readMessage(messageRequest: MessageRequest): Observable<HttpResponse<ApiMessage>> {
     const URL = `${config.api.baseUrl}${config.api.notifications.read}`;
     const body = messageRequest;
 
-    return this.http.post(URL, body, this.httpOptions).pipe(
+    return this.http.post<ApiMessage>(URL, body, this.httpOptions).pipe(
       catchError((err) => {
         return throwError(() => err);
       })
     );
   }
 
-  getNotifications(email: string): Observable<any> {
+  getNotifications(email: string): Observable<Notification[]> {
     let URL = `${config.api.baseUrl}${config.api.notifications.mailbox}`;
     URL = URL.replace('{email}', email);
 
     this.loaderService.show();
 
-    return this.http.get<any>(URL).pipe(
+    return this.http.get<Notification[]>(URL).pipe(
       catchError((err) => throwError(() => err)),
       finalize(() => {
         this.loaderService.hide();
@@ -53,11 +61,11 @@ export class NotificationService {
     );
   }
 
-  getUnreadNotificationsQuantity(email: string): Observable<any> {
+  getUnreadNotificationsQuantity(email: string): Observable<UnreadCount> {
     let URL = `${config.api.baseUrl}${config.api.notifications.unreadQuantity}`;
     URL = URL.replace('{email}', email);
 
-    return this.http.get<any>(URL).pipe(
+    return this.http.get<UnreadCount>(URL).pipe(
       catchError((err) => throwError(() => err))
     );
   }

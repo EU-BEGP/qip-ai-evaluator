@@ -21,6 +21,9 @@ import { AlertComponent } from '../alert-component/alert-component';
 import { EvaluationResultComponent } from '../evaluation-result/evaluation-result';
 import { EvaluationProgressBarComponent } from '../evaluation-progress-bar-component/evaluation-progress-bar-component';
 import { EvaluationProgressDotsComponent } from '../evaluation-progress-dots-component/evaluation-progress-dots-component';
+import { Scan } from '../../interfaces/scan';
+import { EvaluationResult } from '../../interfaces/evaluation-result';
+import { EvaluationListItem } from '../../interfaces/evaluation-list-item';
 
 @Component({
   selector: 'app-search-component',
@@ -47,17 +50,17 @@ import { EvaluationProgressDotsComponent } from '../evaluation-progress-dots-com
 export class SearchComponent implements OnInit, DoCheck {
   @Input() disableEvaluateButton!: boolean;
   @Input() linkModule!: string;
-  @Input() scanInformation!: any;
+  @Input() scanInformation!: Scan;
   @Output() startPolling = new EventEmitter<{ scan: ScanItem, refresh: boolean }>();
   @Output() downloadEvent = new EventEmitter<void>();
 
-  private lastUpdatedData: any;
+  private lastUpdatedData: EvaluationResult | undefined;
 
   tab: string = '';
-  data: any = null;
+  data: EvaluationResult | null = null;
   isLoading = false;
   codeControl = new FormControl('', Validators.required);
-  evaluationList: any[] = [];
+  evaluationList: EvaluationListItem[] = [];
   selectedTabIndex = 0;
   download: boolean = false;
   isEvaluating: boolean = false;
@@ -95,7 +98,10 @@ export class SearchComponent implements OnInit, DoCheck {
 
     this.evaluationService.evaluate(scanRequest).subscribe({
       next: (response) => {
-        this.startPolling.emit({ scan: { "scan_id": response.body.scan_id, "scan_name": scanRequest.scan_name }, refresh: true });
+        const scanId = response.body?.scan_id;
+        if (scanId !== undefined) {
+          this.startPolling.emit({ scan: { "scan_id": String(scanId), "scan_name": scanRequest.scan_name }, refresh: true });
+        }
         this.scanInformation.evaluable = false;
         this.isEvaluating = true;
       },
@@ -109,8 +115,8 @@ export class SearchComponent implements OnInit, DoCheck {
     this.isLoading = true;
 
     const request$ = this.tab === 'All Scans'
-      ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id, true)
-      : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id, true);
+      ? this.evaluationService.getEvaluationDetailModule(this.scanInformation.id!, true)
+      : this.evaluationService.getEvaluationDetailScan(this.scanInformation.id!, true);
 
     request$.subscribe({
       next: (response) => {

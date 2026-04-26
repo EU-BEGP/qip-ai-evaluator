@@ -17,6 +17,9 @@ import { StorageService } from '../../services/storage-service';
 import { MatIconModule } from '@angular/material/icon';
 import { EvaluationListComponent } from '../../components/evaluation-list-component/evaluation-list-component';
 import { ToastrService } from 'ngx-toastr';
+import { ModuleDashboardItem } from '../../interfaces/module-dashboard-item';
+import { EvaluationListItem } from '../../interfaces/evaluation-list-item';
+import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
 
 @Component({
   selector: 'app-modules',
@@ -29,17 +32,18 @@ import { ToastrService } from 'ngx-toastr';
     FormsModule,
     MatInputModule,
     MatButtonModule,
-    EvaluationListComponent
+    EvaluationListComponent,
+    PageTitleComponent
   ],
   templateUrl: './modules.html',
   styleUrl: './modules.css',
 })
 export class Modules implements OnInit {
   newEvalForm!: FormGroup;
-  modules: any[] = [];
+  modules: ModuleDashboardItem[] = [];
   email: string = '';
   openCardIndex: number | null = null;
-  evaluationListByIndex: any = {};
+  evaluationListByIndex: Record<number, EvaluationListItem[]> = {};
   disableCourseLink = false;
   showNewEvalModal = false;
   scans: string[] = ['All Scans', 'Academic Metadata Scan', 'Learning Content Scan', 'Assessment Scan', 'Multimedia Scan', 'Certificate Scan', 'Summary Scan'];
@@ -88,8 +92,7 @@ export class Modules implements OnInit {
     this.openCardIndex = index;
     this.evaluationService.getEvaluationList(scanRequest).subscribe({
       next: (response) => {
-        let list: any[] = [];
-        list = response.body;
+        const list: EvaluationListItem[] = response.body ?? [];
 
         if (index >= 0) this.evaluationListByIndex[index] = list;
       }
@@ -132,7 +135,7 @@ export class Modules implements OnInit {
     }
   }
 
-  onSelectEvaluation(item: any) {
+  onSelectEvaluation(item: EvaluationListItem) {
     if (!item) return;
     this.openCardIndex = null;
     this.router.navigate(['/evaluation', item.id], {
@@ -152,9 +155,12 @@ export class Modules implements OnInit {
 
     this.evaluationService.evaluate(scanRequest).subscribe({
       next: (response) => {
-        this.router.navigate(['/evaluation', response.body.evaluation_id], {
-          queryParams: { scan: scanRequest.scan_name }
-        });
+        const evaluationId = response.body?.evaluation_id;
+        if (evaluationId !== undefined) {
+          this.router.navigate(['/evaluation', evaluationId], {
+            queryParams: { scan: scanRequest.scan_name }
+          });
+        }
       },
       error: (error) => {
         console.error('Evaluation error:', error);

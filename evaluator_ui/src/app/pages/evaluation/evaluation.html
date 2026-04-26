@@ -2,27 +2,31 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<mat-tab-group class="mt-2" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
-  <mat-tab *ngFor="let scan of scansList; let i = index">
-    <ng-template mat-tab-label>
-      {{ getNameShort(scan.name) }}
-      <mat-icon *ngIf="scan.status === 'Completed'" class="icon-completed ms-1">
-        check
-      </mat-icon>
-      <mat-icon *ngIf="isInProgress(scan)" class="material-symbols-outlined icon-evaluation ms-1">
-        emoji_objects
-      </mat-icon>
-      <mat-icon *ngIf="!(scan.status === 'Completed' || isInProgress(scan))" class="icon-progress ms-1">
-        close
-      </mat-icon>
-    </ng-template>
+<app-page-title-component [title]="'AI Evaluation'" [icon]="'auto_awesome'"></app-page-title-component>
 
-    <app-search-component 
-      [scanInformation]="scan"
-      [disableEvaluateButton]="disableEvaluateButton"
-      [linkModule]="linkModule"
-      (startPolling)="startPolling($event)"
-      (downloadEvent)="download()"
-    />
-  </mat-tab>
+<mat-tab-group class="mt-0" [selectedIndex]="selectedIndex" (selectedIndexChange)="onTabChange($event)">
+  @for (scan of scansList; track $index; let i = $index) {
+    <mat-tab>
+      <ng-template mat-tab-label>
+        {{ getNameShort(scan.name) }}
+        @if (scan.status === 'Completed') {
+          <mat-icon class="icon-completed ms-1">check</mat-icon>
+        }
+        @if (isInProgress(scan)) {
+          <mat-icon class="material-symbols-outlined icon-evaluation ms-1">emoji_objects</mat-icon>
+        }
+        @if (!(scan.status === 'Completed' || isInProgress(scan))) {
+          <mat-icon class="icon-progress ms-1">close</mat-icon>
+        }
+      </ng-template>
+
+      <app-search-component
+        [scanInformation]="scan"
+        [disableEvaluateButton]="disableEvaluateButton"
+        [linkModule]="linkModule"
+        (startPolling)="startPolling($event)"
+        (downloadEvent)="download()"
+      />
+    </mat-tab>
+  }
 </mat-tab-group>
