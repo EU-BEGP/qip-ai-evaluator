@@ -2,7 +2,7 @@
 // MIT License - See LICENSE file in the root directory
 // Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-import { Component, EventEmitter, Input, Output, OnInit, DoCheck } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, DoCheck, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -47,7 +47,7 @@ import { EvaluationListItem } from '../../interfaces/evaluation-list-item';
   templateUrl: './search-component.html',
   styleUrl: './search-component.css',
 })
-export class SearchComponent implements OnInit, DoCheck {
+export class SearchComponent implements OnInit, DoCheck, OnChanges {
   @Input() disableEvaluateButton!: boolean;
   @Input() linkModule!: string;
   @Input() scanInformation!: Scan;
@@ -88,6 +88,18 @@ export class SearchComponent implements OnInit, DoCheck {
       this.lastUpdatedData = this.scanInformation.updated_data;
     }
   }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['scanInformation'] && !changes['scanInformation'].firstChange) {
+      const prev = changes['scanInformation'].previousValue?.status;
+      const curr = changes['scanInformation'].currentValue?.status;
+
+      if (prev !== curr) {
+        this.isEvaluating = (this.scanInformation.status === 'Creating' || this.scanInformation.status === 'In Progress') && this.scanInformation.evaluable === false;
+        this.isFinished = this.scanInformation.status === 'Completed';
+      }
+    }
+  }  
 
   evaluate(): void {
     const scanRequest: ScanRequest = { 
