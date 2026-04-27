@@ -28,3 +28,8 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   font-size: 1.25rem;
   color: #3f51b5;
 }
+
+.no-score-img {
+  height: 90px;
+  margin: 0px auto 12px auto;
+}

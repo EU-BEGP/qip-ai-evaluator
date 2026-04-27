@@ -125,6 +125,10 @@ export class EvaluationComponent {
         }
         else if (response.status === 'Completed' || response.status === 'Incompleted' || response.status === 'Failed') {
           if (response.evaluation_id === this.evaluationId) {
+            if (response.status === 'Completed') {
+              const index = this.getScanIndexByName(response.scan_name);
+              this.updateData(index, response.scan_name, scan.scan_id);
+            }
             this.finishEvaluation();
           }
           this.storageService.removeEvaluation(scan.scan_id, response.scan_name);
