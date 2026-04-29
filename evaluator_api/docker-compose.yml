@@ -1,11 +1,16 @@
 services:
   # 1. The PostgreSQL Database
   db:
-    image: postgres:15
+    image: postgres:17
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data/
     restart: ${RESTART_POLICY}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     logging:
       driver: "json-file"
       options:
@@ -30,12 +35,14 @@ services:
     ports:
       - "127.0.0.1:8004:8000"
     volumes:
-      - .:/app
       - ${STATIC_VOLUME_PATH}:/app/staticfiles
+      - logs_data:/app/logs
     env_file: .env
     depends_on:
-      - db
-      - broker
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: ${RESTART_POLICY}
@@ -48,11 +55,15 @@ services:
   # 4. The Celery Worker
   celery_worker:
     build: .
-    command: celery -A evaluator_api worker -l info
+    command: celery -A evaluator_api worker -l info -n worker1@%h --concurrency=4
+    volumes:
+      - logs_data:/app/logs
     env_file: .env
     depends_on:
-      - db
-      - broker
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_started
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: ${RESTART_POLICY}
@@ -61,7 +72,29 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+  
+  # 5. The Celery Beat Scheduler
+  celery_beat:
+    build: .
+    command: celery -A evaluator_api beat -l info --pidfile=
+    volumes:
+      - logs_data:/app/logs
+    env_file: .env
+    restart: ${RESTART_POLICY}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_started
+      celery_worker:
+        condition: service_started
 
 volumes:
   postgres_data:
   redis_data:
+  logs_data:
