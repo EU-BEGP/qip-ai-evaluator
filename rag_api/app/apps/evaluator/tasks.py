@@ -23,6 +23,10 @@ load_criteria_auto()
 GLOBAL_RAG_MODEL = CrossEncoderRAG(
     model_name="cross-encoder/ms-marco-MiniLM-L6-v2", use_memory_only=True
 )
+GLOBAL_EVALUATOR = ContentEvaluator(
+    vector_manager=GLOBAL_VECTOR_MANAGER,
+    rag_model=GLOBAL_RAG_MODEL,
+)
 
 logger.info("Shared AI models ready.")
 # --- End of shared setup ---
@@ -48,10 +52,7 @@ def run_evaluation_task(
     if previous_evaluation:
         logger.info(f"[{log_id}] Using previous evaluation data.")
     try:
-        evaluator = ContentEvaluator(
-            vector_manager=GLOBAL_VECTOR_MANAGER,
-            rag_model=GLOBAL_RAG_MODEL,
-        )
+        evaluator = GLOBAL_EVALUATOR
         # Verify module exists in Learnify before processing
         try:
             last_mod = evaluator.get_module_last_modified(course_key)
@@ -104,7 +105,7 @@ def run_evaluation_task(
 
         result_json, failed_scans = evaluator.evaluate(
             document_chunks=docs,
-            k_doc=10,
+            k_doc=20,
             k_kb=5,
             course_key=course_key,
             scan_names=scan_names,

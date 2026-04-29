@@ -11,11 +11,23 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+_instance = None
+
 
 class EmbeddingsManager:
     """Manages sentence-transformers embeddings"""
 
+    def __new__(cls):
+        global _instance
+        if _instance is None:
+            _instance = super().__new__(cls)
+            _instance._initialized = False
+        return _instance
+
     def __init__(self):
+        if self._initialized:
+            return
+        self._initialized = True
         config_path = Path(__file__).parents[2] / "config" / "config.yaml"
         with open(config_path, "r") as f:
             cfg = yaml.safe_load(f)

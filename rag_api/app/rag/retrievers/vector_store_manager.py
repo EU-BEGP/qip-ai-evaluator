@@ -122,9 +122,10 @@ class VectorStoreManager:
             logger.error("retrieve() called but vector store is not loaded or built")
             raise RuntimeError("Vector store not loaded or built.")
 
+        collection_size = self.vector_store._collection.count()
         retriever = self.vector_store.as_retriever(
             search_type="mmr",
-            search_kwargs={'k': k, 'fetch_k': max(k * 5, 50)}
+            search_kwargs={'k': k, 'fetch_k': min(max(k * 5, 50), collection_size)}
         )
 
         results = retriever.invoke(query) or []

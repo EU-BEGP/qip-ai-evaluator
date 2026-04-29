@@ -117,23 +117,14 @@ class ContentEvaluator:
         return [doc for doc, _, _ in ranked]
 
     def _retrieve_knowledge_base_chunks(self, query: str, top_chunks: List[Document], k_kb: int) -> List[Document]:
-        """
-        Retrieve knowledge base chunks, deduplicated against document chunks.
-        Uses vector similarity for initial retrieval then cross-encoder reranking.
-        """
+        """Retrieve knowledge base chunks via vector similarity, deduplicated against document chunks."""
 
-        kb_candidates = self.vector_manager.retrieve(query, k=k_kb * 4)
+        kb_candidates = self.vector_manager.retrieve(query, k=k_kb * 2)
         if not kb_candidates:
             return []
 
         seen_texts = {doc.page_content for doc in top_chunks}
-        unique_candidates = [doc for doc in kb_candidates if doc.page_content not in seen_texts]
-
-        if not unique_candidates:
-            return []
-
-        reranked = self.rag.rank_chunks(query, documents=unique_candidates, top_k=k_kb)
-        return [doc for doc, _, _ in reranked]
+        return [doc for doc in kb_candidates if doc.page_content not in seen_texts][:k_kb]
 
     def _find_criterion_in_history(self, prev_eval_json: Dict, scan_name: str, criterion_name: str) -> Optional[Dict]:
         """Search a previous evaluation JSON for a specific criterion's data."""
