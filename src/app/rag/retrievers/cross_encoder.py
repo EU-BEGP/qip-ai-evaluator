@@ -2,14 +2,18 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
+import logging
 from pathlib import Path
 from typing import List, Tuple, Optional
-from langchain.schema import Document
+from langchain_core.documents import Document
 from sentence_transformers import CrossEncoder
 import pickle
 
-from document_processing.text_splitter import DocumentSplitter
-from document_processing.document_loader import DocumentLoaderFactory
+from rag.document_processing.text_splitter import DocumentSplitter
+from rag.document_processing.document_loader import DocumentLoaderFactory
+
+logger = logging.getLogger(__name__)
+
 
 class CrossEncoderRAG:
     """Cross-Encoder retrieval for pre-split document chunks."""
@@ -31,6 +35,7 @@ class CrossEncoderRAG:
 
     def load_and_split_files(self, file_paths: List[str]):
         """Load documents and split into chunks."""
+
         all_chunks = []
         start_index = 0
         for path in file_paths:
@@ -44,17 +49,21 @@ class CrossEncoderRAG:
 
     def save_chunks(self, path: Optional[Path] = None):
         """Optionally save chunks to disk."""
+
         if self.use_memory_only:
             return
         save_path = path or self.chunks_path
         if save_path is None:
+            logger.error("save_chunks called but no path specified and chunks_path is unset")
             raise ValueError("No path specified to save chunks.")
         with open(save_path, "wb") as f:
             pickle.dump(self.documents, f)
+        logger.debug(f"Saved {len(self.documents)} chunks to {save_path}")
         self.chunks_path = save_path
 
     def load_chunks(self, path: Path):
         """Optionally load chunks from disk."""
+
         if self.use_memory_only:
             return
         with open(path, "rb") as f:
@@ -63,12 +72,15 @@ class CrossEncoderRAG:
 
     def set_documents(self, documents: List[Document]):
         """Set pre-split documents manually (memory-only)."""
+
         self.documents = documents
 
     def rank_chunks(self, query: str, documents: Optional[List[Document]] = None, top_k: int = 10, batch_size: int = 64) -> List[Tuple[Document, str, float]]:
         """Rank document chunks using Cross-Encoder and return top_k ordered by chunk_index."""
+
         docs_to_rank = documents or self.documents
         if not docs_to_rank:
+            logger.error("rank_chunks called but no document chunks are available")
             raise ValueError("No document chunks provided or loaded.")
 
         # Compute relevance scores

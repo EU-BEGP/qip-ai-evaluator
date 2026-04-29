@@ -3,6 +3,7 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 import json
+import logging
 import re
 from docx import Document
 from docx.table import Table
@@ -10,8 +11,11 @@ from docx.oxml.text.paragraph import CT_P
 from docx.oxml.table import CT_Tbl
 from docx.text.paragraph import Paragraph
 from typing import Dict, List, Optional
-import os
-from evaluation.xlsx_criteria_extractor import XLSXCriteriaExtractor
+
+from rag.rubric_manger.xlsx_criteria_extractor import XLSXCriteriaExtractor
+
+logger = logging.getLogger(__name__)
+
 
 class CriteriaExtractor:
     def __init__(self, input_path: str, output_path: str):
@@ -21,15 +25,18 @@ class CriteriaExtractor:
 
     def save_scans_to_json(self, scans, output_path: str) -> None:
         """Save extracted scans to a JSON file."""
+
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(scans, f, indent=4, ensure_ascii=False)
 
     def normalize_text(self, text: str) -> str:
         """Return the text without extra spaces and leading/trailing whitespace."""
+
         return " ".join(text.split()).strip()
 
     def iter_blocks_in_order(self, doc: Document):
         """Iterate through the document elements in order."""
+
         for element in doc.element.body.iterchildren():
             if isinstance(element, CT_P):
                 yield Paragraph(element, doc)
@@ -38,17 +45,20 @@ class CriteriaExtractor:
 
     def parse_scan_heading(self, text: str) -> Optional[str]:
         """Return the name of scan if the line starts with 'SCAN:'."""
+
         m = re.search(r"SCAN:\s*(.+)", text.strip())
         return self.normalize_text(m.group(1)) if m else None
 
     def flush_description(self, current_scan: Dict, buffer: List[str]) -> None:
         """Pass the accumulated text from the buffer to the scan description."""
+
         if buffer:
             current_scan["description"] = self.normalize_text(" ".join(buffer))
             buffer.clear()
 
     def parse_criteria_table(self, table: Table) -> List[Dict]:
         """Parse the criteria in the table."""
+
         results: List[Dict] = []
         rows = list(table.rows)
         if not rows or len(rows[0].cells) < 9:
@@ -79,11 +89,12 @@ class CriteriaExtractor:
 
     def extract_scans_from_docx(self, docx_path: str) -> List[Dict]:
         """
-        Extracts ‘SCAN’ blocks from a DOCX with:
+        Extracts SCAN blocks from a DOCX with:
         - A paragraph header: 'SCAN: Name...'
         - Description in following paragraphs (until a table or the next SCAN is found)
         - Criteria table
         """
+
         doc = Document(docx_path)
         scans: List[Dict] = []
         current_scan: Optional[Dict] = None
@@ -118,6 +129,7 @@ class CriteriaExtractor:
 
     def process_file(self):
         """Process the input file and extract scans."""
+
         try:
             if self.input_path.lower().endswith('.docx'):
                 self.scans = self.extract_scans_from_docx(self.input_path)
@@ -129,5 +141,5 @@ class CriteriaExtractor:
                 raise ValueError("Unsupported file format. Please provide a PDF or DOCX file.")
 
         except Exception as e:
-            print(f"Error processing file: {e}")
+            logger.error(f"Error processing criteria file '{self.input_path}': {e}", exc_info=True)
             raise

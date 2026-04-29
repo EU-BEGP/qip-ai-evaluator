@@ -6,6 +6,7 @@ import pandas as pd
 import json
 from pathlib import Path
 
+
 class XLSXCriteriaExtractor:
     """Class to extract, process, and combine Excel sheets into a single CSV file."""
 
@@ -15,17 +16,20 @@ class XLSXCriteriaExtractor:
 
     def extract_table_start(self, df: pd.DataFrame) -> int | None:
         """Find the index of the row containing 'Index' in the first column."""
+
         match = df[df.iloc[:, 0].astype(str).str.strip().str.lower() == "index"].index
         return match[0] if not match.empty else None
 
     def extract_scan_metadata(self, df: pd.DataFrame, start_row: int) -> tuple[str, str]:
         """Extract the scan name and description (row above the header)."""
+
         scan_name = str(df.iloc[start_row - 1, 0]).strip()
         scan_description = str(df.iloc[start_row - 1, 1]).strip()
         return scan_name, scan_description
 
     def process_sheet(self, df: pd.DataFrame) -> pd.DataFrame | None:
         """Process a single Excel sheet and return a formatted DataFrame."""
+
         start_row = self.extract_table_start(df)
         if start_row is None:
             return None
@@ -63,6 +67,7 @@ class XLSXCriteriaExtractor:
 
     def process_file(self) -> None:
         """Convert Excel sheets to a structured JSON file."""
+
         sheets = pd.read_excel(self.input_file, sheet_name=None, header=None)
         scans = []
 
