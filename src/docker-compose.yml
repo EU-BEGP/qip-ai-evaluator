@@ -5,6 +5,12 @@ services:
     volumes:
       - redis_data:/data
     restart: ${RESTART_POLICY}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     logging:
       driver: "json-file"
       options:
@@ -17,12 +23,19 @@ services:
     ports:
       - "127.0.0.1:8005:8000"
     volumes:
-      - sqlite_db:/app/db
+      - vector_store:/app/data/vector_store
+      - hf_cache:/app/cache/huggingface
+      - logs_data:/app/logs
     env_file: .env
     environment:
       - TOKENIZERS_PARALLELISM=false
+      - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
     depends_on:
-      - broker
+      broker:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: ${RESTART_POLICY}
@@ -35,15 +48,21 @@ services:
   # 3. Celery Worker
   celery_worker:
     build: .
-    command: celery -A app worker --loglevel=info --pool=threads --concurrency=10
+    command: celery -A app worker --loglevel=info --pool=threads --concurrency=${CELERY_CONCURRENCY:-3}
     volumes:
-      - sqlite_db:/app/db
+      - vector_store:/app/data/vector_store
+      - hf_cache:/app/cache/huggingface
+      - logs_data:/app/logs
     env_file: .env
     environment:
       - TOKENIZERS_PARALLELISM=false
       - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
     depends_on:
-      - broker
+      broker:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: ${RESTART_POLICY}
@@ -54,6 +73,7 @@ services:
         max-file: "3"
 
 volumes:
-  sqlite_db:
+  vector_store:
+  hf_cache:
   redis_data:
-  
+  logs_data:

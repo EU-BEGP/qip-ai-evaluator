@@ -1,6 +1,4 @@
 #!/bin/bash
-
-# Stop script on first error
 set -e
 
 echo "============================================"
@@ -15,9 +13,14 @@ docker-compose down
 echo "--> 2. Building images..."
 docker-compose build
 
-# 3. Run database migrations
-echo "--> 3. Running database migrations..."
-docker-compose run --rm app python manage.py migrate
+# 3. Pre-build the vector store (runs once; skipped if already up to date)
+echo "--> 3. Pre-building vector store..."
+docker-compose run --rm app python manage.py shell -c "
+from apps.evaluator.init_knowledge import build_knowledge_base_auto, load_criteria_auto
+build_knowledge_base_auto()
+load_criteria_auto()
+print('Vector store ready.')
+"
 
 # 4. Start services
 echo "--> 4. Starting services..."
