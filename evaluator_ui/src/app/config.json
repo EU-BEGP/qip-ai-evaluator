@@ -1,5 +1,5 @@
 {
-  "version": "1.9.2",
+  "version": "1.9.3",
   "organizationData": {
     "acronym": "UPB",
     "name": "Universidad Privada Boliviana"
@@ -24,7 +24,8 @@
       "statusScan": "evaluations/evaluation_status/scan/{id}/",
       "idsList": "evaluations/evaluation_ids/{id}/",
       "linkModule": "evaluations/link_module/{id}/",
-      "modulesList": "evaluations/modules/{email}/"
+      "modulesList": "evaluations/modules/{email}/",
+      "basicInformation": "evaluations/basic_information/{id}/"
     },
     "notifications": {
       "read": "notifications/read_message/",

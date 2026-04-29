@@ -9,24 +9,41 @@
     <mat-tab>
       <ng-template mat-tab-label>
         {{ getNameShort(scan.name) }}
-        @if (scan.status === 'Completed') {
-          <mat-icon class="icon-completed ms-1">check</mat-icon>
-        }
-        @if (isInProgress(scan)) {
-          <mat-icon class="material-symbols-outlined icon-evaluation ms-1">emoji_objects</mat-icon>
-        }
-        @if (!(scan.status === 'Completed' || isInProgress(scan))) {
-          <mat-icon class="icon-progress ms-1">close</mat-icon>
+        @if(scan.name === 'All Scans') {
+          <mat-icon class="material-symbols-outlined icon-detail ms-1">
+            description
+          </mat-icon>
+        } @else if (scan.status === 'Completed') {
+          <mat-icon class="icon-completed ms-1">
+            check
+          </mat-icon>
+        } @else if (isInProgress(scan)) {
+          <mat-icon class="material-symbols-outlined icon-evaluation ms-1">
+            emoji_objects
+          </mat-icon>
+        } @else if (!(scan.status === 'Completed' || isInProgress(scan))) {
+          <mat-icon class="icon-progress ms-1">
+            close
+          </mat-icon>
         }
       </ng-template>
 
-      <app-search-component
-        [scanInformation]="scan"
-        [disableEvaluateButton]="disableEvaluateButton"
-        [linkModule]="linkModule"
-        (startPolling)="startPolling($event)"
-        (downloadEvent)="download()"
-      />
+      @if(scan.name !== 'All Scans') {
+        <app-search-component
+          [scanInformation]="scan"
+          [linkModule]="linkModule"
+          (startPolling)="startPolling($event)"
+        />
+      }
+
+      @if(scan.name === 'All Scans') {
+        <app-module-information-component
+          [evaluationId]="evaluationId!"
+          [scanInformation]="scan"
+          [scanList]="scansList"
+          (downloadEvent)="download()"
+        ></app-module-information-component>
+      }
     </mat-tab>
   }
 </mat-tab-group>

@@ -17,6 +17,7 @@ import { EvaluationStatus } from '../interfaces/evaluation-status';
 import { Scan } from '../interfaces/scan';
 import { ModuleLink } from '../interfaces/module-link';
 import { ModuleDashboardItem } from '../interfaces/module-dashboard-item';
+import { ModuleInfo } from '../interfaces/module-info';
 
 interface ResponseHttpOptions {
   headers: HttpHeaders;
@@ -189,4 +190,20 @@ export class EvaluationService {
       })
     );
   }
+
+  getBasicInformation(evuluationId: string): Observable<ModuleInfo> {
+    let URL = `${config.api.baseUrl}${config.api.evaluation.basicInformation}`;
+    URL = URL.replace('{id}', String(evuluationId));
+    this.loaderService.show();
+
+    return this.http.get<ModuleInfo>(URL).pipe(
+      catchError((err) => {
+        this.loaderService.hide();
+        return throwError(() => err);
+      }),
+      finalize(() => {
+        this.loaderService.hide();
+      })
+    );
+  }  
 }

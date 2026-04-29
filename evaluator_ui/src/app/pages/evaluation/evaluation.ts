@@ -23,6 +23,7 @@ import { UtilsService } from '../../services/utils-service';
 import { ScanItem } from '../../interfaces/scan-item';
 import { ToastrService } from 'ngx-toastr';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
+import { ModuleInformationComponent } from '../../components/module-information-component/module-information-component';
 
 @Component({
   selector: 'app-evaluation',
@@ -38,7 +39,8 @@ import { PageTitleComponent } from '../../components/page-title-component/page-t
     MatSelectModule,
     MatTabsModule,
     SearchComponent,
-    PageTitleComponent
+    PageTitleComponent,
+    ModuleInformationComponent
   ],
   templateUrl: './evaluation.html',
   styleUrl: './evaluation.css',
@@ -48,7 +50,6 @@ export class EvaluationComponent {
   private destroy$ = new Subject<void>();
 
   linkModule = '';
-  disableEvaluateButton = false;
   evaluationId?: string;
   loaded: boolean = false;
   scansList: Scan[] = [];
