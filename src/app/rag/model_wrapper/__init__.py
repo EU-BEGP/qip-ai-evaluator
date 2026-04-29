@@ -2,33 +2,34 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-from .base import BaseLLMWrapper
-from .models.ollama_wrapper import OllamaWrapper
-from .models.gemini_wrapper import GeminiWrapper
-from .models.groq_wrapper import GroqWrapper
+import logging
 from typing import Dict
 
+from .base import BaseLLMWrapper
+from .models.gemini_wrapper import GeminiWrapper
+from .models.groq_wrapper import GroqWrapper
+from .models.ollama_wrapper import OllamaWrapper
+
+logger = logging.getLogger(__name__)
+
+
 def get_llm_wrapper(cfg: Dict) -> BaseLLMWrapper:
-    """
-    Factory function to read the config and return the correct LLM wrapper instance.
-    """
+    """Factory: read config and return the correct LLM wrapper instance."""
     llm_cfg = cfg.get("llm_settings", {})
     wrapper_name = llm_cfg.get("wrapper")
 
     if wrapper_name == "ollama":
-        print("-> Loading Ollama Wrapper")
+        logger.info("Loading Ollama wrapper")
         return OllamaWrapper(cfg)
-        
+
     elif wrapper_name == "gemini":
-        print("-> Loading Gemini Wrapper")
+        logger.info("Loading Gemini wrapper")
         return GeminiWrapper(cfg)
 
     elif wrapper_name == "groq":
-        print("-> Loading Groq Wrapper")
+        logger.info("Loading Groq wrapper")
         return GroqWrapper(cfg)
-        
-    else:
-        # Default or error
-        raise ValueError(f"Unknown LLM wrapper specified in config: '{wrapper_name}'")
+
+    raise ValueError(f"Unknown LLM wrapper in config: '{wrapper_name}'")
 
 __all__ = ["get_llm_wrapper", "BaseLLMWrapper"]
