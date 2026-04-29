@@ -1,7 +1,7 @@
 document_processing:
   text_splitter:
-    chunk_size: 250
-    chunk_overlap: 100
+    chunk_size: 350
+    chunk_overlap: 50
     max_chunks: null
     separators:
       - "\n\n"
@@ -19,12 +19,12 @@ document_processing:
     hf_token: "${HF_TOKEN}"
 
 vector_store:
-  path: "db/vector_store"
+  path: "data/vector_store"
 
 llm_settings:
    wrapper: "groq"
    processing_llm:
-     model: "moonshotai/kimi-k2-instruct-0905"
+     model: "meta-llama/llama-4-scout-17b-16e-instruct"
      temperature: 0.0
      top_p: 0.1
 
@@ -45,5 +45,5 @@ memory:
   tail_chars: 1500 
 
 knowledge:
-  kb_dir: "KB"
-  criteria_file: "criteria_files/FinalCriteria.docx"
+  kb_dir: "resources/knowledge_base"
+  criteria_file: "resources/criteria_files/FinalCriteria.docx"
