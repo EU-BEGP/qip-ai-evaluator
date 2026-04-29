@@ -147,7 +147,6 @@ RAG_API_EVALUATE_URL = f"{RAG_BASE_URL}/evaluate/"
 RAG_API_METADATA_URL = f"{RAG_BASE_URL}/extract_metadata/"
 
 RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
-UI_BASE_URL = config('UI_BASE_URL', default="http://host.docker.internal:8004/")
 PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default="http://host.docker.internal:8004/")
 FORCE_SCRIPT_NAME = config('FORCE_SCRIPT_NAME', default=None)
 
