@@ -2,17 +2,21 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
+import logging
 import torch
 from sentence_transformers import SentenceTransformer
-from langchain.embeddings.base import Embeddings
+from langchain_core.embeddings import Embeddings
 import yaml
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 class EmbeddingsManager:
     """Manages sentence-transformers embeddings"""
 
     def __init__(self):
-        config_path = Path(__file__).parents[1] / "config" / "config.yaml"
+        config_path = Path(__file__).parents[2] / "config" / "config.yaml"
         with open(config_path, "r") as f:
             cfg = yaml.safe_load(f)
         emb_cfg = cfg["document_processing"]["embeddings"]
@@ -20,12 +24,17 @@ class EmbeddingsManager:
         self.device = "cuda" if emb_cfg.get("use_gpu", True) and torch.cuda.is_available() else "cpu"
         self.model_name = emb_cfg["model_name"]
         self.hf_token = emb_cfg.get("hf_token")
+        logger.info(f"Loading embeddings model '{self.model_name}' on device '{self.device}'")
         self.model = self._load_model()
 
     def _load_model(self):
         try:
             return SentenceTransformer(self.model_name, device=self.device)
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                f"Direct load of '{self.model_name}' failed: {e}. "
+                "Falling back to HuggingFace snapshot download..."
+            )
             from huggingface_hub import snapshot_download
             path = snapshot_download(self.model_name, token=self.hf_token)
             return SentenceTransformer(path, device=self.device)

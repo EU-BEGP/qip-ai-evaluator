@@ -2,13 +2,20 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
-import requests
-import re
-from typing import List, Dict
-from bs4 import BeautifulSoup
-from langchain.schema import Document
-from ..document_loader import DocumentLoader
+import concurrent.futures
 import logging
+import re
+from typing import Dict, List
+import requests
+from bs4 import BeautifulSoup
+from langchain_core.documents import Document
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+from ..document_loader import DocumentLoader
+
+logger = logging.getLogger(__name__)
+
 
 class LearnifyProcessor(DocumentLoader):
     """Process content from Learnify API and convert to Document objects"""
@@ -19,15 +26,21 @@ class LearnifyProcessor(DocumentLoader):
 
     def clean_html(self, html):
         """Convert HTML to readable plain text."""
+
         if not html:
             return ""
         soup = BeautifulSoup(html, "html.parser")
+
+        for img in soup.find_all('img'):
+            img.replace_with("[IMAGE] ")
+            
         text = soup.get_text(separator=" ", strip=True)
         text = re.sub(r"\s+", " ", text)
         return text.strip()
 
     def clean_text_block(self, text):
         """Normalize whitespace and line breaks."""
+
         if not text:
             return ""
         text = re.sub(r'\n+', '\n', text)
@@ -39,6 +52,7 @@ class LearnifyProcessor(DocumentLoader):
         Recursively extract and structure text, subtitles, and question-answer groups.
         Returns sections = [{'subtitle': ..., 'text': ...}, {'question': ..., 'answers': [...]}, ...]
         """
+
         if isinstance(obj, dict):
             for k, v in obj.items():
                 if k == "question" and isinstance(v, str):
@@ -69,6 +83,11 @@ class LearnifyProcessor(DocumentLoader):
 
                 elif k == "body" and isinstance(v, str):
                     text = self.clean_html(v)
+                    img_url = obj.get("image")
+                    
+                    if img_url and isinstance(img_url, str) and img_url.strip():
+                        text += " [IMAGE]"
+                        
                     sections.append({"subtitle": last_value, "text": text})
                     last_value = None
                     last_question = None
@@ -83,6 +102,7 @@ class LearnifyProcessor(DocumentLoader):
 
     def extract_text_from_content(self, data):
         """Extract structured sections and Q&A from Learnify content page."""
+
         contents = data.get("contents", {})
         title = contents.get("title", {}).get("en", "")
         scenarios = contents.get("scenario", [])
@@ -115,32 +135,69 @@ class LearnifyProcessor(DocumentLoader):
         }
 
     def get_clean_content(self, page_tree):
-        """Extract content from all pages with pageType=9"""
-        results = []
-        def recurse(pages):
+        """Extract content from all pages with pageType=9 using Parallel Retrieval """
+
+        # 1. Collect IDs first
+        target_ids = []
+        found_module = [False]
+        def collect(pages):
             for p in pages:
+                if not found_module[0] and p.get("pageType") == 8:
+                    
+                    if len(p.get("pages", [])) > 0:
+                        found_module[0] = True  
+                        title = p.get("title", "")
+                        if isinstance(title, dict):
+                            title = title.get("en", "")
+                        if isinstance(title, str):
+                            normalized = title.strip().lower()
+                            if normalized == "module" or normalized == "chapter":
+                                target_ids.append({"id": p["id"], "is_first": True, "title": title})
+
                 if p.get("pageType") == 9:
-                    pid = p["id"]
-                    try:
-                        r = requests.get(f"{self.content_base_url}/{pid}/content")
-                        if r.ok:
-                            data = r.json()
-                            clean_page = self.extract_text_from_content(data)
-                            results.append(clean_page)
-                        else:
-                            logging.warning(f"Failed to fetch content for page {pid}: {r.status_code}")
-                    except Exception as e:
-                        logging.error(f"Error fetching page {pid}: {e}")
+                    target_ids.append({"id": p["id"], "is_first": False})
                 elif "pages" in p and p["pages"]:
-                    recurse(p["pages"])
-        recurse(page_tree)
-        return results
+                    collect(p["pages"])
+                    
+        collect(page_tree)
+        logger.info(f"Downloading {len(target_ids)} pages in PARALLEL")
+
+        # 2. Worker function
+        def fetch_one(target, session):
+            pid = target["id"]
+            try:
+                r = session.get(f"{self.content_base_url}/{pid}/content", timeout=15)
+                if r.ok:
+                    data = self.extract_text_from_content(r.json())
+                    data["is_first_module_section"] = target["is_first"]
+                    return data
+                elif target["is_first"]:
+                    return {"id": pid, "title": self.clean_text_block(target.get("title", "")), "videos": [], "sections": [], "is_first_module_section": True}
+                else:
+                    logger.warning(f"Failed to fetch content for page {pid}: {r.status_code}")
+            except Exception as e:
+                logger.error(f"Error fetching page {pid}: {e}")
+            return None
+
+        # 3. Execute Pool
+        results = []
+        with requests.Session() as session:
+            # Configure retries
+            adapter = HTTPAdapter(pool_connections=10, pool_maxsize=10, max_retries=Retry(total=3, backoff_factor=0.5))
+            session.mount("https://", adapter)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                # Map maintains order corresponding to target_ids
+                results = list(executor.map(lambda t: fetch_one(t, session), target_ids))
+
+        return [r for r in results if r]
 
     def fetch_module_content(self, course_key):
         """Fetch all module content from Learnify API"""
+
         structure_url = f"{self.structure_base_url}/0?key={course_key}"
         
-        logging.info(f"🔄 Fetching course structure for key: {course_key}")
+        logger.info(f"Fetching course structure for key: {course_key}")
         response = requests.get(structure_url)
 
         if response.ok:
@@ -158,15 +215,16 @@ class LearnifyProcessor(DocumentLoader):
                     "sections": []
                 })
 
-            logging.info(f"Extracted {len(cleaned)} content pages (pageType=9)")
+            logger.info(f"Extracted {len(cleaned)} content pages (pageType=9)")
             return cleaned
         else:
             error_msg = f"Failed to load structure: {response.status_code}"
-            logging.error(error_msg)
+            logger.error(error_msg)
             raise Exception(error_msg)
 
     def convert_to_documents(self, module_data: List[Dict]) -> List[Document]:
         """Convert module data to LangChain Document objects"""
+        
         documents = []
         
         for i, page in enumerate(module_data, 1):
@@ -205,7 +263,8 @@ class LearnifyProcessor(DocumentLoader):
                         "title": page.get("title", ""),
                         "page_number": i,
                         "total_pages": len(module_data),
-                        "source_type": "learnify_api"
+                        "source_type": "learnify_api",
+                        "is_first_module_section": page.get("is_first_module_section", False)
                     }
                 )
                 documents.append(doc)
@@ -218,6 +277,7 @@ class LearnifyProcessor(DocumentLoader):
         Args:
             course_key: The course key for the Learnify module (e.g., "OYJPG")
         """
+        
         try:
             # Fetch module content
             module_data = self.fetch_module_content(course_key)
@@ -231,9 +291,9 @@ class LearnifyProcessor(DocumentLoader):
             if not documents:
                 raise ValueError(f"No documents could be created from course key: {course_key}")
             
-            logging.info(f"Successfully loaded {len(documents)} documents from Learnify module {course_key}")
+            logger.info(f"Successfully loaded {len(documents)} documents from Learnify module {course_key}")
             return documents
             
         except Exception as e:
-            logging.error(f"Failed to load Learnify module {course_key}: {e}")
+            logger.error(f"Failed to load Learnify module {course_key}: {e}")
             raise

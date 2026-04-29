@@ -3,15 +3,16 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import List
-from langchain.schema import Document
+from langchain_core.documents import Document
+
 
 class DocumentLoader(ABC):
     """Base class for document loaders"""
     @abstractmethod
     def load_document(self, file_path: str) -> List[Document]:
         pass
+
 
 class DocumentLoaderFactory:
     """Returns loader based on file extension or special identifiers"""

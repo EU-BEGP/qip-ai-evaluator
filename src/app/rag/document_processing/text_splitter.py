@@ -2,18 +2,22 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
+import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import yaml
 import tiktoken
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+
+logger = logging.getLogger(__name__)
+
 
 class DocumentSplitter:
     """Token-based splitter, reads config/config.yaml and validates parameters."""
 
     def __init__(self):
-        config_path = Path(__file__).parents[1] / "config" / "config.yaml"
+        config_path = Path(__file__).parents[2] / "config" / "config.yaml"
         with open(config_path, "r") as f:
             cfg = yaml.safe_load(f)
 
@@ -22,6 +26,7 @@ class DocumentSplitter:
         required_keys = ["chunk_size", "chunk_overlap", "separators", "token_encoding", "max_chunks"]
         for key in required_keys:
             if key not in ts_cfg:
+                logger.error(f"Missing required key '{key}' in text_splitter config")
                 raise ValueError(f"Missing '{key}' in text_splitter config")
 
         self.chunk_size = ts_cfg["chunk_size"]
@@ -41,6 +46,7 @@ class DocumentSplitter:
 
     def split_content(self, content: str, metadata: Optional[Dict[str, Any]] = None, start_index: int = 0) -> List[Document]:
         """Split content into chunks and assign consecutive chunk_index starting at start_index."""
+        
         raw_chunks = [c for c in self.splitter.split_text(content) if c.strip()]
         total_chunks = len(raw_chunks)
         docs = []
