@@ -85,3 +85,72 @@ def async_trigger_rag_evaluation(self, evaluation_id, scans_to_run, payload):
         Scan.objects.filter(evaluation_id=evaluation_id, scan_type__in=scans_to_run).update(status=Scan.Status.FAILED)
         Evaluation.objects.filter(id=evaluation_id).update(status=Evaluation.Status.FAILED)
 
+
+@shared_task
+def async_check_evaluation_timeout(evaluation_id, scans_to_run):
+    """Checks if scans are still stuck in IN_PROGRESS after a timeout period and marks them as FAILED."""
+
+    from apps.evaluations.services.webhooks_service import WebhookHandlerService
+
+    logger.info(f"Watchdog checking for timeout on Evaluation ID {evaluation_id}")
+
+    try:
+        stuck_scans = Scan.objects.filter(
+            evaluation_id=evaluation_id,
+            scan_type__in=scans_to_run,
+            status=Scan.Status.IN_PROGRESS
+        )
+
+        if stuck_scans.exists():
+            logger.error(
+                f"Watchdog triggered! Scans {scans_to_run} timed out for Evaluation {evaluation_id}. Marking as FAILED."
+            )
+            evaluation = Evaluation.objects.get(id=evaluation_id)
+            timeout_payload = {
+                "scan_names": scans_to_run,
+                "error": "The AI service took too long to respond (Timeout)."
+            }
+            WebhookHandlerService._handle_failure(evaluation, timeout_payload)
+
+        else:
+            logger.info(f"Watchdog cleared for Evaluation ID {evaluation_id}. No stuck scans found.")
+
+    except Exception as e:
+        logger.error(f"Error in Watchdog task for Evaluation {evaluation_id}: {str(e)}")
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 3, "countdown": 5 * 60})
+def cleanup_module_evaluations(self, limit=4):
+    """Cleans up old evaluations for modules that have more than a certain number of evaluations."""
+
+    try:
+        module_ids = (
+            Module.objects
+            .annotate(eval_count=Count("evaluations"))
+            .filter(eval_count__gt=limit)
+            .values_list("id", flat=True)
+            .iterator(chunk_size=200)
+        )
+
+        for m_id in module_ids:
+            with transaction.atomic():
+                keep_ids = list(
+                    Evaluation.objects
+                    .filter(module_id=m_id)
+                    .order_by("-created_at")
+                    .values_list("id", flat=True)[:limit]
+                )
+
+                deleted_count, _ = (
+                    Evaluation.objects
+                    .filter(module_id=m_id)
+                    .exclude(id__in=keep_ids)
+                    .delete()
+                )
+
+                if deleted_count:
+                    logger.info(f"Cleanup module {m_id}: {deleted_count} deleted")
+
+    except Exception as exc:
+        logger.error(f"Critical cleanup error: {exc}")
+        raise self.retry(exc=exc)
