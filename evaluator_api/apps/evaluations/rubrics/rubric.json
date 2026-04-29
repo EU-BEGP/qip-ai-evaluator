@@ -1,0 +1,662 @@
+[
+    {
+        "scan": "Academic Metadata Scan",
+        "description": "This scan checks the accuracy and completeness of the learning resource's metadata, which includes details like title, keywords, abstract, EQF level, prerequisites, and contact information. It ensures that all essential information about the learning resource is properly documented.",
+        "criteria": [
+            {
+                "index": "1",
+                "name": "Title",
+                "description": "Identify the title in as clear and relevant way as possible",
+                "review_question": "Is the title relevant and clear in relation to content?",
+                "metrics": {
+                    "5": "The title is relevant and fully clear in relation to content",
+                    "4": "The title is relevant but not fully clear in relation to content",
+                    "3": "The title is approximately relevant and somewhat clear in relation to content.",
+                    "2": "Title is somewhat relevant and clear in relation to content, needs improvement.",
+                    "1": "Title is not relevant and not clear in relation to content."
+                }
+            },
+            {
+                "index": "2",
+                "name": "Keywords"   ,
+                "description": "Keywords should be relevant with the content",
+                "review_question": "Are the keywords relevant, do they capture the aims/objectives?",
+                "metrics": {
+                    "5": "The keywords are fully relevant, and they clearly capture the aims/objectives",
+                    "4": "The keywords are relevant, and they capture to a large extent the aims/objectives",
+                    "3": "The keywords are somewhat relevant, and they capture to a certain extent the aims/objectives",
+                    "2": "The keywords are somewhat relevant, they somewhat capture some of the aims/objectives, but clearly need improvement.",
+                    "1": "The keywords are not relevant and they do not capture the aims/objectives."
+                }
+            },
+            {
+                "index": "3",
+                "name": "Abstract",
+                "description": "Short summary of the main content and elements",
+                "review_question": "Is the abstract clear and consistent, reflecting the aims/objectives and the ILOs",
+                "metrics": {
+                    "5": "The abstract is very clear and consistent, fully reflecting the aims/objectives and the ILOs",
+                    "4": "The abstract is clear and consistent, largely reflecting the aims/objectives and the ILOs",
+                    "3": "The abstract is somewhat clear and consistent, somewhat reflecting the aims/objectives and the ILOs",
+                    "2": "The abstract is somewhat consistent, somewhat reflecting some of the aims/objectives and the ILOs, but clearly needs improvement.",
+                    "1": "The abstract is not clear and not consistent, and does not at all reflect the aims/objectives and the ILOs."
+                }
+            },
+            {
+                "index": "4",
+                "name": "EQF level",
+                "description": "The EQF levels relevant for Higher Education are: EQF 6=Bachelor level; EQF 7=Master level; EQF 8=Doctoral level",
+                "review_question": "Is the resource placed at appropriate EQF level?",
+                "metrics": {
+                    "5": "The resource is fully placed at the appropriate EQF level",
+                    "4": "The resource is mainly placed at the appropriate EQF level",
+                    "3": "The resource is somewhat placed at appropriate EQF level",
+                    "2": "The resource is not placed at an appropriate EQF level",
+                    "1": "The resource is not at all placed at an appropriate EQF level."
+                }
+            },
+            {
+                "index": "5",
+                "name": "Prerequisites",
+                "description": "Prerequisites indicate prior knowledge required to enroll and follow the learning successfully",
+                "review_question": "Are appropriate prerequisities provided?",
+                "metrics": {
+                    "5": "All relevant prerequisites are clearly and comprehensively stated",
+                    "4": "Most relevant prerequisites are provided, with minor omissions",
+                    "3": "Some prerequisites are mentioned, but key elements may be missing or unclear",
+                    "2": "Prerequisites are vaguely stated or incomplete",
+                    "1": "No prerequisites are provided"
+                }
+            },
+            {
+                "index": "6",
+                "name": "Preassessment test",
+                "description": "Preassessment should be tested with fit for purpose test methods",
+                "review_question": "Are preassessment methods fit for purpose in relation to the prerequisities?",
+                "metrics": {
+                    "5": "The preassessment methods are fully fit for purpose in relation to the prerequisities",
+                    "4": "The preassessment methods are largely fit for purpose in relation to the prerequisities",
+                    "3": "The preassessment methods are somewhat fit for purpose in relation to the prerequisities",
+                    "2": "The preassessment methods are mostly not related to the prerequisities.",
+                    "1": "Preassessment methods are not available."
+                }
+            },
+            {
+                "index": "7",
+                "name": "Preassessment information",
+                "description": "Information related to the preassessment tests must be provided to the prospective learner",
+                "review_question": "Is information provided to the prospected learner about where to find information to study for the preassessment tests?",
+                "metrics": {
+                    "5": "Full information about where to find information to study for the preassessment tests is provided to the prospected learner",
+                    "4": "Significant input about where to find information to study for the preassessment tests is provided to the prospected learner",
+                    "3": "Relevant information on where to find study materials for the pre-assessment tests is provided to the prospective learner, but there are some resources that are still missing or need to be clarified",
+                    "2": "Input about where to find information to study for the preassessment tests is largely missing",
+                    "1": "No input about where to find information to study for the preassessment tests is provided to the prospected learner"
+                }
+            },
+            {
+                "index": "8",
+                "name": "Expected learning hours (EHL)",
+                "description": "Expected Learning Hours represent the total estimated time a learner needs to complete all learning activities and assessments within a module. This estimate should reflect a realistic workload based on the module’s scope and complexity",
+                "review_question": "Are the EHL within the 0.5–5 hour range per module, and is the estimated time realistic given the content?",
+                "metrics": {
+                    "5": "ELH are fully within the 0.5–5 hour range, and the estimate is clearly realistic in relation to the proposed activities",
+                    "4": "ELH are not fully within the range of 0.5 - 5, but the estimate is clearly realistic in relation to the proposed activities",
+                    "3": "ELH are not fully within the range of 0.5 - 5, and the realism of the estimate is somewhat questionable",
+                    "2": "ELH fall outside the range of 0.5 - 5, and the estimate seems unrealistic given the module's content",
+                    "1": "ELH are outside the range, and the estimate is clearly disproportionate or implausible"
+                }
+            },
+            {
+                "index": "9",
+                "name": "Contact informaction",
+                "description": "Contactinformation to person(s) relevant. Names, positions, affiliations and e mails for teachers.",
+                "review_question": "Are the names of the teacher, position, affiliation and contact email given?",
+                "metrics": {
+                    "5": "The names of the teachers, position, affiliation and contact email are fully given",
+                    "4": "Most of the information about the names of the teachers, position, affiliation and contact email is given",
+                    "3": "Some of the information about the names of the teachers, position, affiliation and contact email is given",
+                    "2": "A very small part of the contact information is given.",
+                    "1": "Thecontact information is almost non-existing."
+                }
+            },
+            {
+                "index": "10",
+                "name": "Aims/objectives",
+                "description": "The aims/objectives of a module should in broad terms answer the question \"What is the purpose of this module/lesson/course/programme of study?\"",
+                "review_question": "Are aims/objectives clearly formulated?",
+                "metrics": {
+                    "5": "The aims/objectives are extremely clearly formulated.",
+                    "4": "The aims/objectives are very well formulated.",
+                    "3": "The aims/objectives are medium clearly formulated.",
+                    "2": "The aims/objectives are not well formulated.",
+                    "1": "The aims/objectives are badly formulated."
+                }
+            },
+            {
+                "index": "11",
+                "name": "ILO Quality 1 - EQF 2017 compliance",
+                "description": "EQF 2017 compliance means that the ILOs of the Learning Resource are clearly separated in the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autnomy\" and that each one of these are clearly described.",
+                "review_question": "Are the ILOs separated into the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\"?",
+                "metrics": {
+                    "5": "The ILOs are extremely clearly separated into the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".",
+                    "4": "The ILOs are very clearly separated into the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".",
+                    "3": "The ILOs are well separated into the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".",
+                    "2": "The ILOs are somewhat separated into the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".",
+                    "1": "The ILOs are not well separated into the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".."
+                }
+            },
+            {
+                "index": "12",
+                "name": "ILO Quality 2 - Learning Resource relevance",
+                "description": "\"Learning Resource Relevance\" means that the ILOS should clearly correspond and cover all Learning Resource content, aims and objectives. No more no less.",
+                "review_question": "Do the ILOs correspond with the Learning Resource content for each one of the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\"?",
+                "metrics": {
+                    "5": "The ILOs correspond extremely well with the Learning Resource content for each one of the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy”",
+                    "4": "The ILOs correspond very well with the Learning Resource content for each one of the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\"",
+                    "3": "The ILOs correspond well with the Learning Resource content for each one of the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".",
+                    "2": "The ILOs correspond not very well with the Learning Resource content for each one of the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\".",
+                    "1": "The ILOs do not correspond with the Learning Resource content for each one of the three categories \"Knowledge\", \"Skills\" and \"Responsibility & Autonomy\"."
+                }
+            },
+            {
+                "index": "13",
+                "name": "ILO Quality 3 - Clarity",
+                "description": "Clarity here means that they are written in a manner so that learners to understand them.",
+                "review_question": "Are the ILOs clearly written – easy for the learners to understand?",
+                "metrics": {
+                    "5": "The ILOs are extremely clearly written – extremely easy for the learners to understand.",
+                    "4": "The ILOs are very clearly written – very easy for the learners to understand.",
+                    "3": "The ILOs are clearly written – easy for the learners to understand.",
+                    "2": "The ILOs are not clearly written – not easy for the learners to understand.",
+                    "1": "The ILOs are badly written – difficult for the learners to understand."
+                }
+            },
+            {
+                "index": "14",
+                "name": "ILO Quality 4 - Action verbs",
+                "description": "ILOs should always be written using action verbs and on the right level in the educational system. Vague verbs such as \"know\" and \"understand\" (which cannot be obectively assessed) can possibly be used when a whole programmes is described. However on lower ELH level (Module/Lesson/Course level), concrete, assessable verbs such as define, explain, calculate, differentiate, categorise, compare etc should be used. Otherwise they cannot be assessed.",
+                "review_question": "Do the ILOs describe the visible use of knowledge using action verbs, avoiding vague verbs as \"know\" and \"understand\" which cannot be objectively assessed?",
+                "metrics": {
+                    "5": "The ILOs describe extremely well the visible use of knowledge using action verbs, avoiding vague verbs as \"know\" and \"understand\" which cannot be objectively assessed.",
+                    "4": "The ILOs describe very well the visible use of knowledge using action verbs, avoiding vague verbs as \"know\" and \"understand\" which cannot be objectively assessed.",
+                    "3": "The ILOs describe well the visible use of knowledge using action verbs, avoiding vague verbs as \"know\" and \"understand\" which cannot be objectively assessed.",
+                    "2": "The ILOs describe not well the visible use of knowledge using action verbs, and do not completely avoid vague verbs as \"know\" and \"understand\" which cannot be objectively assessed.",
+                    "1": "The ILOs describe badly the visible use of knowledge using action verbs, and do largely not avoid vague verbs as \"know\" and \"understand\" which cannot be objectively assessed."
+                }
+            },
+            {
+                "index": "15",
+                "name": "ILO Quality 5 - Assessability",
+                "description": "All ILOS should be possible to assess in a realistic manner",
+                "review_question": "Are the ILOs possible to assess?",
+                "metrics": {
+                    "5": "The ILOs are fully possible to assess.",
+                    "4": "The ILOs are largely possible to assess.",
+                    "3": "The ILOs are medium possible to assess.",
+                    "2": "The ILOs are somewhat possible to assess.",
+                    "1": "The ILOs are not possible to assess."
+                }
+            },
+            {
+                "index": "16",
+                "name": "Academic level of ILOs",
+                "description": "Are the ILOs on the intended EQF-2017 level",
+                "review_question": "Are the MILOs at the appropriate academic level compared to the intended EQF-level?",
+                "metrics": {
+                    "5": "The MILOs are fully at the appropriate academic level compared to the intended EQF-level.",
+                    "4": "The MILOs are very well at the appropriate academic level compared to the intended EQF-level.",
+                    "3": "The MILOs are at the appropriate academic level compared to the intended EQF-level.",
+                    "2": "The MILOs are not at the appropriate academic level compared to the intended EQF-level.",
+                    "1": "The MILOs are not at all at the appropriate academic level compared to the intended EQF-level."
+                }
+            },
+            {
+                "index": "17",
+                "name": "ILOs vs OLOs",
+                "description": "The Intended Learning Outcomes should match the Overarching Learning Outcomes",
+                "review_question": "Do the Module Intended Learning Outcomes map with at least one of the EIT OLO?",
+                "metrics": {
+                    "5": "The module’s Intended Learning Outcomes explicitly and substantively reflect at least one EIT Overarching Learning Outcome, embedding its principles into the core learning design",
+                    "4": "he ILOs clearly incorporate at least one EIT OLO, though the integration may not be central to the module’s structure",
+                    "3": "A connection to at least one EIT OLO is present, but the relationship is surface-level or incidental",
+                    "2": "The link between the ILOs and any EIT OLO is minimal, vague, or context-dependent",
+                    "1": "There is no discernible relationship—explicit or implicit—between the module’s ILOs and any EIT OLO"
+                }
+            },
+            {
+                "index": "18",
+                "name": "ILOs vs Revised Bloom's Taxonomy Level (RBTL)",
+                "description": "The Revised Bloom's Taxonomy indicate action verbs that should be used for Intended Learning Outcomes.",
+                "review_question": "Do MILOs cover appropriate level or adjacent levels of the Revised Blooms Taxonomy that focusses on the level of the Module?",
+                "metrics": {
+                    "5": "The MILOs cover extremely well the level or adjacent levels of the Revised Blooms Taxonomy that focuses on the level of the Module",
+                    "4": "The MILOs cover very well the level or adjacent levels of the Revised Blooms Taxonomy that focuses on the level of the Module",
+                    "3": "The MILOs cover well the level or adjacent levels of the Revised Blooms Taxonomy that focuses on the level of the Module",
+                    "2": "The MILOs do not cover well the level or adjacent levels of the Revised Blooms Taxonomy that focuses on the level of the Module",
+                    "1": "The MILOs do not at all cover the level or adjacent levels of the Revised Blooms Taxonomy that focuses on the level of the Module"
+                }
+            },
+            {
+                "index": "19",
+                "name": "Societal relevance",
+                "description": "Societal relevance indicates the usefulness of the learning resource to the society.",
+                "review_question": "Is the given Societal Relevance description clear and relevant ?",
+                "metrics": {
+                    "5": "The given Societal Relevance description is extremely clear and relevant.",
+                    "4": "The given Societal Relevance description is very clear and relevant.",
+                    "3": "The given Societal Relevance description is sufficiently clear and relevant.",
+                    "2": "The given Societal Relevance description is not fully clear and relevant.",
+                    "1": "The given Societal Relevance description is not clear and not relevant."
+                }
+            },
+            {
+                "index": "20",
+                "name": "Uniqueness",
+                "description": "Uniqueness will explain why this learning resource is more attractive than resources available at different other places in the same area.",
+                "review_question": "Is the given uniqueness description clear and depicts why this Learning Resource is more attractive than other learning resources in the similar area?",
+                "metrics": {
+                    "5": "The given uniqueness description is extremely clear and depicts fully why this Learning Resource is more attractive than other learning resources in the similar area.",
+                    "4": "The given uniqueness description is very clear and depicts very well why this Learning Resource is more attractive than other learning resources in the similar area.",
+                    "3": "The given uniqueness description is clear and depicts well why this Learning Resource is more attractive than other learning resources in the similar area.",
+                    "2": "The given uniqueness description is not clear and depicts not well why this Learning Resource is more attractive than other learning resources in the similar area.",
+                    "1": "The given uniqueness description is very unclear clear and depicts not why this Learning Resource is more attractive than other learning resources in the similar area."
+                }
+            },
+            {
+                "index": "21",
+                "name": "Grading criteria",
+                "description": "Providing a clear grading criteria can help learners perform better and prevent confusion or frustration about their grades.",
+                "review_question": "Are the Grading criteria clear and consistent?",
+                "metrics": {
+                    "5": "The grading criteria are extremely well formulated and extremely consistent.",
+                    "4": "The grading criteria are very well formulated and very consistent.",
+                    "3": "The grading criteria are well formulated and consistent.",
+                    "2": "The grading criteria are vaguely formulated and not fully consistent.",
+                    "1": "The grading criteria are badly formulated and not consistent."
+                }
+            },
+            {
+                "index": "22",
+                "name": "Learning guidelines",
+                "description": "Learning Guidelines provide a proper guide for the leaner to follow and progress during the learning journey towards the end of the module. These should be \"fit for purpose\", not too few and not too many.",
+                "review_question": "Are the Learning Guidelines clearly indicated covering all learning activities, learning materials and references in the Module?",
+                "metrics": {
+                    "5": "The Learning Guidelines are extremely well indicated, covering all the materials and references in the Module.",
+                    "4": "The Learning Guidelines are very well indicated, covering all the materials and references in the Module.",
+                    "3": "The Learning Guidelines are well indicated, covering most of the materials and references in the Module.",
+                    "2": "The Learning Guidelines are not satisfactory indicated, not covering most of the materials and references in the Module.",
+                    "1": "The Learning Guidelines are badly indicated, badly covering the materials and references in the Module."
+                }
+            },
+            {
+                "index": "23",
+                "name": "Student feedback",
+                "description": "For a high-quality education it is importat that the learners have possibility to give continuous feedback",
+                "review_question": "Are students given the opportunity to express their views of the Module?",
+                "metrics": {
+                    "5": "The mechanism allowing students to give feedback on the content of the Module and to express their views is extremely simple.",
+                    "4": "The mechanism allowing students to give feedback on the content of the Module and to express their views is very simple.",
+                    "3": "The mechanism allowing students to give feedback on the content of the Module and to express their views is simple.",
+                    "2": "The mechanism allowing students to give feedback on the content of the Module and to express their views is not easy.",
+                    "1": "The mechanism allowing students to give feedback on the content of the Module and to express their views is almost non-existing."
+                }
+            }
+        ]
+    },
+    {
+        "scan": "Learning Content Scan",
+        "description": "This scan examines the learning content, focusing on its alignment with learning outcomes, student-centeredness, and the clarity and appropriateness of external resources. It ensures that the content is engaging, relevant, and eiectively supports the learning objectives.",
+        "criteria": [
+            {
+                "index": "1",
+                "name": "Alignment of ILOs vs learning activities",
+                "description": "Each Learning activities provided needs to be aligned with one or more ILOs.",
+                "review_question": "Content of the Module covers the required depth and breadth defined in MILOs in reference to EQF 2017. All learning activities are organized logically while aligning with the MILOs.",
+                "metrics": {
+                    "5": "All learning activities are fully aligned with the suggested MILOs. The content of the Module covers fully the required depth and breadth defined in MILOs in reference to EQF 2017. All learning activities are fully organized logically while aligning with the MILOs.",
+                    "4": "All learning activities are very well aligned with the suggested MILOs. The content of the Module covers very well the required depth and breadth defined in MILOs in reference to EQF 2017. All learning activities are very well organized logically while aligning with the MILOs.",
+                    "3": "All learning activities are well aligned with the suggested MILOs. The content of the Module covers well the required depth and breadth defined in MILOs in reference to EQF 2017. All learning activities are well organized logically while aligning with the MILOs.",
+                    "2": "The learning activities are not well aligned with the suggested MILOs. The content of the Module does not satisfactory cover the required depth and breadth defined in MILOs in reference to EQF 2017. The learning activities are not satisfactory well organized logically while aligning with the MILOs.",
+                    "1": "The learning activities are not aligned with the suggested MILOs. The content of the Module does not cover the required depth and breadth defined in MILOs in reference to EQF 2017. The learning activities are not organized logically and do not align with the MILOs."
+                }
+            },
+            {
+                "index": "2",
+                "name": "Student-centered \"learning by doing\"",
+                "description": "The learning resource should have a well-planned sequence of activities for ‘active engagement’ that allows the leaners of opportunities for interaction and hands-on, experiential learning. Active learning is any learning activity in which the learner participates or interacts with the learning process, as opposed to passively taking in the information. When given the opportunity to actively engage with the information learners perform better.",
+                "review_question": "The learning activities are logically arranged, aligned with the ILOs, the presented information is sufficient to promote a good understanding of the content covered, and the suggested learning time of the activities seem reasonable.",
+                "metrics": {
+                    "5": "The sequence of activities which encourage students' 'active engagement' are fully well-planned. The learning activities are extremely logically arranged, extremely well aligned with the ILOs, the presented information is fully sufficient to promote a good understanding of the content covered, and the suggested learning time of the activities seem extremely reasonable.",
+                    "4": "The sequence of activities which encourage students' 'active engagement' are very well-planned. The learning activities are very logically arranged, very well aligned with the ILOs, the presented information is very sufficient to promote a good understanding of the content covered, and the suggested learning time of the activities seem very reasonable.",
+                    "3": "The sequence of activities which encourage students' 'active engagement' are well-planned. The learning activities are logically arranged, aligned with the ILOs, the presented information is sufficient to promote a good understanding of the content covered, and the suggested learning time of the activities seem reasonable.",
+                    "2": "The sequence of activities which encourage students' 'active engagement' are not sufficiently well-planned. The learning activities are not logically arranged, and not aligned with the ILOs, the presented information is not sufficient to promote a good understanding of the content covered, and the suggested learning time of the activities does not seem reasonable.",
+                    "1": "The sequence of activities which encourage students' 'active engagement' are not well-planned. The learning activities are badly arranged, and not aligned with the ILOs, the presented information is not acceptable to promote a good understanding of the content covered, and the suggested learning time of the activities seem highly unrealistic."
+                }
+            },
+            {
+                "index": "3",
+                "name": "Accurateness of learning resource (specially theories, formulas/equations and figures)",
+                "description": "Accuracy of the Learning Material is to be assured with respect to the content.",
+                "review_question": "The accuracy of the Learning Material is, as far as you can judge, appropriate with respect to the content and language.",
+                "metrics": {
+                    "5": "The content of the learning resource is (specially theories, formulas/equations and figures) fully accurate. The accuracy of the Learning Material is, as far as can be judged, fully appropriate with respect to the content and language.",
+                    "4": "The content of the learning resource is (specially theories, formulas/equations and figures) very accurate. The accuracy of the Learning Material is, as far as can be judged, very appropriate with respect to the content and language.",
+                    "3": "The content of the learning resource is (specially theories, formulas/equations and figures) accurate. The accuracy of the Learning Material is, as far as can be judged, appropriate with respect to the content and language.",
+                    "2": "The content of the learning resource is (specially theories, formulas/equations and figures) not appropriately accurate. The accuracy of the Learning Material is, as far as can be judged, not appropriate with respect to the content and language.",
+                    "1": "Learning resource contains inaccuracies or errors."
+                }
+            },
+            {
+                "index": "4",
+                "name": "Clarity, reasons and appropriateness of external resources.",
+                "description": "A clear guide to be given in the text on why, what and how the learner should follow the relevant external learning material.",
+                "review_question": "The given explanation/guide on each external learning material clearly indicates why and how the learners should read/listen the material and what they \"take home\" from it.",
+                "metrics": {
+                    "5": "The explanation or (guide) on exactly what (like pages, minutes of a video, etc), why and how the learners should read the relevant external learning material and what they shall retain after reading is fully consistent. The given explanation/guide on each external learning material extremely clearly indicates why and how the learners do read/listen the material and what they 'take home' from it.",
+                    "4": "The explanation or (guide) on exactly what (like pages, minutes of a video, etc), why and how the learners should read the relevant external learning material and what they shall retain after reading is very consistent. The given explanation/guide on each external learning material very clearly indicates why and how the learners do read/listen the material and what they 'take home' from it.",
+                    "3": "The explanation or (guide) on exactly what (like pages, minutes of a video, etc), why and how the learners should read the relevant external learning material and what they shall retain after reading is consistent. The given explanation/guide on each external learning material clearly indicates why and how the learners do read/listen the material and what they 'take home' from it.",
+                    "2": "The explanation or (guide) on exactly what (like pages, minutes of a video, etc), why and how the learners should read the relevant external learning material and what they shall retain after reading is not consistent. The given explanation/guide on each external learning material doesn not clearly indicates why and how the learners do read/listen the material and what they 'take home' from it.",
+                    "1": "External resources lack clear explanations or guidance."
+                }
+            },
+            {
+                "index": "5",
+                "name": "References",
+                "description": "",
+                "review_question": "Conclusions, \"Take Aways\", References, and Acknowledgments are appropriate",
+                "metrics": {
+                    "5": "The conclusions, \"Take Aways\", References, and Acknowledgements are, as far as you can judge, extremely appropriate and extremely well articulated.",
+                    "4": "The conclusions, \"Take Aways\", References, and Acknowledgements are, as far as you can judge, very appropriate and very well articulated.",
+                    "3": "The conclusions, \"Take Aways\", References, and Acknowledgements are, as far as you can judge, appropriate and articulated.",
+                    "2": "The conclusions, \"Take Aways\", References, and Acknowledgements are, as far as you can judge, not appropriate and/or not articulated.",
+                    "1": "The conclusions, \"Take Aways\", References, and Acknowledgements are, as far as you can judge, are (fully or partially) missing"
+                }
+            },
+            {
+                "index": "6",
+                "name": "Learner-centered education",
+                "description": "The goal of a Learner centred pedagogy is to create a learning environment where knowledge is co-constructed by the teacher and students rather than transmitted directly by the teacher.",
+                "review_question": "Does the Module have a student-centered learn-by-doing perspective?",
+                "metrics": {
+                    "5": "The Module has an excellent learner-centered learn-by-doing perspective.",
+                    "4": "The Module has a very good learner-centered learn-by-doing perspective.",
+                    "3": "The Module has an acceptable learner-centered learn-by-doing perspective.",
+                    "2": "The learner-centered learn-by-doing perspective is not evident.",
+                    "1": "The learner-centered learn-by-doing perspective is missing."
+                }
+            },
+            {
+                "index": "7",
+                "name": "Flipped classroom",
+                "description": "A flipped classroom is structured around the idea that lecture or direct instruction is not the best use of class time. Instead students encounter information before class, freeing class time for activities that involve higher order thinking",
+                "review_question": "The Module is characterised by the flipped classroom technique in the sense that it is a stand-alone module, containing both Automatically Corrected Questions and Open-Ended Questions, and it can be read fully self-paced at any time.",
+                "metrics": {
+                    "5": "The Module is excellently characterised by the flipped classroom technique.",
+                    "4": "The Module is very well characterised by the flipped classroom technique.",
+                    "3": "The Module is adequately characterised by the flipped classroom technique.",
+                    "2": "The Module is not characterised by the flipped classroom technique.",
+                    "1": "The flipped classroom perspective does not exist in the module."
+                }
+            }
+        ]
+    },
+    {
+        "scan": "Assessment Scan",
+        "description": "This scan focuses on the quality and effectiveness of formative and summative assessments within the learning resource. It ensures that assessments are aligned with learning outcomes, well-placed, and use a variety of question types.",
+        "criteria": [
+            {
+                "index": "1",
+                "name": "Formative Assessment (FA)",
+                "description": "Formative Assessment is a range of formal and informal assessment procedures conducted by teachers during the learning process in order to improve student. It is better to have several small FAs throughoput the module than a single large one. Assessment tasks should be fit for purpose, meaning that they should address the Module/Lesson ILOs and nothing else.",
+                "review_question": "The Formative Assessments are appropriate to test the achievement of relevant ILOs, and placed at appropriate places in the module.",
+                "metrics": {
+                    "5": "All Formative Assessments are fully appropriate to test the achievements of all the MILOs. All the Formative Assessments are excellently distributed at the appropriate places throughout the module.",
+                    "4": "The very large majority of the Formative Assessments are very appropriate to test the achievements of all the MILOs. The majority of the Formative Assessments are very well distributed at the appropriate places throughout the module.",
+                    "3": "Several of the Formative Assessments are appropriate to test the achievements of all the MILOs. Several of the Formative Assessments are well distributed at the appropriate places throughout the module.",
+                    "2": "Some of the Formative Assessments are somewhat appropriate to test the achievements of all the MILOs. The Formative Assessments are not well distributed at the appropriate places throughout the module.",
+                    "1": "The Formative Assessments are missing or not appropriate to test the achievements of the MILOs."
+                }
+            },
+            {
+                "index": "2",
+                "name": "Type of Formative Assessments: Variety",
+                "description": "Assessments should be diversified in different ways. Automatically corrected questions can be performed in different ways. Please use the different templates that do exist in the Learnify design tool. The Multiple Choice template is very useful, but please also use the \"Fill in the blanks\", the \"Order\" template etc. to create a variation. Please also note that Open-Ended Questions can be very good for getting learners to reflect upon certain aspects, and discuss these between themselves, although these can usually not be automatically corrected.",
+                "review_question": "There is an appropriate diversity of Formative Assessment types of questions in the Module",
+                "metrics": {
+                    "5": "There is an excellent distribution of various types of Formatives Assessments throughout all the questions.",
+                    "4": "There is a very good distribution of various types of Formatives Assessments throughout all the questions.",
+                    "3": "The distribution of various types of Formatives Assessments throughout all the questions is not large.",
+                    "2": "The distribution of various types of Formatives Assessments throughout all the questions is weak.",
+                    "1": "The distribution of various types of Formatives Assessments throughout all the questions is very weak, or even non-existing."
+                }
+            },
+            {
+                "index": "3",
+                "name": "Sufficient number of Formative Assessment questions",
+                "description": "To avoid that all learners receive the same questions, and that learners receive different questions in each attempt, it is recommended to have more questions than the ones presented in each attempt. Have this been considered when designing some of the FAs?",
+                "review_question": "Is the set (number) of Formative Assessments appropriate to allow for several tests without repetition and such that the probability that different learners will receive the same questions is low",
+                "metrics": {
+                    "5": "The number of Formative Assessments is extremely well adapted to allowing for several tests without risk of high repertion of questions and answers.",
+                    "4": "The number of Formative Assessments is very well adapted to allowing for several tests without risk of high repertion of questions and answers.",
+                    "3": "The number of Formative Assessments is well adapted to allowing for several tests without risk of high repertion of questions and answers.",
+                    "2": "The number of Formative Assessments is not well adapted to allowing for several tests without risk of high repertion of questions and answers.",
+                    "1": "The number of Formative Assessments is not at all adapted to allowing for several tests without risk of high repertion of questions and answers."
+                }
+            },
+            {
+                "index": "4",
+                "name": "Summative Assessments",
+                "description": "Summative assessments are used at the end of a unit to evaluate student learning in order to assess if they pass or fail the learning unit. It is important that Summative Assessments are included, identifying the combined knowledge at the end of the learning resource",
+                "review_question": "The number, diversity and types of Summative Assessments are appropriate and correspond to the MILOs, as well as the RBTL (Revised Bloom's Taxonomy Level), presented.",
+                "metrics": {
+                    "5": "The number, diversity and types of Summative Assessments are extremely appropriate for the MILOs. They correspond extremely well the the presented RBTL.",
+                    "4": "The number, diversity and types of Summative Assessments are very appropriate for the MILOs. They correspond very well the the presented RBTL.",
+                    "3": "The number, diversity and types of Summative Assessments are appropriate for the MILOs. They correspond well the the presented RBTL.",
+                    "2": "The number, diversity and types of Summative Assessments are not very appropriate for the MILOs. They do not correspond well to the presented RBTL.",
+                    "1": "The number, diversity and types of Summative Assessments are not at all appropriate for the MILOs. They correspond not at all to the presented RBTL."
+                }
+            },
+            {
+                "index": "5",
+                "name": "Grading criteria",
+                "description": "Grading criteria should be clear and consistent. Providing a clear grading scale and criteria can help learners perform better and prevent confusion or frustration about their grades.",
+                "review_question": "Is information about grading scale and grading criteria transparent and easily accessable?",
+                "metrics": {
+                    "5": "The information about the grading scale and grading criteria is extremely transparent and excellently accessible.",
+                    "4": "The information about the grading scale and grading criteria is very transparent and very accessible.",
+                    "3": "The information about the grading scale and grading criteria is transparent and accessible.",
+                    "2": "The information about the grading scale and grading criteria is not transparent and/or not easily accessible.",
+                    "1": "There is no information about the grading scale and grading criteria."
+                }
+            }
+        ]
+    },
+    {
+        "scan": "Multimedia Scan",
+        "description": "This scan assesses the quality and eiectiveness of multimedia components used in the learning resource. It covers aspects like video length, image quality, audio clarity, and accessibility standards.",
+        "criteria": [
+            {
+                "index": "1",
+                "name": "Length of Videos",
+                "description": "General research suggests that a video of 5–7 minutes is optimal for learner attention.",
+                "review_question": "Are the videos of appropriate length and do they clearly indicate expected time (min/sec or hours/min)?",
+                "metrics": {
+                    "5": "All videos have extremely clear time indications; all videos are within recommended length.",
+                    "4": "All videos have very clear time indications; most videos are within recommended length.",
+                    "3": "Videos have clear time indications; video lengths are acceptable though not always optimal.",
+                    "2": "Only some videos have time indications; many exceed recommended length.",
+                    "1": "No time indications for videos; lengths inappropriate."
+                }
+            },
+            {
+                "index": "2",
+                "name": "Clarity and Quality of Learning Content",
+                "description": "Learners should understand Why, What, and How before engaging with materials. Pictures/figures must have meaningful descriptions, audio should be clear, reflection activities should be provided, navigation must be consistent, and links should be updated.",
+                "review_question": "Are the content materials (videos, readings, images, activities) clear, meaningful, well-guided, and supportive of learning?",
+                "metrics": {
+                    "5": "Instructions (Why, What, How) are extremely clear; images and descriptions are highly relevant; reflection activities are meaningful; navigation is seamless; all links work.",
+                    "4": "Instructions are very clear; images and descriptions are relevant; reflection activities are useful; navigation mostly seamless; most links work.",
+                    "3": "Instructions are clear; images and descriptions are good; reflection activities present but basic; navigation clear; most links functional.",
+                    "2": "Instructions are vague; images and descriptions unclear; reflection activities weak or missing; navigation inconsistent; many broken links.",
+                    "1": "No instructions, unclear or missing images, no reflection activities, poor navigation, broken/missing links."
+                }
+            },
+            {
+                "index": "3",
+                "name": "Accuracy of assessment questions",
+                "description": "All assessment questions must be ensured to be correct.",
+                "review_question": "Are the assessment questions, as far as you have looked upon them, correct?",
+                "metrics": {
+                    "5": "The answers to the assessment questions identified as \"correct\" are extremely clear and correct as per fact check",
+                    "4": "The answers to the assessment questions identified as \"correct\" are very clear and correct as per fact check",
+                    "3": "The answers to the assessment questions identified as \"correct\" are clear and correct as per fact check",
+                    "2": "Some answers to the assessment questions identified as \"correct\" seem to be inaccurate as per fact check.",
+                    "1": "Several answers to the assessment questions identified as \"correct\" seem to be inaccurate as per fact check."
+                }
+            }
+        ]
+    },
+    {
+        "scan": "Certificate Scan",
+        "description": "This scan focuses on the clarity, completeness, and accuracy of the certificate provided to learners. It ensures that the certificate includes all the necessary information and meets the required standards.",
+        "criteria": [
+            {
+                "index": "1",
+                "name": "Clarity and completeness of the certificate: Text and \"EEDA Supplement page\"",
+                "description": "Criterion self-explanatory. No further description needed",
+                "review_question": "Does the certificate have the right text, clearly representing the module/lesson/topic etc? Does it include the two \"EEDA Supplement\" pages?",
+                "metrics": {
+                    "5": "The certificate has exactly the same title as the title of the module. It includes the two \"EEDA Supplement pages\"",
+                    "4": "The certificate has exactly the same title as the title of the module. It does however not include the two \"EEDA Supplement pages\"",
+                    "3": "The certificate has not the same title as the title of the module. It does not include the two \"EEDA Supplement pages\"",
+                    "2": "The title of the certificate does not seem to correspond at all with the title of the module.",
+                    "1": "There is no certificate"
+                }
+            }
+        ]
+    },
+    {
+        "scan": "Summary Scan",
+        "description": "This scan evaluates the originality, relevance, structure, clarity, and overall quality of a learning resource. It assesses whether the material is complete, methodologically sound, well-referenced, and capable of generating meaningful impact for learners.",
+        "criteria": [
+            {
+                "index": "1",
+                "name": "Originality",
+                "description": "Originality means that the learning unit is not a direct repetition of learning resources already existing in the EEDA Learnify repository. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Does the resource present, as far as you can judge, original content compared to material already existing in the repository?",
+                "metrics": {
+                    "5": "The module presents an exemplary new original content compared to other similar learning resources found.",
+                    "4": "The module presents a very new original content compared to other similar learning resources found",
+                    "3": "The module presents a new original content compared to other similar learning resources found",
+                    "2": "The module does not present a new original content compared to other similar learning resources found.",
+                    "1": "The module does not seem to present any new content compared to other similar learning resources found."
+                }
+            },
+            {
+                "index": "2",
+                "name": "Engineering relevance",
+                "description": "Engineering relevance means that the learning unit considers engineering perspectives. It should be pointed out that not all learning units must have such a relevance to be of high relevance to EEDA as EEDA also covers broader perspectives than pure engineering. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Does the learning resource have an engineering relevance?",
+                "metrics": {
+                    "5": "The learning resource has an extremely high engineering relevance",
+                    "4": "The learning resource has a very high engineering relevance",
+                    "3": "The learning resource has a high engineering relevance",
+                    "2": "The learning resource does not have a high engineering relevance",
+                    "1": "The learning resource does not have any engineering relevance"
+                }
+            },
+            {
+                "index": "3",
+                "name": "Scientific relevance",
+                "description": "Scientific relevance means that the learning unit considers scientific perspectives. It should be pointed out that not all educational units must have such a relevance to be of high relevance to EEDA as EEDA also covers broader perspectives than what is usually associated with pure science. However, \"science\" should here be interpreted in a broad sense, from technical to societal and humanity. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Does the learning resource have a scientific relevance?",
+                "metrics": {
+                    "5": "The learning resource has an extremely high scientific relevance",
+                    "4": "The learning resource has a very high scientific relevance",
+                    "3": "The learning resource has a high scientific relevance",
+                    "2": "The learning resource does not have a high scientific relevance",
+                    "1": "The learning resource does not have any scientific relevance"
+                }
+            },
+            {
+                "index": "4",
+                "name": "Completeness",
+                "description": "A learning material should be complete in the sense that it covers all the intentions expressed in the abstract as well as the Intended Learning Outcomes. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Is the learning material complete as per the expressed abstract, intended learning outcomes, etc?",
+                "metrics": {
+                    "5": "The learning material is extremely complete as regards to the identification in the abstract and the Intended Learning Outcomes.",
+                    "4": "The learning material is very complete as regards to the identification in the abstract and the Intended Learning Outcomes.",
+                    "3": "The learning material is fairly complete as regards to the identification in the abstract and the Intended Learning Outcomes.",
+                    "2": "The learning material is not complete as regards to the identification in the abstract and the Intended Learning Outcomes.",
+                    "1": "The learning material is highly incomplete as regards to the identification in the abstract and the Intended Learning Outcomes."
+                }
+            },
+            {
+                "index": "5",
+                "name": "References & Acknowledgement",
+                "description": "Proper references to previous work and related existing (in the Learnify repository) learning units is important in all pedagogical work. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Are there appropriate references to work by others?",
+                "metrics": {
+                    "5": "The references given to work by others is extremely complete",
+                    "4": "The references given to work by others is very complete",
+                    "3": "The references given to work by others is complete",
+                    "2": "The references given to work by others is not complete",
+                    "1": "The references given to work by others is highly incomplete"
+                }
+            },
+            {
+                "index": "6",
+                "name": "Organization",
+                "description": "A learning unit has to be well structured, ensuring a logical buildup of the material, going from easy to more advanced perspectives. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Is the material presented well structured?",
+                "metrics": {
+                    "5": "The learning material presented is extremely well structured",
+                    "4": "The learning material presented is very well structured",
+                    "3": "The learning material presented is well structured",
+                    "2": "The learning material presented is not well structured",
+                    "1": "The learning material presented is very unstructured"
+                }
+            },
+            {
+                "index": "7",
+                "name": "Clarity of presentation, writing, videos, pictures, language, copyright considerations, …",
+                "description": "All the material presented must be clear and understandable language without complications. Copyrights must be properly referred to. The reasons for introducing reading material, videos and pictures must be clearly given, and the expected lengths of assimilating reading material and videos identified. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Is the way the material is presented appropriate?",
+                "metrics": {
+                    "5": "The writing of the text and the language used, as well as the pictures used, have extremely high clarity.",
+                    "4": "The writing of the text and the language used, as well as the pictures used, have a very high clarity.",
+                    "3": "The writing of the text and the language used, as well as the pictures used, have a high clarity.",
+                    "2": "The writing of the text and the language used, as well as the pictures used, have insufficient clarity.",
+                    "1": "The writing of the text and the language used, as well as the pictures used, have very insufficient clarity."
+                }
+            },
+            {
+                "index": "8",
+                "name": "Methodology",
+                "description": "The build-up of the presented material must be methodological and have a clear \"red line\" through it. The method of the build-up, going from a general introduction and deeper into the material, must be identified. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Are the learning activities appropriate to reach the expressed goals?",
+                "metrics": {
+                    "5": "The methodology of the learning activities proposed is extremely well adapted towards the abstract and Intended Learning Outcomes.",
+                    "4": "The methodology of the learning activities proposed is very well adapted towards the abstract and Intended Learning Outcomes.",
+                    "3": "The methodology of the learning activities proposed is well adapted towards the abstract and Intended Learning Outcomes.",
+                    "2": "The methodology of the learning activities proposed is not very well adapted towards the abstract and Intended Learning Outcomes.",
+                    "1": "The methodology of the learning activities proposed is highly unsufficiently adapted towards the abstract and Intended Learning Outcomes."
+                }
+            },
+            {
+                "index": "9",
+                "name": "Impact",
+                "description": "The expressed learning outcomes must indicate an impact, in one way or another, on the graduate from the learning unit. The question is Yes/No for the self-evaluation, and a grading for the review.",
+                "review_question": "Are the learning activities appropriate to reach the expressed goals?",
+                "metrics": {
+                    "5": "The impact of the learning outcomes, expressed related to the intentions, upon graduation from the learning resource is extremely high",
+                    "4": "The impact of the learning outcomes, expressed related to the intentions, upon graduation from the learning resource is very high",
+                    "3": "The impact of the learning outcomes, expressed related to the intentions, upon graduation from the learning resource is high",
+                    "2": "The impact of the learning outcomes, expressed related to the intentions, upon graduation from the learning resource is not very high",
+                    "1": "The impact of the learning outcomes, expressed related to the intentions, upon graduation from the learning resource is insufficient high"
+                }
+            }
+        ]
+    }
+]
