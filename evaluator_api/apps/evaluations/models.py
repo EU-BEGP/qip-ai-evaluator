@@ -84,6 +84,7 @@ class Module(models.Model):
     """Represents a unique learning resource (URL) shared across the platform."""
 
     course_key = models.CharField(max_length=100, unique=True)
+    course_link = models.CharField(max_length=500, blank=True, default='')
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

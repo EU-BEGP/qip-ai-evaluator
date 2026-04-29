@@ -8,7 +8,7 @@ from django.test import TestCase
 
 from apps.evaluations.models import Evaluation, Module, Rubric, Scan, UserModule
 from apps.evaluations.services.life_cycle_service import LifecycleService
-from apps.evaluations.tests.conftest import COURSE_KEY, ensure_rubric, make_evaluation, make_user
+from apps.evaluations.tests.conftest import COURSE_KEY, COURSE_LINK, ensure_rubric, make_evaluation, make_user
 
 
 class EvaluationCreationTest(TestCase):
@@ -25,6 +25,7 @@ class EvaluationCreationTest(TestCase):
 
         self.assertEqual(Module.objects.count(), 1)
         self.assertEqual(module.course_key, COURSE_KEY)
+        self.assertEqual(module.course_link, COURSE_LINK)
         self.assertTrue(UserModule.objects.filter(user=self.user, module=module).exists())
 
     def test_evaluation_has_correct_status_and_links(self):

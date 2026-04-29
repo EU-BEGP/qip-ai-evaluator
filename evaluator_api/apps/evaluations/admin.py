@@ -8,8 +8,8 @@ from .models import Module, Evaluation, Scan, UserModule, Rubric
 
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
-    list_display = ('id', 'course_key', 'title', 'updated_at')
-    search_fields = ('course_key', 'title')
+    list_display = ('id', 'course_key', 'course_link', 'title', 'updated_at')
+    search_fields = ('course_key', 'course_link', 'title')
 
 
 @admin.register(UserModule)

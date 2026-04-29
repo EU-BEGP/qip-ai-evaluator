@@ -19,6 +19,7 @@ from apps.evaluations.serializers.overview_serializers import (
 from apps.evaluations.services.rag_service import RagService
 from apps.evaluations.services.overview_service import DashboardService
 from apps.evaluations.services.life_cycle_service import LifecycleService
+from apps.evaluations.utils import extract_learnify_code
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,8 @@ class EvaluationHistoryListView(generics.GenericAPIView):
         input_serializer = self.get_serializer(data=request.data)
         input_serializer.is_valid(raise_exception=True)
 
-        clean_key = input_serializer.validated_data['course_link'].split('?')[0]
+        clean_link = input_serializer.validated_data['course_link'].split('?')[0]
+        clean_key = extract_learnify_code(clean_link)
         queryset = (
             Evaluation.objects
             .filter(module__course_key=clean_key)
@@ -123,7 +125,7 @@ class LinkModuleView(generics.GenericAPIView):
                 {"error": "Access denied. You do not have permission to view this module."},
                 status=status.HTTP_403_FORBIDDEN
             )
-        data = {"course_link": evaluation.module.course_key}
+        data = {"course_link": evaluation.module.course_link}
         serializer = self.get_serializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

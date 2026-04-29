@@ -11,6 +11,7 @@ from django.urls import reverse
 
 from apps.evaluations.models import Module, UserModule, Evaluation, Scan, Rubric
 from apps.evaluations.services.rag_service import RagService
+from apps.evaluations.utils import extract_learnify_code
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +20,17 @@ class LifecycleService:
     """Manages the creation and state of module evaluations."""
 
     @staticmethod
-    def ensure_module_access(user, course_key):
+    def ensure_module_access(user, course_link):
         """Links the module to the user's dashboard."""
 
-        clean_key = course_key.split('?')[0]
-        module, _ = Module.objects.get_or_create(course_key=clean_key)
+        clean_link = course_link.split('?')[0]
+        short_key = extract_learnify_code(clean_link)
+        if not short_key:
+            raise ValueError(f"Could not extract module key from: {course_link}")
+        module, _ = Module.objects.get_or_create(course_key=short_key)
+        if not module.course_link:
+            module.course_link = clean_link
+            module.save(update_fields=['course_link'])
         UserModule.objects.update_or_create(user=user, module=module)
         logger.info(f"Verified module access for user ID {user.id} to module ID {module.id}")
         return module

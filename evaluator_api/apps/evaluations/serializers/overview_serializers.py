@@ -11,7 +11,7 @@ from apps.evaluations.services.overview_service import DashboardService
 class DashboardModuleSerializer(serializers.ModelSerializer):
     """Serializer to represent the overview of a module on the dashboard."""
 
-    link = serializers.CharField(source='course_key')
+    link = serializers.CharField(source='course_link')
     last_modify = serializers.CharField(read_only=True)
     last_evaluation = serializers.CharField(read_only=True)
     last_average = serializers.FloatField(read_only=True)

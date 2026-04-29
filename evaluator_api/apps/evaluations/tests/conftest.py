@@ -11,7 +11,8 @@ from apps.evaluations.models import Rubric
 from apps.evaluations.services.life_cycle_service import LifecycleService
 
 User = get_user_model()
-COURSE_KEY = "https://time.learnify.se/l/show.html#att/68K7V"
+COURSE_LINK = "https://time.learnify.se/l/show.html#att/68K7V"
+COURSE_KEY = "68K7V"
 
 _RUBRIC_PATH = Path(__file__).resolve().parent.parent / "rubrics" / "rubric.json"
 
@@ -34,7 +35,7 @@ def make_user(email="user@test.com", password="pass"):
     return User.objects.create_user(email=email, password=password)
 
 
-def make_evaluation(user, course_key=COURSE_KEY):
-    module = LifecycleService.ensure_module_access(user, course_key)
+def make_evaluation(user, course_link=COURSE_LINK):
+    module = LifecycleService.ensure_module_access(user, course_link)
     evaluation, _ = LifecycleService.get_or_create_evaluation_structure(module, user)
     return module, evaluation
