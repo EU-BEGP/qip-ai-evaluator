@@ -3,29 +3,27 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 from django.urls import path
-from . import views
+from .views import assessment_views, evaluation_views, overview_views, reports_views
+
 
 urlpatterns = [
-    # Core
-    path('evaluate/', views.start_evaluation, name='start_evaluation'),
-    
-    # Lists & Dashboard
-    path('list_evaluations/', views.list_evaluations, name='list_evaluations'),
-    path('modules/<str:email>/', views.get_user_modules, name='get_user_modules'),
-    
-    # Status & Details
-    path('evaluation_ids/<int:pk>/', views.get_evaluation_ids, name='get_evaluation_ids'),
-    path('link_module/<int:pk>/', views.get_module_link, name='get_module_link'),
-    path('evaluation_status/module/<int:pk>/', views.evaluation_status_module, name='evaluation_status_module'),
-    path('evaluation_status/scan/<int:pk>/', views.evaluation_status_scan, name='evaluation_status_scan'),
-    
-    # Results JSON
-    path('evaluation_detail/module/<int:pk>/', views.evaluation_detail_module, name='evaluation_detail_module'),
-    path('evaluation_detail/scan/<int:pk>/', views.evaluation_detail_scan, name='evaluation_detail_scan'),
-    
-    # Reports
-    path('download_pdf/<int:pk>/', views.download_evaluation_pdf, name='download_evaluation_pdf'),
-    
-    # Webhook
-    path('callback/', views.evaluation_callback, name='evaluation_callback'),
+    # EVALUATION LIFECYCLE
+    path('evaluate/', evaluation_views.StartEvaluationView.as_view(), name='start_evaluation'),
+    path('evaluation_status/module/<int:pk>/', evaluation_views.EvaluationStatusView.as_view(), name='evaluation_status_module'),
+    path('evaluation_status/scan/<int:pk>/', evaluation_views.ScanStatusView.as_view(), name='evaluation_status_scan'),
+    path('callback/', evaluation_views.EvaluationCallbackView.as_view(), name='evaluation_callback'),
+
+    # RESULTS
+    path('evaluation_detail/module/<int:pk>/', assessment_views.ResultDetailView.as_view(), {'model_type': 'module'}, name='evaluation_detail_module'),
+    path('evaluation_detail/scan/<int:pk>/', assessment_views.ResultDetailView.as_view(), {'model_type': 'scan'}, name='evaluation_detail_scan'),
+
+    # DASHBOARD & LISTS
+    path('modules/', overview_views.DashboardListView.as_view(), name='get_user_modules'),
+    path('list_evaluations/', overview_views.EvaluationHistoryListView.as_view(), name='list_evaluations'),
+    path('evaluation_ids/<int:pk>/', overview_views.EvaluationStatusByIdView.as_view(), name='get_evaluation_ids'),
+    path('link_module/<int:pk>/', overview_views.LinkModuleView.as_view(), name='get_module_link'),
+    path('basic_information/<int:pk>/', overview_views.EvaluationBasicInfoView.as_view(), name='get_evaluation_basic_info'),
+
+    # REPORTS
+    path('download_pdf/<int:pk>/', reports_views.ReportDownloadView.as_view(), name='download_evaluation_pdf'),
 ]
