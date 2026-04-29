@@ -49,7 +49,6 @@ export class NotificationService {
 
   getNotifications(email: string): Observable<Notification[]> {
     let URL = `${config.api.baseUrl}${config.api.notifications.mailbox}`;
-    URL = URL.replace('{email}', email);
 
     this.loaderService.show();
 
@@ -63,7 +62,6 @@ export class NotificationService {
 
   getUnreadNotificationsQuantity(email: string): Observable<UnreadCount> {
     let URL = `${config.api.baseUrl}${config.api.notifications.unreadQuantity}`;
-    URL = URL.replace('{email}', email);
 
     return this.http.get<UnreadCount>(URL).pipe(
       catchError((err) => throwError(() => err))

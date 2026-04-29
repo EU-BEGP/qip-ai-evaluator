@@ -180,7 +180,6 @@ export class EvaluationService {
 
   getModules(email: string): Observable<ModuleDashboardItem[]> {
     let URL = `${config.api.baseUrl}${config.api.evaluation.modulesList}`;
-    URL = URL.replace('{email}', email);
     this.loaderService.show();
 
     return this.http.get<ModuleDashboardItem[]>(URL).pipe(

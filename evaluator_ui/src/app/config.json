@@ -24,13 +24,13 @@
       "statusScan": "evaluations/evaluation_status/scan/{id}/",
       "idsList": "evaluations/evaluation_ids/{id}/",
       "linkModule": "evaluations/link_module/{id}/",
-      "modulesList": "evaluations/modules/{email}/",
+      "modulesList": "evaluations/modules/",
       "basicInformation": "evaluations/basic_information/{id}/"
     },
     "notifications": {
       "read": "notifications/read_message/",
-      "mailbox": "notifications/user_mailbox/{email}/",
-      "unreadQuantity": "notifications/notifications_unread/{email}/"
+      "mailbox": "notifications/user_mailbox/",
+      "unreadQuantity": "notifications/notifications_unread/"
     },
     "extra": {
       "download": "evaluations/download_pdf/{id}/"
