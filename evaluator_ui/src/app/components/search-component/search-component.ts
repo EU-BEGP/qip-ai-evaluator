@@ -100,7 +100,6 @@ export class SearchComponent implements OnInit, DoCheck, OnChanges {
   evaluate(): void {
     const scanRequest: ScanRequest = { 
       course_link: this.linkModule,
-      email: localStorage.getItem('accountEmail')!,
       scan_name: this.tab
     }
 

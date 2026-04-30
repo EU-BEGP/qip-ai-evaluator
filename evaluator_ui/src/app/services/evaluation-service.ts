@@ -46,7 +46,7 @@ export class EvaluationService {
     };
   }
 
-  evaluate(scanRequest: ScanRequest): Observable<HttpResponse<EvaluateResponse>> {
+  evaluate(scanRequest: ScanRequest, showToastr: boolean = true): Observable<HttpResponse<EvaluateResponse>> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
     const body = scanRequest;
     this.loaderService.show();
@@ -57,11 +57,15 @@ export class EvaluationService {
         if (scanId !== undefined) {
           this.storageService.addEvaluation(String(scanId), body.scan_name);
         }
-        this.toastr.success('Evaluation request successfully submitted.', 'Success');
+        if (showToastr) {
+          this.toastr.success('Evaluation request successfully submitted.', 'Success');
+        }
         this.loaderService.hide();
       }),
       catchError((err) => {
-        this.toastr.error('Please try again later.', 'Error');
+        if (showToastr) {
+          this.toastr.error('Please try again later.', 'Error');
+        }
         this.loaderService.hide();
         return throwError(() => err);
       })

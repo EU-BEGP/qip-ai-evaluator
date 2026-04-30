@@ -20,6 +20,12 @@ import { ToastrService } from 'ngx-toastr';
 import { ModuleDashboardItem } from '../../interfaces/module-dashboard-item';
 import { EvaluationListItem } from '../../interfaces/evaluation-list-item';
 import { PageTitleComponent } from '../../components/page-title-component/page-title-component';
+import { LoaderService } from '../../services/loader-service';
+import { firstValueFrom } from 'rxjs/internal/firstValueFrom';
+import { Observable } from 'rxjs';
+import { Scan } from '../../interfaces/scan';
+import { HttpResponse } from '@angular/common/http';
+import { EvaluateResponse } from '../../interfaces/evaluate-response';
 
 @Component({
   selector: 'app-modules',
@@ -51,7 +57,9 @@ export class Modules implements OnInit {
   constructor(
     private evaluationService: EvaluationService,
     private router: Router,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private loaderService: LoaderService,
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
@@ -59,7 +67,6 @@ export class Modules implements OnInit {
 
     this.newEvalForm = this.fb.group({
       courseLink: [{ value: '', disabled: false }, Validators.required],
-      scanName: ['', Validators.required]
     });
 
     this.evaluationService.getModules(this.email).subscribe({
@@ -73,14 +80,9 @@ export class Modules implements OnInit {
     return this.newEvalForm.controls['courseLink'];
   }
 
-  get scanNameControl() {
-    return this.newEvalForm.controls['scanName'];
-  }
-
   onClickCard(link: string, index: number) {
     const scanRequest: ScanRequest = { 
       course_link: link,
-      email: this.email,
       scan_name: 'All Scans'
     }
     
@@ -108,30 +110,24 @@ export class Modules implements OnInit {
     this.showNewEvalModal = true;
 
     const courseControl = this.newEvalForm.get('courseLink');
-    const scanControl = this.newEvalForm.get('scanName');
 
     courseControl!.setValue(courseLink || '');
-    if (courseLink) {
-      courseControl!.disable();
-    }  
-    else {
-      courseControl!.enable();
-    }
-  
-    scanControl!.setValue(scan || '');
   }
 
   closeNewEvalModal() {
     this.showNewEvalModal = false;
-    const courseControl = this.newEvalForm.get('courseLink');
-    courseControl!.enable();
     this.newEvalForm.reset();
   }
 
-  evaluateNew() {
+  async evaluateNew() {
     if (this.newEvalForm.valid) {
-      this.evaluate();
+      const evaluationId = await this.initAssessment();
       this.closeNewEvalModal();
+      if (evaluationId) {
+        this.router.navigate(['/evaluation', evaluationId], {
+          queryParams: { scan: 'All Scans' }
+        });
+      }
     }
   }
 
@@ -143,28 +139,41 @@ export class Modules implements OnInit {
     });
   }
 
-  evaluate(): void {
-    const courseLink = this.newEvalForm.get('courseLink')?.value;
-    const scanName = this.newEvalForm.get('scanName')?.value;
-
+  evaluate(scanName: string, courseLink: string): Observable<HttpResponse<EvaluateResponse>> {
     const scanRequest: ScanRequest = { 
       course_link: courseLink,
-      email: this.email,
       scan_name: scanName
     }
 
-    this.evaluationService.evaluate(scanRequest).subscribe({
-      next: (response) => {
-        const evaluationId = response.body?.evaluation_id;
-        if (evaluationId !== undefined) {
-          this.router.navigate(['/evaluation', evaluationId], {
-            queryParams: { scan: scanRequest.scan_name }
-          });
-        }
-      },
-      error: (error) => {
-        console.error('Evaluation error:', error);
+    return this.evaluationService.evaluate(scanRequest, false);
+  }
+
+  initAssessment(): Promise<number | undefined> {
+    this.loaderService.show();
+    const courseLink = this.newEvalForm.get('courseLink')?.value;
+    const scansToEvaluate = this.getScans();
+    const evaluationRequests = scansToEvaluate.map(scan => 
+      firstValueFrom(this.evaluate(scan, courseLink))
+    );
+
+    return Promise.allSettled(evaluationRequests).then((results) => {
+      this.loaderService.hide();
+      const anyFailed = results.some(r => r.status === 'rejected');
+      if (anyFailed) {
+        results.filter(r => r.status === 'rejected')
+          .forEach(r => console.error('Batch evaluation error:', (r as PromiseRejectedResult).reason));
+        this.toastr.error('Something went wrong initializing the evaluation.', 'Error');
+      } else {
+        this.toastr.success('The evaluation was initialized successfully.', 'Success');
       }
+      const firstFulfilled = results.find(
+        (r): r is PromiseFulfilledResult<HttpResponse<EvaluateResponse>> => r.status === 'fulfilled'
+      );
+      return firstFulfilled?.value?.body?.evaluation_id ?? undefined;
     });
+  }
+
+  private getScans(): string[] {
+    return this.scans.slice(1);
   }
 }

@@ -15,24 +15,11 @@
       <form [formGroup]="newEvalForm" (ngSubmit)="evaluateNew()" class="p-0">
         <mat-form-field appearance="fill" class="w-100">
           <mat-label>Course Link</mat-label>
-          <input matInput formControlName="courseLink" placeholder="https://time.learnify.se/l/show.html#att/OYJPG">
+          <input matInput formControlName="courseLink" [readonly]="disableCourseLink" placeholder="https://time.learnify.se/l/show.html#att/OYJPG">
           @if (courseLinkControl.invalid) {
             <mat-error>You must enter a course link.</mat-error>
           }
         </mat-form-field>
-
-        <mat-form-field appearance="fill" class="w-100">
-          <mat-label>Scan</mat-label>
-          <mat-select formControlName="scanName">
-            @for (scan of scans; track scan) {
-              <mat-option [value]="scan">{{ scan }}</mat-option>
-            }
-          </mat-select>
-          @if (scanNameControl.invalid) {
-            <mat-error>You must select a scan.</mat-error>
-          }
-        </mat-form-field>
-
         <div class="d-flex justify-content-end gap-2 mt-3">
           <button mat-stroked-button (click)="closeNewEvalModal()">Cancel</button>
           <button mat-raised-button color="primary" type="submit">Evaluate</button>
