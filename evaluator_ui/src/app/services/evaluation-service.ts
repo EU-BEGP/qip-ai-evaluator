@@ -46,10 +46,13 @@ export class EvaluationService {
     };
   }
 
-  evaluate(scanRequest: ScanRequest, showToastr: boolean = true): Observable<HttpResponse<EvaluateResponse>> {
+  evaluate(scanRequest: ScanRequest, showToastr: boolean = true, showLoader: boolean = true): Observable<HttpResponse<EvaluateResponse>> {
     const URL = `${config.api.baseUrl}${config.api.evaluation.evaluate}`;
     const body = scanRequest;
-    this.loaderService.show();
+
+    if (showLoader) {
+      this.loaderService.show();
+    }
 
     return this.http.post<EvaluateResponse>(URL, body, this.httpOptions).pipe(
       tap((response: HttpResponse<EvaluateResponse>) => {
@@ -60,14 +63,17 @@ export class EvaluationService {
         if (showToastr) {
           this.toastr.success('Evaluation request successfully submitted.', 'Success');
         }
-        this.loaderService.hide();
       }),
       catchError((err) => {
         if (showToastr) {
           this.toastr.error('Please try again later.', 'Error');
         }
-        this.loaderService.hide();
         return throwError(() => err);
+      }),
+      finalize(() => {
+        if (showLoader) {
+          this.loaderService.hide();
+        }
       })
     );
   }

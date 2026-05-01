@@ -121,13 +121,15 @@ export class Modules implements OnInit {
 
   async evaluateNew() {
     if (this.newEvalForm.valid) {
+      this.loaderService.show();
       const evaluationId = await this.initAssessment();
       this.closeNewEvalModal();
       if (evaluationId) {
-        this.router.navigate(['/evaluation', evaluationId], {
+        await this.router.navigate(['/evaluation', evaluationId], {
           queryParams: { scan: 'All Scans' }
         });
       }
+      this.loaderService.hide();
     }
   }
 
@@ -145,11 +147,10 @@ export class Modules implements OnInit {
       scan_name: scanName
     }
 
-    return this.evaluationService.evaluate(scanRequest, false);
+    return this.evaluationService.evaluate(scanRequest, false, false);
   }
 
   initAssessment(): Promise<number | undefined> {
-    this.loaderService.show();
     const courseLink = this.newEvalForm.get('courseLink')?.value;
     const scansToEvaluate = this.getScans();
     const evaluationRequests = scansToEvaluate.map(scan => 
@@ -157,7 +158,6 @@ export class Modules implements OnInit {
     );
 
     return Promise.allSettled(evaluationRequests).then((results) => {
-      this.loaderService.hide();
       const anyFailed = results.some(r => r.status === 'rejected');
       if (anyFailed) {
         results.filter(r => r.status === 'rejected')
