@@ -3,6 +3,7 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 import logging
+import time
 from celery import shared_task
 
 from django.db.models import Count
@@ -12,6 +13,9 @@ from apps.evaluations.services.life_cycle_service import LifecycleService
 from apps.evaluations.services.rag_service import RagService
 
 logger = logging.getLogger(__name__)
+
+WATCHDOG_INACTIVITY_TIMEOUT = 5 * 60  # Seconds of silence before a scan is considered STUCK
+WATCHDOG_CACHE_KEY = "watchdog:last_activity:{}"
 
 
 @shared_task
@@ -88,35 +92,71 @@ def async_trigger_rag_evaluation(self, evaluation_id, scans_to_run, payload):
 
 @shared_task
 def async_check_evaluation_timeout(evaluation_id, scans_to_run):
-    """Checks if scans are still stuck in IN_PROGRESS after a timeout period and marks them as FAILED."""
+    """
+    Heartbeat watchdog: fires INACTIVITY_TIMEOUT seconds after the last criterion result.
+    Reschedules itself while progress continues; triggers failure only on true silence.
+    """
 
+    from django.core.cache import cache
     from apps.evaluations.services.webhooks_service import WebhookHandlerService
 
-    logger.info(f"Watchdog checking for timeout on Evaluation ID {evaluation_id}")
+    cache_key = WATCHDOG_CACHE_KEY.format(evaluation_id)
 
     try:
-        stuck_scans = Scan.objects.filter(
+        evaluation = Evaluation.objects.get(id=evaluation_id)
+    except Evaluation.DoesNotExist:
+        cache.delete(cache_key)
+        logger.warning(f"Watchdog: Evaluation {evaluation_id} not found. Exiting.")
+        return
+
+    terminal = {Evaluation.Status.COMPLETED, Evaluation.Status.FAILED}
+    if evaluation.status in terminal:
+        cache.delete(cache_key)
+        logger.info(f"Watchdog cleared for Evaluation {evaluation_id} (status={evaluation.status}).")
+        return
+
+    # Check for scans that haven't finished yet (PENDING or IN_PROGRESS)
+    active_scans = list(
+        Scan.objects.filter(
             evaluation_id=evaluation_id,
             scan_type__in=scans_to_run,
-            status=Scan.Status.IN_PROGRESS
+        ).exclude(
+            status__in=[Scan.Status.COMPLETED, Scan.Status.FAILED]
+        ).values_list("scan_type", flat=True)
+    )
+
+    if not active_scans:
+        cache.delete(cache_key)
+        logger.info(f"Watchdog cleared for Evaluation {evaluation_id}. All scans finished.")
+        return
+
+    last_activity = cache.get(cache_key)
+
+    if last_activity is None:
+        elapsed = WATCHDOG_INACTIVITY_TIMEOUT
+    else:
+        elapsed = time.time() - last_activity
+
+    if elapsed >= WATCHDOG_INACTIVITY_TIMEOUT:
+        logger.error(
+            f"Watchdog triggered! Scans {active_scans} inactive for {elapsed:.0f}s "
+            f"on Evaluation {evaluation_id}. Marking as FAILED."
         )
-
-        if stuck_scans.exists():
-            logger.error(
-                f"Watchdog triggered! Scans {scans_to_run} timed out for Evaluation {evaluation_id}. Marking as FAILED."
-            )
-            evaluation = Evaluation.objects.get(id=evaluation_id)
-            timeout_payload = {
-                "scan_names": scans_to_run,
-                "error": "The AI service took too long to respond (Timeout)."
-            }
-            WebhookHandlerService._handle_failure(evaluation, timeout_payload)
-
-        else:
-            logger.info(f"Watchdog cleared for Evaluation ID {evaluation_id}. No stuck scans found.")
-
-    except Exception as e:
-        logger.error(f"Error in Watchdog task for Evaluation {evaluation_id}: {str(e)}")
+        WebhookHandlerService._handle_failure(evaluation, {
+            "scan_names": active_scans,
+            "error": f"AI service timed out after {WATCHDOG_INACTIVITY_TIMEOUT // 60} minutes of inactivity.",
+        })
+        cache.delete(cache_key)
+    else:
+        remaining = WATCHDOG_INACTIVITY_TIMEOUT - elapsed
+        async_check_evaluation_timeout.apply_async(
+            args=[evaluation_id, scans_to_run],
+            countdown=int(remaining) + 10,
+        )
+        logger.info(
+            f"Watchdog rescheduled for Evaluation {evaluation_id} "
+            f"in {int(remaining) + 10}s (last activity {elapsed:.0f}s ago)."
+        )
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 3, "countdown": 5 * 60})

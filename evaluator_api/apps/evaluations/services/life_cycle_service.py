@@ -41,6 +41,7 @@ class LifecycleService:
         """Builds the core evaluation structure."""
 
         logger.info(f"Initiating evaluation structure check for module ID {module.id} by user ID {user.id}")
+        locked_module = Module.objects.select_for_update().get(id=module.id)
 
         active_rubric = Rubric.objects.first()
         if not active_rubric:
@@ -49,24 +50,24 @@ class LifecycleService:
 
         latest_eval = (
             Evaluation.objects
-            .filter(module=module)
+            .filter(module=locked_module)
             .only("status", "evaluated_at", "id")
             .order_by("-created_at")
             .first()
         )
 
-        if not LifecycleService._requires_new_evaluation(module, latest_eval):
-            logger.info(f"Reusing existing evaluation ID {latest_eval.id} for module ID {module.id}")
+        if not LifecycleService._requires_new_evaluation(locked_module, latest_eval):
+            logger.info(f"Reusing existing evaluation ID {latest_eval.id} for module ID {locked_module.id}")
             return latest_eval, False
 
         evaluation = Evaluation.objects.create(
-            module=module,
+            module=locked_module,
             triggered_by=user,
             rubric=active_rubric,
             status=Evaluation.Status.NOT_STARTED,
-            title=module.title or "New Evaluation",
+            title=locked_module.title or "New Evaluation",
         )
-        logger.info(f"Created new evaluation ID {evaluation.id} for module ID {module.id}")
+        logger.info(f"Created new evaluation ID {evaluation.id} for module ID {locked_module.id}")
 
         LifecycleService._build_scans(evaluation, active_rubric)
         LifecycleService._sync_module_metadata(evaluation)
@@ -306,11 +307,16 @@ class LifecycleService:
             "existing_snapshot": evaluation.document_snapshot or None,
         }
 
+        from django.core.cache import cache
+        import time
+        from apps.evaluations.tasks import WATCHDOG_INACTIVITY_TIMEOUT, WATCHDOG_CACHE_KEY
+
         async_trigger_rag_evaluation.delay(evaluation.id, scans_to_run, payload)
         logger.info(f"RAG trigger task queued to Celery for evaluation ID {evaluation.id}")
 
-        async_check_evaluation_timeout.apply_async(args=[evaluation.id, scans_to_run], countdown=1200)
-        logger.info(f"Timeout Watchdog armed for 20 minutes for evaluation ID {evaluation.id}")
+        cache.set(WATCHDOG_CACHE_KEY.format(evaluation.id), time.time(), timeout=7200)
+        async_check_evaluation_timeout.apply_async(args=[evaluation.id, scans_to_run], countdown=WATCHDOG_INACTIVITY_TIMEOUT)
+        logger.info(f"Watchdog armed for Evaluation {evaluation.id} (inactivity timeout={WATCHDOG_INACTIVITY_TIMEOUT}s).")
 
         return {
             "message": "Evaluation started.",

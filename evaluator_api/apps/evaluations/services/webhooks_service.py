@@ -52,14 +52,16 @@ class WebhookHandlerService:
             )
             if updated:
                 evaluation.document_snapshot = result
-                # Release the generation lock early so retrying tasks pick up the
-                # snapshot on their next attempt instead of waiting for TTL expiry.
                 cache.delete(f"snapshot:lock:{evaluation.id}")
         return "Snapshot saved"
 
     @staticmethod
     def _handle_interim_progress(evaluation, data):
         """Marks a single scan COMPLETED when its result arrives, then checks overall status."""
+
+        import time
+        from django.core.cache import cache
+        from apps.evaluations.tasks import WATCHDOG_CACHE_KEY
 
         result = data.get('result')
         if not result or 'content' not in result:
@@ -76,6 +78,7 @@ class WebhookHandlerService:
                 defaults={'status': Scan.Status.IN_PROGRESS, 'result_json': result}
             )
             WebhookHandlerService._merge_scan_results(evaluation, [scan_data])
+        cache.set(WATCHDOG_CACHE_KEY.format(evaluation.id), time.time(), timeout=7200)
 
         return "Interim progress saved"
 
