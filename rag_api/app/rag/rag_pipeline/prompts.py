@@ -35,7 +35,6 @@ def build_snapshot_prompt(full_text: str) -> str:
         '  "IntendedLearningOutcomesKnowledge": "...",\n'
         '  "IntendedLearningOutcomesSkills": "...",\n'
         '  "IntendedLearningOutcomesResponsibility": "...",\n'
-        '  "Outline": ["Title 1", "Subtitle 1.1", "Subtitle 1.2", "..."],\n'
         '  "ImportantInformation": ["Verbatim sentence 1", "Verbatim sentence 2", "...", "Up to 7"]\n'
         '  "elh": "...",\n'
         '  "eqf": "...",\n'
@@ -54,58 +53,35 @@ def build_evaluation_prompt(criterion: Dict, doc_text: str, kb_text: str,
     """
 
     return (
-        "You are an EXPERT AND CONFIDENT academic evaluator.\n"
-        "DO NOT TAKE POINTS UNLESS THERE IS A CLEAR REASON. DO NOT MAKE STRONG DEDUCTIONS.\n"
-        "Do not deduct points for minor issues or ambiguities if the core concept is present.\n"
-        "Evaluate the DOCUMENT against the criterion STRICTLY and ONLY using the RUBRIC.\n\n"
+        "You are an expert academic evaluator.\n"
+        "Evaluate the DOCUMENT against the CRITERION using the RUBRIC.\n"
+        "Be fair and AVOID STRONG DEDUCTIONS unless clearly justified.\n\n"
 
-        "### CONTEXT INTERPRETATION:\n"
-        "- The 'DOCUMENT SNAPSHOT' is a silent helper only — do NOT mention 'Snapshot' or 'Knowledge Base' in your output.\n"
-        "- If you find information in the Snapshot, treat it as found directly in the Document.\n\n"
+        "OUTPUT FORMAT — return ONLY valid JSON with these keys:\n"
+        "Name (string)\n"
+        "Shortcomings (array[string])\n"
+        "Recommendations (array[string])\n"
+        "Deductions (array[float])\n"
+        "Description (string)\n\n"
 
-        "### REQUIRED OUTPUT — MANDATORY RULES:\n"
-        "Return ONLY a valid JSON object with EXACTLY these 5 keys (exact names, exact types):\n\n"
-        '  "Name"            string   — the criterion name\n'
-        '  "Shortcomings"    array of strings — plain text only, NEVER numbers or nested lists\n'
-        '  "Recommendations" array of strings — plain text only, NEVER numbers or nested lists\n'
-        '  "Deductions"      array of numbers — negative floats only (e.g. -0.5), NEVER positive numbers, NEVER text or lists\n'
-        '  "Description"     string   — concise summary of the full analysis\n\n'
+        "RULE — TRIPLETS:\n"
+        "Each issue MUST produce exactly one:\n"
+        "Shortcoming + Recommendation + Deduction.\n"
+        "Arrays must have equal length.\n\n"
 
-        "CRITICAL: Shortcomings, Recommendations, and Deductions MUST have IDENTICAL length.\n"
-        "  Index i must correspond: Shortcomings[i] ↔ Recommendations[i] ↔ Deductions[i]\n"
-        "  Deductions must be NEGATIVE numbers (e.g. -0.5, -1.0). Never use positive values.\n"
-        "  Sum of all Deductions must not exceed -5.0 in total. Maximum score is 5.0, minimum is 0.0.\n"
-        "  Putting numbers inside Recommendations or text inside Deductions causes task failure.\n\n"
+        "SCORING:\n"
+        "Start from 5.0 and subtract deductions.\n"
+        "Minor: -0.1 to -0.5\n"
+        "Moderate: -0.5 to -1.0\n"
+        "Major: up to -4.0\n\n"
 
-        "### EXAMPLE — with shortcomings:\n"
-        "{\n"
-        '  "Name": "Assessment Design",\n'
-        '  "Shortcomings": ["Missing formative assessments", "No grading rubric provided"],\n'
-        '  "Recommendations": ["Add at least 2 formative checkpoints", "Include a grading rubric with criteria"],\n'
-        '  "Deductions": [-0.5, -1.0],\n'
-        '  "Description": "The module lacks formative assessments and does not provide grading criteria."\n'
-        "}\n\n"
+        "If no issues:\n"
+        'Shortcomings=["NO SHORTCOMINGS"], '
+        'Recommendations=["NO RECOMMENDATIONS"], '
+        "Deductions=[0.0]\n\n"
 
-        "### EXAMPLE — no shortcomings (perfect score):\n"
-        "{\n"
-        '  "Name": "Assessment Design",\n'
-        '  "Shortcomings": ["NO SHORTCOMINGS"],\n'
-        '  "Recommendations": ["NO RECOMMENDATIONS"],\n'
-        '  "Deductions": [0.0],\n'
-        '  "Description": "The module fully meets all requirements for this criterion."\n'
-        "}\n\n"
-
-        "### EVALUATION INSTRUCTIONS:\n"
-        "1. Read the CRITERION and DOCUMENT carefully. Find the relevant sections in the document.\n"
-        "2. Start from 5.0 and subtract partial points for each shortcoming found.\n"
-        "3. For EACH shortcoming: one Recommendation (text) and one Deduction (negative number).\n"
-        "4. Use proportional deductions depending on severity:\n"
-        "   - Minor issue: 0.1 - 0.5 points\n"
-        "   - Moderate issue: 0.5 - 1 points\n"
-        "   - Major issue: up to 4 points\n"
-        "5. Be lenient: if the document mostly satisfies the criterion, apply only small deductions.\n"
-        "6. If no shortcomings exist, use the no-shortcomings example above exactly.\n"
-        "7. Finish with a Description string summarizing the analysis.\n\n"
+        "IMPORTANT:\n"
+        "The DOCUMENT SNAPSHOT and KNOWLEDGE BASE are helpers. Do not mention them.\n\n"
 
         f"### Criterion:\n{json.dumps(criterion, indent=2)}\n\n"
         f"### DOCUMENT:\n{doc_text}\n\n"

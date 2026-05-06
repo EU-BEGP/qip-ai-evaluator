@@ -11,7 +11,7 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def build_unified_payload(status: str, course_key: str, result: any, error: Optional[str] = None, evaluation_id: Optional[str] = None, user_id: Optional[str] = None) -> dict:
+def build_unified_payload(status: str, course_key: str, result: any, error: Optional[str] = None, evaluation_id: Optional[str] = None, user_id: Optional[str] = None, run_id: Optional[str] = None) -> dict:
     """Build the standard response payload used by all callbacks."""
 
     payload = {
@@ -26,11 +26,13 @@ def build_unified_payload(status: str, course_key: str, result: any, error: Opti
         payload["user_id"] = user_id
     if error:
         payload["error"] = error
+    if run_id:
+        payload["run_id"] = run_id
 
     return payload
 
 
-def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: str, evaluation_id: Optional[str], qip_user_id: Optional[str]) -> None:
+def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: str, evaluation_id: Optional[str], qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
     """Send a SNAPSHOT_CREATED callback with the generated document digest."""
 
     payload = build_unified_payload(
@@ -39,6 +41,7 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
         result=snapshot_text,
         evaluation_id=evaluation_id,
         user_id=qip_user_id,
+        run_id=run_id,
     )
     headers = {
         "Content-Type": "application/json",
@@ -52,7 +55,7 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
         logger.warning(f"[{evaluation_id}] Failed to send snapshot callback: {e}")
 
 
-def send_interim_callback(callback_url: str, interim_json: dict, course_key: str, evaluation_id: Optional[str], qip_user_id: Optional[str]) -> None:
+def send_interim_callback(callback_url: str, interim_json: dict, course_key: str, evaluation_id: Optional[str], qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
     """Send a CRITERION_COMPLETE callback after each criterion is evaluated."""
 
     payload = build_unified_payload(
@@ -61,6 +64,7 @@ def send_interim_callback(callback_url: str, interim_json: dict, course_key: str
         result=interim_json,
         evaluation_id=evaluation_id,
         user_id=qip_user_id,
+        run_id=run_id,
     )
     headers = {
         "Content-Type": "application/json",
@@ -74,9 +78,9 @@ def send_interim_callback(callback_url: str, interim_json: dict, course_key: str
         logger.warning(f"[{evaluation_id}] Failed to send interim callback: {e}")
 
 
-def send_callback(callback_url: str, course_key: str, status: str, results: Optional[dict], error: Optional[str], evaluation_id: Optional[str], qip_user_id: Optional[str], scan_names: Optional[List[str]] = None) -> None:
+def send_callback(callback_url: str, course_key: str, status: str, results: Optional[dict], error: Optional[str], evaluation_id: Optional[str], qip_user_id: Optional[str], scan_names: Optional[List[str]] = None, run_id: Optional[str] = None) -> None:
     """Send the final COMPLETE or FAILED status callback."""
-    
+
     payload = build_unified_payload(
         status=status,
         course_key=course_key,
@@ -84,6 +88,7 @@ def send_callback(callback_url: str, course_key: str, status: str, results: Opti
         error=error,
         evaluation_id=evaluation_id,
         user_id=qip_user_id,
+        run_id=run_id,
     )
 
     if scan_names:

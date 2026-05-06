@@ -46,63 +46,6 @@ def _next_key_rotation() -> List[str]:
     return _shared_keys[idx:] + _shared_keys[:idx]
 
 
-def _sanitize_criterion_json(raw: dict) -> dict:
-    """
-    Normalize common LLM deviations before Pydantic validates CriterionEvaluation.
-    Handles: wrong field names, nested lists inside string lists, mismatched lengths.
-    """
-
-    aliases = {
-        "Name": ["name", "criterion_name", "criterion"],
-        "Shortcomings": ["shortcomings", "shortcoming", "issues", "problems", "weaknesses", "flaws"],
-        "Recommendations": ["recommendations", "recommendation", "suggestions", "improvements"],
-        "Deductions": ["deductions", "deduction", "penalties", "penalty", "point_deductions", "score_deductions", "scores"],
-        "Description": ["description", "summary", "analysis", "overview", "conclusion", "overall_analysis"],
-    }
-    raw_lower = {k.lower(): v for k, v in raw.items()}
-    out = {}
-    for canonical, alts in aliases.items():
-        if canonical in raw:
-            out[canonical] = raw[canonical]
-        else:
-            for alt in alts:
-                if alt in raw_lower:
-                    out[canonical] = raw_lower[alt]
-                    break
-
-    for field in ("Shortcomings", "Recommendations"):
-        if isinstance(out.get(field), list):
-            out[field] = [
-                ", ".join(str(x) for x in v) if isinstance(v, list) else str(v)
-                for v in out[field]
-            ]
-
-    if isinstance(out.get("Deductions"), list):
-        coerced = []
-        for v in out["Deductions"]:
-            try:
-                coerced.append(float(v))
-            except (ValueError, TypeError):
-                coerced.append(0.0)
-        coerced = [-abs(v) for v in coerced]
-        total = sum(coerced)
-        if total < -5.0:
-            scale = -5.0 / total
-            coerced = [round(v * scale, 2) for v in coerced]
-        out["Deductions"] = coerced
-
-    s = out.get("Shortcomings") if isinstance(out.get("Shortcomings"), list) else []
-    r = out.get("Recommendations") if isinstance(out.get("Recommendations"), list) else []
-    d = out.get("Deductions") if isinstance(out.get("Deductions"), list) else []
-    if s and r and d:
-        min_len = min(len(s), len(r), len(d))
-        out["Shortcomings"] = s[:min_len]
-        out["Recommendations"] = r[:min_len]
-        out["Deductions"] = d[:min_len]
-
-    return out
-
-
 class CriterionEvaluation(BaseModel):
     """Structured output for a single criterion evaluation."""
 
@@ -113,13 +56,19 @@ class CriterionEvaluation(BaseModel):
     Description: str = Field(..., description="Summary of the overall analysis")
 
     @model_validator(mode="after")
-    def check_lengths(self) -> "CriterionEvaluation":
+    def check_validity(self) -> "CriterionEvaluation":
         s, r, d = self.Shortcomings, self.Recommendations, self.Deductions
         if not (len(s) == len(r) == len(d)):
             raise ValueError(
                 f"List length mismatch: Shortcomings={len(s)}, "
                 f"Recommendations={len(r)}, Deductions={len(d)}. All must match."
             )
+        if not self.Description or not self.Description.strip():
+            raise ValueError("Description cannot be empty.")
+        if not s and not r and not d:
+            self.Shortcomings = ["NO SHORTCOMINGS"]
+            self.Recommendations = ["NO RECOMMENDATIONS"]
+            self.Deductions = [0.0]
         return self
 
 
@@ -237,12 +186,7 @@ class GroqWrapper(BaseLLMWrapper):
         if output_model:
             try:
                 clean_text = text_result.replace("```json", "").replace("```", "").strip()
-                if mode == "criterion":
-                    raw_dict = json.loads(clean_text)
-                    raw_dict = _sanitize_criterion_json(raw_dict)
-                    validated = output_model.model_validate(raw_dict)
-                else:
-                    validated = output_model.model_validate_json(clean_text)
+                validated = output_model.model_validate_json(clean_text)
                 if mode == "snapshot":
                     return validated.model_dump_json(indent=2)
                 return validated

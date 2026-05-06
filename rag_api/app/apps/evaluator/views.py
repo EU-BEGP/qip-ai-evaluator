@@ -10,11 +10,12 @@ from rest_framework.response import Response
 from rag.rag_pipeline.content_evaluator import ContentEvaluator
 from .init_knowledge import build_knowledge_base_auto
 from .serializers import (
+    CancelEvaluationSerializer,
     EvaluateModuleSerializer,
     ModuleLastModifiedSerializer,
     ModuleMetadataSerializer,
 )
-from .tasks import run_evaluation_task
+from .tasks import EVAL_CANCELLED_KEY, _get_redis, run_evaluation_task
 from .utils import extract_learnify_code
 
 logger = logging.getLogger(__name__)
@@ -49,6 +50,7 @@ class EvaluateModuleView(generics.GenericAPIView):
             scan_names=data["scan_names"],
             previous_evaluation=data["previous_evaluation"],
             existing_snapshot=data["existing_snapshot"],
+            run_id=data["run_id"],
         )
 
         response_payload = {
@@ -62,6 +64,22 @@ class EvaluateModuleView(generics.GenericAPIView):
             response_payload["user_id"] = data["qip_user_id"]
 
         return Response(response_payload, status=status.HTTP_202_ACCEPTED)
+
+
+class CancelEvaluationView(generics.GenericAPIView):
+    """Set a cancel flag for a running evaluation task identified by run_id."""
+
+    serializer_class = CancelEvaluationSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        run_id = serializer.validated_data["run_id"]
+
+        _get_redis().set(EVAL_CANCELLED_KEY.format(run_id), "1", ex=3600)
+        logger.info(f"Cancel flag set for run_id={run_id}")
+
+        return Response({"status": "CANCEL_REQUESTED", "run_id": run_id}, status=status.HTTP_200_OK)
 
 
 class ModuleLastModifiedView(generics.GenericAPIView):

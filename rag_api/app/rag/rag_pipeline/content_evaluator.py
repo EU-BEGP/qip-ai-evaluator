@@ -69,7 +69,6 @@ class ContentEvaluator:
         """
 
         self.document_chunks = documents
-        self.rag.set_documents(documents)
 
         if existing_snapshot:
             logger.info("Reusing provided document snapshot.")
@@ -113,7 +112,7 @@ class ContentEvaluator:
     def _retrieve_top_document_chunks(self, query: str, k_doc: int) -> List[Document]:
         """Retrieve top-K document chunks via CrossEncoderRAG ranking."""
 
-        ranked = self.rag.rank_chunks(query, top_k=k_doc)
+        ranked = self.rag.rank_chunks(query, documents=self.document_chunks, top_k=k_doc)
         return [doc for doc, _, _ in ranked]
 
     def _retrieve_knowledge_base_chunks(self, query: str, top_chunks: List[Document], k_kb: int) -> List[Document]:
@@ -210,7 +209,7 @@ class ContentEvaluator:
 
                 rubric_description = self.criteria_manager.get_criterion_description(
                     current_scan_name, c["name"]
-                )
+                ) or "No description."
                 crit = {
                     "key": f"{current_scan_name}:{c['name']}",
                     "name": c["name"],
@@ -253,11 +252,12 @@ class ContentEvaluator:
 
                 if success and res:
                     eval_obj = res["evaluation"]
+                    deductions = [-abs(d) for d in eval_obj.Deductions]
                     shortcomings_with_deductions = [
                         f"{s} {d:.1f}"
-                        for s, d in zip(eval_obj.Shortcomings, eval_obj.Deductions)
+                        for s, d in zip(eval_obj.Shortcomings, deductions)
                     ]
-                    final_score = round(max(0.0, 5.0 + sum(eval_obj.Deductions)), 2)
+                    final_score = round(max(0.0, 5.0 + sum(deductions)), 2)
 
                     self.results.setdefault(current_scan_name, {})[crit["name"]] = {
                         "description": rubric_description,

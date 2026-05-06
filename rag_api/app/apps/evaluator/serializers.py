@@ -15,6 +15,13 @@ class EvaluateModuleSerializer(serializers.Serializer):
     scan_names = serializers.ListField(child=serializers.CharField(), required=False, allow_null=True, default=None)
     previous_evaluation = serializers.JSONField(required=False, allow_null=True, default=None)
     existing_snapshot = serializers.CharField(required=False, allow_null=True, allow_blank=True, default=None)
+    run_id = serializers.CharField(required=False, allow_null=True, allow_blank=True, default=None)
+
+
+class CancelEvaluationSerializer(serializers.Serializer):
+    """Validates input for cancelling a running evaluation task by run_id."""
+
+    run_id = serializers.CharField()
 
 
 class ModuleLastModifiedSerializer(serializers.Serializer):
