@@ -35,6 +35,10 @@ class WebhookHandlerService:
         if not handler:
             raise ValueError(f"Unknown webhook status: {status_cb}")
 
+        run_id = data.get("run_id")
+        if status_cb == "FAILED":
+            return WebhookHandlerService._handle_failure(evaluation, data, run_id=run_id)
+
         return handler(evaluation, data)
 
     @staticmethod
@@ -131,8 +135,10 @@ class WebhookHandlerService:
         return "Completed processed"
 
     @staticmethod
-    def _handle_failure(evaluation, data):
+    def _handle_failure(evaluation, data, run_id=None):
         """Cleans up failed scans and registers error states."""
+
+        from apps.evaluations.tasks import async_cancel_rag_evaluation
 
         failed_scans = data.get('scan_names', [])
 
@@ -149,6 +155,9 @@ class WebhookHandlerService:
         evaluation.error_message = data.get('error', "Unknown error")
         evaluation.save(update_fields=['error_message', 'result_json'])
         WebhookHandlerService._check_and_update_status(evaluation)
+
+        if run_id:
+            async_cancel_rag_evaluation.delay(run_id)
 
         return "Failure processed (Partial)"
 

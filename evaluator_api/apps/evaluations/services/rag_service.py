@@ -137,9 +137,23 @@ class RagService:
             return {key: None for key in course_keys}
 
     @staticmethod
+    def cancel_evaluation(run_id):
+        """Sends a best-effort cancel signal to the RAG API for the given run. Never raises."""
+
+        url = getattr(settings, 'RAG_API_CANCEL_URL', None)
+        if not url:
+            logger.error("RAG_API_CANCEL_URL is not configured — cannot cancel run")
+            return
+        try:
+            requests.post(url, json={"run_id": run_id}, timeout=10)
+            logger.info(f"Cancel signal sent for run_id {run_id}")
+        except Exception as e:
+            logger.warning(f"Cancel signal failed for run_id {run_id}: {e}")
+
+    @staticmethod
     def trigger_evaluation(payload):
         """Dispatches the evaluation task to the external RAG system."""
-        
+
         evaluation_id = payload.get('evaluation_id')
         logger.info(f"Dispatching evaluation task to RAG API for evaluation ID {evaluation_id}")
         try:

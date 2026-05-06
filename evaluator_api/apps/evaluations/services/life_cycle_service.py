@@ -260,7 +260,7 @@ class LifecycleService:
     def start_evaluation_process(evaluation, scan_name, user):
         """Orchestrates scan preparation, database updates, and queues the RAG webhook task."""
 
-        from apps.evaluations.tasks import (async_trigger_rag_evaluation, async_check_evaluation_timeout)
+        from apps.evaluations.tasks import async_trigger_rag_evaluation
 
         logger.info(f"Starting evaluation process for evaluation ID {evaluation.id} triggered by user ID {user.id}")
         target_scans, final_scan_id, is_all_scans = LifecycleService._get_target_scans_and_id(evaluation, scan_name)
@@ -307,16 +307,9 @@ class LifecycleService:
             "existing_snapshot": evaluation.document_snapshot or None,
         }
 
-        from django.core.cache import cache
-        import time
-        from apps.evaluations.tasks import WATCHDOG_INACTIVITY_TIMEOUT, WATCHDOG_CACHE_KEY
-
+        # Watchdog is armed 
         async_trigger_rag_evaluation.delay(evaluation.id, scans_to_run, payload)
         logger.info(f"RAG trigger task queued to Celery for evaluation ID {evaluation.id}")
-
-        cache.set(WATCHDOG_CACHE_KEY.format(evaluation.id), time.time(), timeout=7200)
-        async_check_evaluation_timeout.apply_async(args=[evaluation.id, scans_to_run], countdown=WATCHDOG_INACTIVITY_TIMEOUT)
-        logger.info(f"Watchdog armed for Evaluation {evaluation.id} (inactivity timeout={WATCHDOG_INACTIVITY_TIMEOUT}s).")
 
         return {
             "message": "Evaluation started.",

@@ -4,8 +4,10 @@
 
 import logging
 import time
+import uuid
 from celery import shared_task
 
+from django.core.cache import cache
 from django.db.models import Count
 from django.db import transaction
 from apps.evaluations.models import Evaluation, Scan, Module
@@ -80,9 +82,20 @@ def async_trigger_rag_evaluation(self, evaluation_id, scans_to_run, payload):
             raise self.retry(countdown=10)
         logger.info(f"[Eval {evaluation_id}] Snapshot lock acquired — this task will generate the snapshot")
 
+    run_id = str(uuid.uuid4())
+    payload["run_id"] = run_id
+
     try:
         RagService.trigger_evaluation(payload)
-        logger.info(f"[Eval {evaluation_id}] RAG triggered successfully")
+        logger.info(f"[Eval {evaluation_id}] RAG triggered successfully (run_id={run_id})")
+
+        # Arm watchdog
+        cache.set(WATCHDOG_CACHE_KEY.format(evaluation_id), time.time(), timeout=7200)
+        async_check_evaluation_timeout.apply_async(
+            args=[evaluation_id, scans_to_run, run_id],
+            countdown=WATCHDOG_INACTIVITY_TIMEOUT,
+        )
+        logger.info(f"Watchdog armed for Evaluation {evaluation_id} (run_id={run_id})")
 
     except Exception as e:
         logger.error(f"[Eval {evaluation_id}] RAG trigger failed: {e}")
@@ -91,7 +104,7 @@ def async_trigger_rag_evaluation(self, evaluation_id, scans_to_run, payload):
 
 
 @shared_task
-def async_check_evaluation_timeout(evaluation_id, scans_to_run):
+def async_check_evaluation_timeout(evaluation_id, scans_to_run, run_id=None):
     """
     Heartbeat watchdog: fires INACTIVITY_TIMEOUT seconds after the last criterion result.
     Reschedules itself while progress continues; triggers failure only on true silence.
@@ -145,18 +158,28 @@ def async_check_evaluation_timeout(evaluation_id, scans_to_run):
         WebhookHandlerService._handle_failure(evaluation, {
             "scan_names": active_scans,
             "error": f"AI service timed out after {WATCHDOG_INACTIVITY_TIMEOUT // 60} minutes of inactivity.",
-        })
+        }, run_id=run_id)
         cache.delete(cache_key)
     else:
         remaining = WATCHDOG_INACTIVITY_TIMEOUT - elapsed
         async_check_evaluation_timeout.apply_async(
-            args=[evaluation_id, scans_to_run],
+            args=[evaluation_id, scans_to_run, run_id],
             countdown=int(remaining) + 10,
         )
         logger.info(
             f"Watchdog rescheduled for Evaluation {evaluation_id} "
             f"in {int(remaining) + 10}s (last activity {elapsed:.0f}s ago)."
         )
+
+
+@shared_task
+def async_cancel_rag_evaluation(run_id):
+    """Sends a cancel signal to the RAG API for the given run_id."""
+    
+    if not run_id:
+        logger.warning("async_cancel_rag_evaluation called with no run_id — nothing to cancel.")
+        return
+    RagService.cancel_evaluation(run_id)
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_kwargs={"max_retries": 3, "countdown": 5 * 60})
