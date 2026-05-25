@@ -25,21 +25,16 @@ class AuthService:
         
         payload = {"email": email, "password": password}
         
-        try:
-            logger.info("Attempting remote login")
-            logger.debug(f"Remote login for {email}")
-            response = requests.post(url, json=payload, timeout=10)
+        logger.info("Attempting remote login")
+        logger.debug(f"Remote login for {email}")
+        response = requests.post(url, json=payload, timeout=10)
 
-            if response.status_code == 200:
-                logger.info(f"Remote login successful.")
-                return response.json().get('token')
-            
-            logger.warning(f"Failed remote login for user: {response.status_code}")
-            return None
-        
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Connection error during Book4RLab login: {str(e)}")
-            return None
+        if response.status_code == 200:
+            logger.info(f"Remote login successful.")
+            return response.json().get('token')
+
+        logger.warning(f"Failed remote login for user: {response.status_code}")
+        return None
 
     @staticmethod
     def user_get_and_sync(external_token):
@@ -52,56 +47,41 @@ class AuthService:
         
         headers = {'Authorization': f'token {external_token}'}
         
-        try:
-            response = requests.get(url, headers=headers, timeout=10)
-            if response.status_code != 200:
-                logger.error(f"Failed to fetch profile. Status: {response.status_code}")
-                return None
-            
-            data = response.json()
-            email = data.get('email')
-
-            if not email:
-                logger.error("External profile response missing 'email'.")
-                return None
-
-            user, created = User.objects.update_or_create(
-                email=email,
-                defaults={
-                    'first_name': data.get('name', ''),
-                    'last_name': data.get('last_name', ''),
-                    'country': data.get('country', ''),
-                    'time_zone': data.get('time_zone', ''),
-                    'external_id': data.get('id'),
-                }
-            )
-            
-            if created:
-                logger.info(f"Created new local user")
-
-            else:
-                updated_fields = []
-
-                retrieved_fields = [
-                    ('first_name', data.get('name', '')),
-                    ('last_name', data.get('last_name', '')),
-                    ('country', data.get('country', '')),
-                    ('time_zone', data.get('time_zone', '')),
-                ]
-
-                for field, value in retrieved_fields:
-                    if getattr(user, field) != value:
-                        setattr(user, field, value)
-                        updated_fields.append(field)
-
-                if updated_fields:
-                    user.save(update_fields = updated_fields)
-                    logger.info("Synchronized changed fields for user")
-                else:
-                    logger.debug(f"No changes detected for user {email}. Skipping database update.")
-                
-            return user
-        
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Profile Sync Error: {e}")
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch profile. Status: {response.status_code}")
             return None
+
+        data = response.json()
+        email = data.get('email')
+
+        if not email:
+            logger.error("External profile response missing 'email'.")
+            return None
+
+        user, created = User.objects.get_or_create(email=email)
+
+        if created:
+            logger.info(f"Created new local user")
+
+        fields_to_sync = [
+            ('first_name', data.get('name', '')),
+            ('last_name', data.get('last_name', '')),
+            ('country', data.get('country', '')),
+            ('time_zone', data.get('time_zone', '')),
+            ('external_id', data.get('id')),
+        ]
+
+        updated_fields = []
+        for field, value in fields_to_sync:
+            if getattr(user, field) != value:
+                setattr(user, field, value)
+                updated_fields.append(field)
+
+        if updated_fields:
+            user.save(update_fields=updated_fields)
+            logger.info("Synchronized changed fields for user")
+        elif not created:
+            logger.debug(f"No changes detected for user {email}. Skipping database update.")
+
+        return user

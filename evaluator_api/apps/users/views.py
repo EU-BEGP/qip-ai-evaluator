@@ -3,6 +3,7 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 import logging
+import requests
 
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -31,12 +32,28 @@ class Book4RLabLoginView(generics.GenericAPIView):
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        external_token = AuthService.user_remote_login(email, password)
+        try:
+            external_token = AuthService.user_remote_login(email, password)
+        except requests.exceptions.RequestException:
+            logger.warning("External auth service unreachable.")
+            return Response(
+                {"error": "Authentication service is temporarily unavailable. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         if not external_token:
             logger.warning("External auth rejected for user.")
-            return Response({"error": "Invalid credentials in Book4RLab"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": "Please make sure the credentials are correct."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        user = AuthService.user_get_and_sync(external_token)
+        try:
+            user = AuthService.user_get_and_sync(external_token)
+        except requests.exceptions.RequestException:
+            logger.warning("External auth service unreachable.")
+            return Response(
+                {"error": "Authentication service is temporarily unavailable. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         if not user:
             logger.error("Profile sync failed after successful login.")
             return Response({"error": "Failed to sync user profile"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
