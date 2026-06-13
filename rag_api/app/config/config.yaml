@@ -1,7 +1,7 @@
 document_processing:
   text_splitter:
     chunk_size: 350
-    chunk_overlap: 50
+    chunk_overlap: 25
     max_chunks: null
     separators:
       - "\n\n"
@@ -14,19 +14,12 @@ document_processing:
     token_encoding: "cl100k_base"
 
   embeddings:
-    model_name: "sentence-transformers/all-MiniLM-L6-v2"
+    model_name: "ibm-granite/granite-embedding-97m-multilingual-r2"
     use_gpu: true
     hf_token: "${HF_TOKEN}"
 
 vector_store:
   path: "data/vector_store"
-
-llm_settings:
-   wrapper: "groq"
-   processing_llm:
-     model: "meta-llama/llama-4-scout-17b-16e-instruct"
-     temperature: 0.0
-     top_p: 0.1
 
 debug_mode: false
 
@@ -47,3 +40,60 @@ memory:
 knowledge:
   kb_dir: "resources/knowledge_base"
   criteria_file: "resources/criteria_files/FinalCriteria.docx"
+
+retrieval:
+  min_candidates_per_ranker: 30          # Module side: Floor per ranker (BM25/dense); actual = max(this, 2x budget capacity)
+  kb_candidates_per_ranker: 30           # KB side: fixed count each ranker (BM25/dense) fetches
+  max_rerank_candidates: 500             # Cap on fused candidates sent to the cross-encoder
+  rrf_k: 60                              # RRF fusion constant merging BM25 + dense ranks
+  cross_encoder_model: "cross-encoder/ms-marco-MiniLM-L6-v2"
+  module_chunk_token_budget: 10000       # Max module tokens sent to the LLM: if the whole module fits, send every chunk (no retrieval); if it exceeds this, switch to hybrid RAG (retrieve + rerank to fit)
+  use_kb: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LLM SETTINGS
+#
+# Top-level keys:
+#   wrapper            Provider to use: "groq" or "openai".
+#   criteria_per_call  Evaluation batch size — how many criteria per LLM call.
+#   default_llm        REQUIRED. Base config used as-is for any task without an
+#                      override, and as the base that overrides are merged onto.
+#   task_overrides     OPTIONAL. Per-task tweaks merged onto default_llm — list
+#                      only the keys that differ. Recognized tasks:
+#                        evaluation  → criterion scoring
+#                        snapshot    → module digest
+#                        metadata    → metadata extraction
+#
+# Keys allowed in default_llm and in each task override:
+#   model                  string, REQUIRED
+#   temperature            float  (default 0.0)
+#   top_p                  float  (default 1.0)
+#   reasoning_effort       "low" | "medium" | "high"   (reasoning models only)
+#   max_completion_tokens  int — cap on output tokens
+#
+#
+# Alternative provider (Groq) with a per-task override:
+#   llm_settings:
+#     wrapper: "groq"
+#     criteria_per_call: 4
+#     default_llm:
+#       model: "meta-llama/llama-4-scout-17b-16e-instruct"
+#       temperature: 0.1
+#       top_p: 0.1
+#     task_overrides:
+#       snapshot:
+#         temperature: 0.0        # inherits model/top_p from default_llm
+# ─────────────────────────────────────────────────────────────────────────────
+llm_settings:
+  wrapper: "openai"
+  criteria_per_call: 3
+  default_llm:                           # base for snapshot, metadata, and any fallback
+    model: "gpt-5.4-nano"
+    temperature: 0.0
+    top_p: 1.0
+    reasoning_effort: "low"
+    max_completion_tokens: 4096
+  task_overrides:
+    evaluation:                          # judgment-heavy → deeper reasoning
+      reasoning_effort: "high"
+# ─────────────────────────────────────────────────────────────────────────────
