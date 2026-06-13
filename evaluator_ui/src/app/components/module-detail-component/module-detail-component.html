@@ -13,7 +13,7 @@
         <app-evaluation-circle-component [obtained]="scanInformation.scan_average!" [max]="scanInformation.scan_max" [label]="scanInformation.name" [title]="true"></app-evaluation-circle-component>
       }
       
-      <h4 class="text-center module-title mt-2">{{ data.title }}</h4>
+      <h4 class="text-center module-title mt-2">{{ data.title ? data.title : 'Loading...' }}</h4>
 
       @if(data.abstract) {
         <p class="module-text text-center mt-2"><i>{{ data.abstract }}</i></p>

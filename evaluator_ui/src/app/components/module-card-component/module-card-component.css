@@ -14,14 +14,19 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   margin: 0 0 0.75rem 0;
 }
 
-.clickable {
-  cursor: pointer;
-  transition: transform 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+.link-text {
+  word-break: break-all;
 }
 
-.clickable:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+.alert {
+  font-size: 0.85rem;
+  padding: 0.16rem 0.6rem;
+}
+
+@media screen and (max-width: 500px) {
+  .show-actions-button {
+    width: 100%;
+  }
 }
 
 .card-title {

@@ -47,7 +47,8 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
     padding-right: 0px !important;
   }
 
-  .logout-text {
+  .logout-text,
+  .dashboard-text {
     display: none;
   }
 

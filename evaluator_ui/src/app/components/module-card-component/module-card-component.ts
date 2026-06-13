@@ -27,6 +27,7 @@ export class ModuleCardComponent implements OnInit {
   @Output() onClick = new EventEmitter<string>();
   @Output() onClickEvaluateUpdated = new EventEmitter<string>();
   @Input() data!: ModuleDashboardItem;
+  @Input() expanded: boolean = false;
 
   showEvaluateUpdatedButton: boolean = false;
 
@@ -41,6 +42,14 @@ export class ModuleCardComponent implements OnInit {
     if (lastModifyDate > lastEvaluationDate) {
       this.showEvaluateUpdatedButton = true;
     }
+  }
+
+  get statusText(): string {
+    return this.showEvaluateUpdatedButton ? 'Modified after evaluation' : 'Up to date';
+  }
+
+  get statusBadgeClass(): string {
+    return this.showEvaluateUpdatedButton ? 'alert-danger' : 'alert-success';
   }
 
   onClickCard(link: string) {

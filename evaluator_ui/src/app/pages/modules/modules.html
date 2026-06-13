@@ -32,7 +32,7 @@
 <div class="modules-container space d-flex flex-wrap justify-content-center gap-5">
   @for (module of modules; track $index; let i = $index) {
     <div class="position-relative">
-      <app-module-card-component [data]="module" (onClick)="onClickCard($event, i)" (onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"></app-module-card-component>
+      <app-module-card-component [data]="module" [expanded]="openCardIndex === i" (onClick)="onClickCard($event, i)" (onClickEvaluateUpdated)="onClickEvaluateUpdated($event)"></app-module-card-component>
       @if (openCardIndex === i) {
         <app-evaluation-list-component [evaluationList]="evaluationListByIndex[i]" (selectEvaluation)="onSelectEvaluation($event)"></app-evaluation-list-component>
       }

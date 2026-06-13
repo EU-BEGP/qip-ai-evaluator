@@ -27,6 +27,10 @@ export class HeaderComponent {
     public notificationService: NotificationService
   ) {}
 
+  get isNotOnDashboard(): boolean {
+    return !this.router.url.includes('modules');
+  }
+
   logout(): void {
     localStorage.removeItem('token');
     localStorage.removeItem('refresh');

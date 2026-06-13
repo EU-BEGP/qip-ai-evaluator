@@ -10,7 +10,7 @@
     "evaluationPolling": 5
   },
   "api": {
-    "baseUrl": "https://eu-begp.upb.edu/evaluator/api/",
+    "baseUrl": "http://localhost:8004/",
     "users": {
       "login": "users/auth/login/",
       "refresh": "users/auth/refresh/"
