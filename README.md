@@ -8,7 +8,7 @@ The solution is designed to support quality improvement processes by assessing e
 The system analyzes learning modules, generates structured evaluations grounded in course content, and produces actionable feedback and performance reports. These evaluations help identify strengths, gaps, and opportunities for improvement, supporting evidence-based decision-making and continuous enhancement of educational materials.
 
 <p align="center">
-  <img src="assets/architecture.jpg"/>
+  <img src="assets/RAG_Diagram.png" width="650"/>
 </p>
 
 ## Usage
@@ -24,10 +24,24 @@ The project consists of three main components:
 -   **Evaluator API:** Serves as the main backend and orchestration layer, managing evaluation requests, coordinating asynchronous tasks, and exposing endpoints to retrieve evaluation progress, results, and reports. Built with [Django](https://www.djangoproject.com/).
 -   **Evaluator UI:** A web-based interface that allows users to start evaluations, track their progress in real time, and view or download the generated evaluation reports. Built with [Angular](https://angular.io/).
 
+### How the RAG Evaluation Works
+
+The RAG API scores a module against each rubric criterion through a hybrid retrieval pipeline (shown in the diagram above):
+
+1. **Ingestion & indexing** — the knowledge base and the learning module are chunked, embedded into a vector store, and indexed with BM25.
+2. **Hybrid retrieval** — for each query a dense (vector) retriever and a sparse (BM25) retriever run in parallel; their results are merged with **Reciprocal Rank Fusion (RRF)** and reordered by a **cross-encoder reranker** to surface the most relevant chunks.
+3. **Global context** — an LLM pass distills the whole module into a compact structured summary used as shared context.
+4. **Generation** — the reranked module chunks, the summary, and the relevant knowledge-base chunks are sent with each criterion to the LLM, which returns a structured evaluation.
+
+To balance cost and quality, evaluation runs in two tiers based on a token budget:
+
+-   **Full-module tier** — when the whole module fits in the budget, every chunk is sent to the LLM (no retrieval needed).
+-   **Hybrid-RAG tier** — for larger modules, the hybrid retrieval above selects and reranks the best chunks to fit the budget.
+
 ### Setup
 
 To set up the project you need to clone the repository and then follow these instructions for each component:
-- [RAG API Setup](src/README.md)
+- [RAG API Setup](rag_api/README.md)
 - [Evaluator API Setup](evaluator_api/README.md)
 - [Evaluator UI Setup](evaluator_ui/README.md)
 

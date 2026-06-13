@@ -21,12 +21,15 @@ SECRET_KEY={django_secret_key}
 ALLOWED_HOSTS={*}
 
 # --- CALLBACK ---
-QIP_CALLBACK_URL={callback_url}
 QIP_CALLBACK_SECRET={shared_secret_key}
 
 # --- API KEYS ---
 HF_TOKEN={huggingface_token}
-API_KEYS={comma_separated_keys}
+# LLM provider key — must match `wrapper:` in config/config.yaml.
+# OpenAI (default):
+OPENAI_API_KEY={openai_key}
+# Groq alternative (single key, or GROQ_API_KEYS):
+# GROQ_API_KEY={groq_key}
 
 # --- CORS ---
 CORS_ALLOW_ALL_ORIGINS={True_or_False}
@@ -41,10 +44,10 @@ CORS_ALLOWED_ORIGINS={comma_separated_origins}
 | `RESTART_POLICY` | Docker container restart behavior. **Local**: `no`. **Server**: `always` (to ensure uptime). | `no` (dev), `always` (prod) |
 | `SECRET_KEY` | Django security key. Use a strong, unique key for production servers. | `django-insecure...` (dev), `k^7&...` (prod) |
 | `ALLOWED_HOSTS` | Domains/IPs this API serves. **Local**: `*`. **Server**: The real domain/IP. | `*` |
-| `QIP_CALLBACK_URL` | URL where results are sent back via callback after LLM processing. | `https://eu-begp.upb.edu/evaluator/api/callback/` |
 | `QIP_CALLBACK_SECRET` | Shared secret key for authenticating requests between APIs, must be the same configured in evaluator api. | `JQvR4Txh...` |
-| `HF_TOKEN` | Hugging Face Token for accessing gated models (e.g., Llama). | `shared key...` |
-| `API_KEYS` | Comma-separated list of Groq/LLM API keys. Used for dynamic worker scaling. | `gsk_...,gsk_...` |
+| `HF_TOKEN` | Hugging Face Token used to download the embedding model. | `hf_...` |
+| `OPENAI_API_KEY` | OpenAI API key (default provider). Use `OPENAI_API_KEYS` (comma-separated) to rotate multiple keys. | `sk-...` |
+| `GROQ_API_KEY` | Groq API key (used when `wrapper: "groq"`). Use `GROQ_API_KEYS` (comma-separated) for multi-key rotation / worker scaling. | `gsk_...` |
 | `CORS_ALLOW_ALL_ORIGINS`| CORS Policy toggle. | `True` or `False` |
 | `CORS_ALLOWED_ORIGINS` | Specific allowed origins for browser requests. | `https://eu-begp.upb.edu` |
 
@@ -68,4 +71,4 @@ This script automatically performs the following:
 >```
 
 ### Performance Scaling
-To increase the processing speed of the RAG service, simply add more API keys to the `API_KEYS` variable in your `.env` file. The system will automatically scale the workers.
+To increase the processing speed of the RAG service, add more keys to the provider's rotation variable (`OPENAI_API_KEYS` or `GROQ_API_KEYS`) in your `.env` file. The system will automatically scale the workers.

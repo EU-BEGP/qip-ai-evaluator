@@ -30,8 +30,9 @@ DB_HOST={db_host}
 DB_PORT={db_port}
 
 # --- URLs ---
-SERVER_PUBLIC_URL={http://host.docker.internal:8004/}
-EXTERNAL_LOGIN_API_URL={https://eubbc-digital.upb.edu/booking/api/users/token}
+PUBLIC_BASE_URL={http://host.docker.internal:8004/}
+EXTERNAL_LOGIN_API_URL={https://eubbc-digital.upb.edu/booking/api/users/token/}
+EXTERNAL_AUTH_ME_URL={https://eubbc-digital.upb.edu/booking/api/users/me/}
 
 # RAG BASE URL
 RAG_BASE_URL={http://host.docker.internal:8005/api}
@@ -40,6 +41,11 @@ RAG_CALLBACK_SECRET={shared_secret_key}
 # --- CORS ---
 CORS_ALLOW_ALL_ORIGINS={True_or_False}
 CORS_ALLOWED_ORIGINS={comma_separated_origins}
+
+# --- EMAIL (production only) ---
+EMAIL_HOST_USER={gmail_address}
+EMAIL_HOST_PASSWORD={gmail_app_password}
+ADMIN_EMAIL={admin_address}
 ```
 
 ## Environment Variables Reference
@@ -57,12 +63,16 @@ CORS_ALLOWED_ORIGINS={comma_separated_origins}
 | `POSTGRES_PASSWORD` | Database password. | `password123` |
 | `DB_HOST` | Database service hostname (internal Docker network). | `db` |
 | `DB_PORT` | Database port. | `5432` |
-| `SERVER_PUBLIC_URL` | Public URL of this API. **Local**: `http://host.docker.internal:8004/`. **Server**: Real domain `https://api.yourdomain.com/`. | `http://host.docker.internal:8004/` |
-| `EXTERNAL_LOGIN_API_URL` | **Fixed URL.** Points to the Book4RLab authentication service. | `https://eubbc-digital.upb.edu/booking/api/users/token/` |
+| `PUBLIC_BASE_URL` | Public URL of this API (used to build the callback URLs the RAG service calls back to). **Local**: `http://host.docker.internal:8004/`. **Server**: Real domain `https://api.yourdomain.com/`. | `http://host.docker.internal:8004/` |
+| `EXTERNAL_LOGIN_API_URL` | **Fixed URL.** Points to the Book4RLab authentication (token) service. | `https://eubbc-digital.upb.edu/booking/api/users/token/` |
+| `EXTERNAL_AUTH_ME_URL` | **Fixed URL.** Book4RLab current-user endpoint used to resolve the authenticated user. | `https://eubbc-digital.upb.edu/booking/api/users/me/` |
 | `RAG_BASE_URL` | RAG Service URL. **Local**: `http://host.docker.internal:8005/api`. **Server**: `https://eu-begp.upb.edu/qip-rag-api`. | `http://host.docker.internal:8005/api` |
 | `RAG_CALLBACK_SECRET` | Shared secret key for RAG, must be the same configured in RAG api. | `shared key...` |
 | `CORS_ALLOW_ALL_ORIGINS`| CORS Policy. | `True` or `False` |
-| `CORS_ALLOWED_ORIGINS` | Specific allowed origins. | `http://localhost:3000` |
+| `CORS_ALLOWED_ORIGINS` | Specific allowed origins (used only when `CORS_ALLOW_ALL_ORIGINS` is `False`). | `http://localhost:3000` |
+| `EMAIL_HOST_USER` | Gmail SMTP account. **Required in production only** (dev prints email to the console). | `you@gmail.com` |
+| `EMAIL_HOST_PASSWORD` | Gmail SMTP app password. **Required in production only**. | `app password` |
+| `ADMIN_EMAIL` | Address that receives Django admin error reports. | `admin@yourdomain.com` |
 
 
 ## Running the Project
@@ -96,4 +106,4 @@ docker-compose run --rm app sh -c "python manage.py createsuperuser"
 ### Static Files
 No manual action is required. The `start.sh` script automatically collects static files into the `STATIC_VOLUME_PATH` when deploying in production.
 
-The Evaluator API is accessible at your configured `SERVER_PUBLIC_URL`.
+The Evaluator API is accessible at your configured `PUBLIC_BASE_URL`.
