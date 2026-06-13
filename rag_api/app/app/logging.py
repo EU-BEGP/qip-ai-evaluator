@@ -55,7 +55,7 @@ LOGGING = {
             "handlers": ["console", "file_error"],
             "propagate": False,
         },
-        "retrievers": {
+        "retrieval": {
             "level": "INFO",
             "handlers": ["console", "file_error"],
             "propagate": False,

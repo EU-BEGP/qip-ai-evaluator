@@ -29,7 +29,7 @@ class EvaluatorConfig(AppConfig):
             return
 
         try:
-            from .init_knowledge import build_knowledge_base_auto, load_criteria_auto
+            from .bootstrap import build_knowledge_base_auto, load_criteria_auto
 
             logger.info("[STARTUP] Pre-loading shared AI resources...")
             build_knowledge_base_auto()

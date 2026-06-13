@@ -3,26 +3,30 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from rest_framework import generics, status
 from rest_framework.response import Response
 
-from rag.rag_pipeline.content_evaluator import ContentEvaluator
-from .init_knowledge import build_knowledge_base_auto
+from rag.pipeline.evaluator import ContentEvaluator
+from rag.document_processing.processors.learnify import LearnifyUnavailableError
+from rag.document_processing.processors.learnify.client import fetch_module_last_modified
+from .caching import acquire_last_modified, acquire_metadata
+from .bootstrap import build_knowledge_base_auto
 from .serializers import (
     CancelEvaluationSerializer,
     EvaluateModuleSerializer,
     ModuleLastModifiedSerializer,
     ModuleMetadataSerializer,
 )
-from .tasks import EVAL_CANCELLED_KEY, _get_redis, run_evaluation_task
+from .tasks import mark_cancelled, run_evaluation_task
 from .utils import extract_learnify_code
 
 logger = logging.getLogger(__name__)
 
-# Reuse the vector manager already loaded
-_vector_manager = build_knowledge_base_auto()
-base_evaluator = ContentEvaluator(vector_manager=_vector_manager)
+# Reuse the vector store + KB BM25
+_vector_store, _kb_bm25 = build_knowledge_base_auto()
+base_evaluator = ContentEvaluator(vector_store=_vector_store, kb_bm25=_kb_bm25)
 
 
 class EvaluateModuleView(generics.GenericAPIView):
@@ -76,7 +80,7 @@ class CancelEvaluationView(generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         run_id = serializer.validated_data["run_id"]
 
-        _get_redis().set(EVAL_CANCELLED_KEY.format(run_id), "1", ex=3600)
+        mark_cancelled(run_id)
         logger.info(f"Cancel flag set for run_id={run_id}")
 
         return Response({"status": "CANCEL_REQUESTED", "run_id": run_id}, status=status.HTTP_200_OK)
@@ -91,6 +95,7 @@ class ModuleLastModifiedView(generics.GenericAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         course_keys = serializer.validated_data["course_keys"]
+        force = serializer.validated_data["force"]
 
         clean_keys = {}
         for key in course_keys:
@@ -101,15 +106,29 @@ class ModuleLastModifiedView(generics.GenericAPIView):
                 clean_keys[key] = None
 
         valid = {orig: clean for orig, clean in clean_keys.items() if clean}
-        invalid = {orig: None for orig, clean in clean_keys.items() if not clean}
+        results = {orig: None for orig, clean in clean_keys.items() if not clean}
 
-        bulk_results = base_evaluator._metadata_extractor.get_bulk_last_modified(
-            list(valid.values())
-        )
-        # Re-map clean key → date back to original key
-        clean_to_orig = {v: k for k, v in valid.items()}
-        results = {clean_to_orig[clean]: date for clean, date in bulk_results.items()}
-        results.update(invalid)
+        def resolve(orig, clean):
+            return orig, acquire_last_modified(
+                clean,
+                lambda: fetch_module_last_modified(clean),
+                force=force,
+            )
+
+        try:
+            if valid:
+                workers = min(20, len(valid))
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    futures = [executor.submit(resolve, orig, clean) for orig, clean in valid.items()]
+                    for future in as_completed(futures):
+                        orig, date = future.result()
+                        results[orig] = date
+        except LearnifyUnavailableError as e:
+            logger.error(f"Learnify unavailable during last_modified fetch: {e}")
+            return Response(
+                {"error": "Content service unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         return Response({"results": results}, status=status.HTTP_200_OK)
 
@@ -128,7 +147,38 @@ class ModuleMetadataView(generics.GenericAPIView):
         logger.info(f"Metadata request for: {clean_course_code}")
 
         try:
-            metadata_json = base_evaluator.extract_metadata(clean_course_code)
+            last_mod = acquire_last_modified(
+                clean_course_code,
+                lambda: fetch_module_last_modified(clean_course_code),
+            )
+        except LearnifyUnavailableError as e:
+            logger.error(f"Learnify unavailable during metadata request: {e}")
+            return Response(
+                {"error": "Content service unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        if not last_mod:
+            return Response(
+                {"error": "Module not available in Learnify."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        cache_key = (clean_course_code, last_mod)
+
+        def load_docs():
+            raw_docs = base_evaluator.vector_store.load_documents([clean_course_code])
+            if not raw_docs:
+                raise ValueError(f"No documents found for course_key '{clean_course_code}'.")
+            for i, doc in enumerate(raw_docs):
+                doc.metadata["chunk_index"] = i + 1
+            return raw_docs
+
+        def build_metadata(docs):
+            return base_evaluator.extract_metadata(docs)
+
+        try:
+            metadata_json = acquire_metadata(cache_key, load_docs, build_metadata)
             return Response(metadata_json, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error in ModuleMetadataView: {e}", exc_info=True)

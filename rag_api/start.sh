@@ -16,7 +16,7 @@ docker-compose build
 # 3. Pre-build the vector store (runs once; skipped if already up to date)
 echo "--> 3. Pre-building vector store..."
 docker-compose run --rm app python manage.py shell -c "
-from apps.evaluator.init_knowledge import build_knowledge_base_auto, load_criteria_auto
+from apps.evaluator.bootstrap import build_knowledge_base_auto, load_criteria_auto
 build_knowledge_base_auto()
 load_criteria_auto()
 print('Vector store ready.')

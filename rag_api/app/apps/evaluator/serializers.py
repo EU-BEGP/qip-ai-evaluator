@@ -28,6 +28,7 @@ class ModuleLastModifiedSerializer(serializers.Serializer):
     """Validates input for bulk last-modified date retrieval."""
 
     course_keys = serializers.ListField(child=serializers.CharField(), min_length=1)
+    force = serializers.BooleanField(required=False, default=False)
 
 
 class ModuleMetadataSerializer(serializers.Serializer):

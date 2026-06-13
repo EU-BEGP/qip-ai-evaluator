@@ -96,6 +96,15 @@ if raw_cors:
     if not CORS_ALLOW_ALL_ORIGINS:
         CORS_ALLOWED_ORIGINS = origins
 
+# --- Cache Configuration ---
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://broker:6379/4',
+        'TIMEOUT': 600,
+    },
+}
+
 # --- Celery Configuration ---
 CELERY_BROKER_URL = "redis://broker:6379/2"
 CELERY_RESULT_BACKEND = "redis://broker:6379/3"

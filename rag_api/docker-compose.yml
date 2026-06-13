@@ -25,7 +25,7 @@ services:
     volumes:
       - vector_store:/app/data/vector_store
       - hf_cache:/app/cache/huggingface
-      - logs_data:/app/logs
+      - ./logs:/app/logs
     env_file: .env
     environment:
       - TOKENIZERS_PARALLELISM=false
@@ -33,6 +33,7 @@ services:
       - OMP_NUM_THREADS=1
       - OPENBLAS_NUM_THREADS=1
       - MKL_NUM_THREADS=1
+      - ANONYMIZED_TELEMETRY=false
     depends_on:
       broker:
         condition: service_healthy
@@ -52,7 +53,7 @@ services:
     volumes:
       - vector_store:/app/data/vector_store
       - hf_cache:/app/cache/huggingface
-      - logs_data:/app/logs
+      - ./logs:/app/logs
     env_file: .env
     environment:
       - TOKENIZERS_PARALLELISM=false
@@ -60,6 +61,7 @@ services:
       - OMP_NUM_THREADS=1
       - OPENBLAS_NUM_THREADS=1
       - MKL_NUM_THREADS=1
+      - ANONYMIZED_TELEMETRY=false
     depends_on:
       broker:
         condition: service_healthy
@@ -76,4 +78,3 @@ volumes:
   vector_store:
   hf_cache:
   redis_data:
-  logs_data:

@@ -3,6 +3,7 @@
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
 import logging
+import time
 from typing import Optional, List
 import requests
 
@@ -11,7 +12,9 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-def build_unified_payload(status: str, course_key: str, result: any, error: Optional[str] = None, evaluation_id: Optional[str] = None, user_id: Optional[str] = None, run_id: Optional[str] = None) -> dict:
+def build_unified_payload(status: str, course_key: str, result: any, error: Optional[str] = None,
+                          evaluation_id: Optional[str] = None, user_id: Optional[str] = None,
+                          run_id: Optional[str] = None) -> dict:
     """Build the standard response payload used by all callbacks."""
 
     payload = {
@@ -32,7 +35,8 @@ def build_unified_payload(status: str, course_key: str, result: any, error: Opti
     return payload
 
 
-def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: str, evaluation_id: Optional[str], qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
+def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: str, evaluation_id: Optional[str],
+                           qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
     """Send a SNAPSHOT_CREATED callback with the generated document digest."""
 
     payload = build_unified_payload(
@@ -55,7 +59,8 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
         logger.warning(f"[{evaluation_id}] Failed to send snapshot callback: {e}")
 
 
-def send_interim_callback(callback_url: str, interim_json: dict, course_key: str, evaluation_id: Optional[str], qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
+def send_interim_callback(callback_url: str, interim_json: dict, course_key: str, evaluation_id: Optional[str],
+                          qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
     """Send a CRITERION_COMPLETE callback after each criterion is evaluated."""
 
     payload = build_unified_payload(
@@ -78,7 +83,9 @@ def send_interim_callback(callback_url: str, interim_json: dict, course_key: str
         logger.warning(f"[{evaluation_id}] Failed to send interim callback: {e}")
 
 
-def send_callback(callback_url: str, course_key: str, status: str, results: Optional[dict], error: Optional[str], evaluation_id: Optional[str], qip_user_id: Optional[str], scan_names: Optional[List[str]] = None, run_id: Optional[str] = None) -> None:
+def send_callback(callback_url: str, course_key: str, status: str, results: Optional[dict],
+                  error: Optional[str], evaluation_id: Optional[str], qip_user_id: Optional[str], scan_names: Optional[List[str]] = None,
+                  run_id: Optional[str] = None) -> None:
     """Send the final COMPLETE or FAILED status callback."""
 
     payload = build_unified_payload(
@@ -99,9 +106,15 @@ def send_callback(callback_url: str, course_key: str, status: str, results: Opti
         "X-Callback-Secret": settings.QIP_CALLBACK_SECRET,
     }
 
-    try:
-        response = requests.post(callback_url, json=payload, headers=headers, timeout=60)
-        response.raise_for_status()
-        logger.info(f"[{evaluation_id}] Final callback sent to {callback_url}.")
-    except requests.exceptions.RequestException as e:
-        logger.error(f"[{evaluation_id}] Failed to send final callback to {callback_url}: {e}")
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(callback_url, json=payload, headers=headers, timeout=60)
+            response.raise_for_status()
+            logger.info(f"[{evaluation_id}] Final callback sent to {callback_url}.")
+            return
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"[{evaluation_id}] Final callback attempt {attempt}/{max_retries} failed: {e}")
+            if attempt < max_retries:
+                time.sleep(2 ** attempt)
+    logger.error(f"[{evaluation_id}] Final callback failed after {max_retries} attempts to {callback_url}.")
