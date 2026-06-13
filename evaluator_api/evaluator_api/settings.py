@@ -128,7 +128,6 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = config('STATIC_URL', default='/evaluator/api/static/')
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -183,6 +182,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
+CELERY_TASK_SOFT_TIME_LIMIT = 700
 
 CACHES = {
     "default": {
@@ -229,8 +229,13 @@ CELERY_BEAT_SCHEDULE = {
     },
 
     'cleanup-module-evaluations-daily': {
-        'task': 'apps.evaluations.tasks.cleanup_module_evaluations',
+        'task': 'apps.evaluations.tasks.cleanup.cleanup_module_evaluations',
         'schedule': crontab(hour=0, minute=30),
         'kwargs': {'limit': 4},
+    },
+
+    'cleanup-orphaned-scans': {
+        'task': 'apps.evaluations.tasks.cleanup.cleanup_orphaned_scans',
+        'schedule': crontab(minute='*/30'),
     },
 }

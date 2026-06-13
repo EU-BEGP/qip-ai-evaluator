@@ -18,7 +18,6 @@ from apps.evaluations.serializers.overview_serializers import (
 )
 from apps.evaluations.services.rag_service import RagService
 from apps.evaluations.services.overview_service import DashboardService
-from apps.evaluations.services.life_cycle_service import LifecycleService
 from apps.evaluations.utils import extract_learnify_code
 
 logger = logging.getLogger(__name__)
@@ -144,7 +143,7 @@ class EvaluationBasicInfoView(generics.RetrieveAPIView):
         return evaluation
 
     def _ensure_metadata(self, evaluation):
-        if LifecycleService.is_metadata_valid(evaluation):
+        if evaluation.metadata_json:
             return
 
         logger.info(f"Metadata missing (Eval {evaluation.id}). Queueing async fetch.")

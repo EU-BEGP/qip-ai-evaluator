@@ -12,7 +12,7 @@ from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema
 
 from apps.evaluations.models import Evaluation, Scan
-from apps.evaluations.services.life_cycle_service import LifecycleService
+from apps.evaluations.services.life_cycle_service import LifecycleService, ContentServiceUnavailableError
 from apps.evaluations.services.webhooks_service import WebhookHandlerService
 from apps.evaluations.security import verify_rag_callback
 from apps.evaluations.serializers.evaluation_serializers import (
@@ -64,6 +64,9 @@ class StartEvaluationView(generics.GenericAPIView):
             module = LifecycleService.ensure_module_access(request.user, course_link)
             evaluation, created = LifecycleService.get_or_create_evaluation_structure(module, request.user)
             logger.info(f"Evaluation {'created' if created else 'reused'}: ID {evaluation.id} for module {module.id}")
+        except ContentServiceUnavailableError as e:
+            logger.warning(f"Content service unavailable for user ID {user_id}: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except ValueError as e:
             logger.error(f"Failed to get/create evaluation for user ID {user_id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -75,6 +78,9 @@ class StartEvaluationView(generics.GenericAPIView):
             logger.info(f"Evaluation started for evaluation ID {evaluation.id}")
             return Response(result, status=status.HTTP_202_ACCEPTED)
 
+        except ContentServiceUnavailableError as e:
+            logger.warning(f"Content service unavailable for user ID {user_id}: {str(e)}")
+            return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except ValueError as e:
             logger.error(f"Validation error starting evaluation for user ID {user_id}: {str(e)}")
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

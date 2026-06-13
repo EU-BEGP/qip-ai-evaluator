@@ -135,7 +135,7 @@ class Evaluation(models.Model):
     result_json = models.JSONField(null=True, blank=True)
     title = models.CharField(max_length=255, blank=True)
     document_snapshot = models.TextField(blank=True)
-    metadata_json = models.JSONField(null=True, blank=True)
+    metadata_json = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -201,17 +201,21 @@ class Scan(models.Model):
     scan_type = models.CharField(max_length=100)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     result_json = models.JSONField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["evaluation", "scan_type"], name="unique_scan_per_evaluation")
         ]
+        indexes = [
+            models.Index(
+                fields=['updated_at'],
+                name='idx_scan_in_progress',
+                condition=models.Q(status='IN_PROGRESS'),
+            ),
+        ]
         ordering = ['id']
 
-    @property
-    def is_evaluable_individual(self):
-        return self.status not in {self.Status.IN_PROGRESS, self.Status.COMPLETED}
-    
     @property
     def scan_average(self):
         if not self.result_json: return None

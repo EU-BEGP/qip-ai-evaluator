@@ -5,15 +5,20 @@
 import logging
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db import transaction
-from django.utils import timezone
 from django.urls import reverse
 
 from apps.evaluations.models import Module, UserModule, Evaluation, Scan, Rubric
+from apps.evaluations.services import watchdog_service as watchdog
 from apps.evaluations.services.rag_service import RagService
 from apps.evaluations.utils import extract_learnify_code
 
 logger = logging.getLogger(__name__)
+
+
+class ContentServiceUnavailableError(Exception):
+    """Raised when the content service (Learnify) is unreachable."""
 
 
 class LifecycleService:
@@ -77,6 +82,11 @@ class LifecycleService:
     @staticmethod
     def _requires_new_evaluation(module, latest_eval):
         if not latest_eval:
+            rag_date = RagService.get_last_modified(module.course_key, force=True)
+            if not rag_date:
+                raise ContentServiceUnavailableError(
+                    "The content service is temporarily unavailable. Please try again later."
+                )
             return True
 
         if latest_eval.status == Evaluation.Status.NOT_STARTED:
@@ -85,46 +95,27 @@ class LifecycleService:
         rag_date = RagService.get_last_modified(module.course_key, force=True)
         return RagService.is_outdated(rag_date, latest_eval.evaluated_at)
 
-    _METADATA_PLACEHOLDERS = frozenset({
-        "N/A", "No abstract available.", "New Evaluation",
-        "No teachers information available.",
-    })
-    _METADATA_STRING_FIELDS = (
-        "elh", "eqf", "smcts", "abstract", "title",
-        "suggested_knowledge", "suggested_skills", "suggested_ra",
-    )
-    _METADATA_LIST_FIELDS = ("keywords", "teachers")
-
-    @staticmethod
-    def is_metadata_valid(evaluation) -> bool:
-        meta = evaluation.metadata_json
-        if not meta:
-            return False
-        if evaluation.title in LifecycleService._METADATA_PLACEHOLDERS:
-            return False
-        for field in LifecycleService._METADATA_STRING_FIELDS:
-            if meta.get(field) in LifecycleService._METADATA_PLACEHOLDERS:
-                return False
-        for field in LifecycleService._METADATA_LIST_FIELDS:
-            val = meta.get(field)
-            if isinstance(val, list) and not val:
-                return False
-        return True
-
     @staticmethod
     def fetch_and_update_metadata(evaluation):
-        """Fetches remote metadata for an evaluation and updates it in the database."""
+        """Fetches remote metadata for an evaluation and updates it. First write wins."""
 
-        if LifecycleService.is_metadata_valid(evaluation):
+        if evaluation.metadata_json:
             return
 
         logger.info(f"Fetching remote metadata for evaluation ID {evaluation.id}")
         metadata = RagService.fetch_metadata(evaluation.module.course_key)
 
         if metadata:
-            evaluation.metadata_json = metadata
-            evaluation.save(update_fields=['metadata_json'])
-            logger.info(f"Successfully updated metadata for evaluation ID {evaluation.id}")
+            updated = (
+                Evaluation.objects
+                .filter(id=evaluation.id, metadata_json={})
+                .update(metadata_json=metadata)
+            )
+            if updated:
+                evaluation.metadata_json = metadata
+                logger.info(f"Successfully updated metadata for evaluation ID {evaluation.id}")
+            else:
+                logger.debug(f"Metadata already set by another writer for evaluation ID {evaluation.id}")
         else:
             logger.warning(f"Failed to fetch or received empty metadata for evaluation ID {evaluation.id}")
 
@@ -208,55 +199,6 @@ class LifecycleService:
         return scans_to_run
 
     @staticmethod
-    def _try_reuse_existing_results(evaluation):
-        """Attempts to reuse results from an existing up-to-date evaluation. Returns True if reused."""
-
-        if evaluation.status != Evaluation.Status.NOT_STARTED:
-            return False
-
-        candidate = (
-            Evaluation.objects
-            .filter(module=evaluation.module)
-            .exclude(id=evaluation.id)
-            .exclude(status__in=[Evaluation.Status.NOT_STARTED, Evaluation.Status.IN_PROGRESS])
-            .order_by("-created_at")
-            .first()
-        )
-
-        if not candidate:
-            return False
-
-        rag_modified = RagService.get_last_modified(evaluation.module.course_key, force=True)
-
-        if RagService.is_outdated(rag_modified, candidate.evaluated_at):
-            return False
-
-        logger.info(f"Reusing evaluation results from evaluation {candidate.id} for evaluation {evaluation.id}")
-
-        evaluation.document_snapshot = candidate.document_snapshot
-        evaluation.status = candidate.status
-        evaluation.evaluated_at = candidate.evaluated_at
-        evaluation.result_json = candidate.result_json
-        evaluation.save(update_fields=["document_snapshot", "status", "evaluated_at", "result_json"])
-
-        candidate_scans = {
-            s.scan_type: s
-            for s in Scan.objects.filter(evaluation=candidate).only("scan_type", "result_json", "status")
-        }
-
-        to_update = []
-        for scan in Scan.objects.filter(evaluation=evaluation):
-            old = candidate_scans.get(scan.scan_type)
-            if old:
-                scan.result_json = old.result_json
-                scan.status = old.status
-                to_update.append(scan)
-
-        Scan.objects.bulk_update(to_update, ["result_json", "status"])
-
-        return True
-
-    @staticmethod
     def start_evaluation_process(evaluation, scan_name, user):
         """Orchestrates scan preparation, database updates, and queues the RAG webhook task."""
 
@@ -273,14 +215,12 @@ class LifecycleService:
                 "scan_id": final_scan_id
             }
 
-        reused = LifecycleService._try_reuse_existing_results(evaluation)
-        if reused:
-            logger.info(f"Reusing previous evaluation for {evaluation.id}")
-
         if not evaluation.evaluated_at:
             rag_modified = RagService.get_last_modified(evaluation.module.course_key, force=True)
             if not rag_modified:
-                rag_modified = timezone.now()
+                raise ContentServiceUnavailableError(
+                    "The content service is temporarily unavailable. Please try again later."
+                )
             evaluation.evaluated_at = rag_modified
             evaluation.save(update_fields=['evaluated_at'])
 
@@ -316,3 +256,78 @@ class LifecycleService:
             "evaluation_id": str(evaluation.id),
             "scan_id": final_scan_id
         }
+
+    @staticmethod
+    def recompute_evaluation_status(evaluation):
+        """Derives the Evaluation status from its current Scan states."""
+
+        scan_statuses = set(
+            Scan.objects.filter(evaluation=evaluation).values_list("status", flat=True)
+        )
+
+        if not scan_statuses:
+            evaluation.status = Evaluation.Status.NOT_STARTED
+        elif scan_statuses == {Scan.Status.COMPLETED}:
+            evaluation.status = Evaluation.Status.COMPLETED
+        elif scan_statuses == {Scan.Status.FAILED}:
+            evaluation.status = Evaluation.Status.FAILED
+        elif Scan.Status.IN_PROGRESS in scan_statuses:
+            evaluation.status = Evaluation.Status.IN_PROGRESS
+        else:
+            evaluation.status = Evaluation.Status.INCOMPLETED
+
+        evaluation.save(update_fields=["status"])
+        logger.debug(f"Evaluation {evaluation.id} status recomputed to {evaluation.status}")
+
+    @staticmethod
+    def mark_failed(evaluation, scan_types, reason, run_id=None):
+        """Marks the given scans as FAILED and cleans up locks, watchdogs, and remote runs."""
+
+        if not scan_types:
+            scan_types = list(
+                Scan.objects
+                .filter(evaluation=evaluation, status=Scan.Status.IN_PROGRESS)
+                .values_list("scan_type", flat=True)
+            )
+
+        if scan_types:
+            Scan.objects.filter(
+                evaluation=evaluation, scan_type__in=scan_types
+            ).update(status=Scan.Status.FAILED)
+            logger.warning(
+                f"Marked scans {scan_types} as FAILED for evaluation {evaluation.id}: {reason}"
+            )
+
+            if evaluation.triggered_by:
+                from apps.notifications.models import Message
+                module_title = evaluation.module.title if evaluation.module else None
+                title_text = evaluation.title or module_title or "Module"
+                for s_name in scan_types:
+                    Message.objects.get_or_create(
+                        user=evaluation.triggered_by,
+                        evaluation=evaluation,
+                        scan_type=s_name,
+                        level=Message.Level.ERROR,
+                        defaults={
+                            "title": f"{s_name} Failed: {title_text}",
+                            "content": f"The {s_name} could not be evaluated. You can try running it again.",
+                            "is_read": False,
+                        },
+                    )
+
+        if evaluation.result_json and 'content' in evaluation.result_json:
+            current_content = evaluation.result_json.get('content', [])
+            clean_content = [item for item in current_content if item.get('scan') not in scan_types]
+            evaluation.result_json['content'] = clean_content
+
+        evaluation.error_message = reason
+        evaluation.save(update_fields=['error_message', 'result_json'])
+
+        LifecycleService.recompute_evaluation_status(evaluation)
+
+        watchdog.disarm(evaluation.id, scan_types)
+        cache.delete(f"snapshot:lock:{evaluation.id}")
+
+        if run_id:
+            from apps.evaluations.tasks.evaluation import async_cancel_rag_evaluation
+            async_cancel_rag_evaluation.delay(run_id)

@@ -4,8 +4,12 @@
 
 import logging
 
+from django.core.cache import cache
+
 from apps.evaluations.models import Evaluation, Scan
 from apps.evaluations.services.rag_service import RagService
+from apps.evaluations.services import watchdog_service as watchdog
+from apps.evaluations.services.life_cycle_service import LifecycleService
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +49,14 @@ class WebhookHandlerService:
     def _handle_snapshot(evaluation, data):
         """Saves the document context snapshot. First write wins — never overwrites an existing snapshot."""
 
-        from django.core.cache import cache
-
         result = data.get('result')
+
+        cache.set(f"snapshot:resolved:{evaluation.id}", "1", timeout=3600)
+        cache.delete(f"snapshot:lock:{evaluation.id}")
+
+        if result == "":
+            return "Snapshot lock released (full-module mode)"
+
         if result and isinstance(result, str) and not evaluation.document_snapshot:
             updated = (
                 Evaluation.objects
@@ -56,16 +65,11 @@ class WebhookHandlerService:
             )
             if updated:
                 evaluation.document_snapshot = result
-                cache.delete(f"snapshot:lock:{evaluation.id}")
         return "Snapshot saved"
 
     @staticmethod
     def _handle_interim_progress(evaluation, data):
         """Marks a single scan COMPLETED when its result arrives, then checks overall status."""
-
-        import time
-        from django.core.cache import cache
-        from apps.evaluations.tasks import WATCHDOG_CACHE_KEY
 
         result = data.get('result')
         if not result or 'content' not in result:
@@ -82,7 +86,7 @@ class WebhookHandlerService:
                 defaults={'status': Scan.Status.IN_PROGRESS, 'result_json': result}
             )
             WebhookHandlerService._merge_scan_results(evaluation, [scan_data])
-        cache.set(WATCHDOG_CACHE_KEY.format(evaluation.id), time.time(), timeout=7200)
+            watchdog.refresh(evaluation.id, s_name)
 
         return "Interim progress saved"
 
@@ -104,6 +108,7 @@ class WebhookHandlerService:
 
         valid_types = evaluation.rubric.available_scans if evaluation.rubric else []
         new_content = result_payload.get('content', [])
+        completed_scan_types = []
 
         for scan_data in new_content:
             s_name = scan_data.get('scan')
@@ -116,6 +121,7 @@ class WebhookHandlerService:
                         'result_json': {"title": evaluation.title, "content": [scan_data]}
                     }
                 )
+                completed_scan_types.append(s_name)
 
                 if evaluation.triggered_by:
                     title_text = evaluation.title or evaluation.module.title or "Module"
@@ -123,6 +129,7 @@ class WebhookHandlerService:
                         user=evaluation.triggered_by,
                         evaluation=evaluation,
                         scan_type=s_name,
+                        level=Message.Level.INFO,
                         defaults={
                             "title": f"{s_name} Finished: {title_text}",
                             "content": f"The {s_name} has finished successfully.",
@@ -131,34 +138,21 @@ class WebhookHandlerService:
                     )
 
         WebhookHandlerService._merge_scan_results(evaluation, new_content, save=False)
-        WebhookHandlerService._check_and_update_status(evaluation)
+        LifecycleService.recompute_evaluation_status(evaluation)
+        watchdog.disarm(evaluation.id, completed_scan_types)
         return "Completed processed"
 
     @staticmethod
     def _handle_failure(evaluation, data, run_id=None):
         """Cleans up failed scans and registers error states."""
 
-        from apps.evaluations.tasks import async_cancel_rag_evaluation
-
         failed_scans = data.get('scan_names', [])
-
-        if failed_scans:
-            Scan.objects.filter(evaluation=evaluation, scan_type__in=failed_scans).update(status=Scan.Status.FAILED)
-        else:
-            Scan.objects.filter(evaluation=evaluation, status=Scan.Status.IN_PROGRESS).update(status=Scan.Status.FAILED)
-
-        if evaluation.result_json and 'content' in evaluation.result_json:
-            current_content = evaluation.result_json.get('content', [])
-            clean_content = [item for item in current_content if item.get('scan') not in failed_scans]
-            evaluation.result_json['content'] = clean_content
-
-        evaluation.error_message = data.get('error', "Unknown error")
-        evaluation.save(update_fields=['error_message', 'result_json'])
-        WebhookHandlerService._check_and_update_status(evaluation)
-
-        if run_id:
-            async_cancel_rag_evaluation.delay(run_id)
-
+        LifecycleService.mark_failed(
+            evaluation=evaluation,
+            scan_types=failed_scans,
+            reason=data.get('error', "Unknown error"),
+            run_id=run_id,
+        )
         return "Failure processed (Partial)"
 
     @staticmethod
@@ -182,22 +176,3 @@ class WebhookHandlerService:
 
         if save:
             evaluation.save(update_fields=['result_json'])
-
-    @staticmethod
-    def _check_and_update_status(evaluation):
-        """Verifies if all required scans have finished and updates Evaluation status."""
-
-        completed_types = set(
-            Scan.objects.filter(
-                evaluation=evaluation,
-                status=Scan.Status.COMPLETED
-            ).values_list("scan_type", flat=True)
-        )
-        all_possible_types = set(evaluation.rubric.available_scans if evaluation.rubric else [])
-
-        if all_possible_types and all_possible_types.issubset(completed_types):
-            evaluation.status = Evaluation.Status.COMPLETED
-        else:
-            evaluation.status = Evaluation.Status.INCOMPLETED
-
-        evaluation.save(update_fields=['status'])

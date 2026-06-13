@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class RagService:
     """Handles external RAG API communication."""
 
-    CACHE_TIMEOUT = 300
+    CACHE_TIMEOUT = 420
     CACHE_TIMEOUT_FAIL = 100
     
     @staticmethod
@@ -97,7 +97,7 @@ class RagService:
 
         # Fetch missing (or all when forced)
         if missing_keys:
-            fetched = cls._fetch_bulk(missing_keys)
+            fetched = cls._fetch_bulk(missing_keys, force=force)
 
             for key in missing_keys:
                 value = fetched.get(key)
@@ -110,11 +110,17 @@ class RagService:
         return result
 
     @classmethod
-    def _fetch_bulk(cls, course_keys):
+    def _fetch_bulk(cls, course_keys, force=False):
+        """Fetch last_modified dates for multiple course keys in one API call."""
+
         try:
             logger.info(f"Requesting bulk last_modified for {len(course_keys)} modules")
 
-            response = requests.post(settings.RAG_API_MODULE_MODIFIED_URL,json={"course_keys": course_keys},timeout=100)
+            response = requests.post(
+                settings.RAG_API_MODULE_MODIFIED_URL,
+                json={"course_keys": course_keys, "force": force},
+                timeout=15,
+            )
             response.raise_for_status()
             data = response.json().get("results", {})
             parsed = {}

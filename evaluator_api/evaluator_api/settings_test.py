@@ -18,7 +18,7 @@ os.environ.setdefault("RAG_BASE_URL", "http://test.invalid/rag")
 os.environ.setdefault("RAG_CALLBACK_SECRET", "test-callback-secret")
 os.environ.setdefault("ADMIN_EMAIL", "admin@test.invalid")
 
-from .settings import *  # noqa: E402, F403
+from .settings import *
 
 DATABASES = {
     "default": {
