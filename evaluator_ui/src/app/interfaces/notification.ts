@@ -7,6 +7,7 @@ export interface Notification {
   user_id: number;
   title: string;
   content: string;
+  level: 'INFO' | 'ERROR';
   read: boolean;
   created_at: string;
   evaluation_id: number;

@@ -43,6 +43,20 @@ Sebastian Itamari, Santiago Almancy, Alex Villazon
   color: #777;
 }
 
+.notification-item.error {
+  background: #fdecea;
+  border-left: 4px solid #e02424;
+}
+
+.notification-item.error .notification-title {
+  color: #8a1c14;
+  font-weight: 600;
+}
+
+.notification-item.error .notification-content {
+  color: #9b3a32;
+}
+
 .notification-item:hover {
   box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.252);
   transform: translateY(-1px);

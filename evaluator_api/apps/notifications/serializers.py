@@ -11,6 +11,7 @@ class MessageSerializer(serializers.ModelSerializer):
     """Serializes notifications for the mailbox view."""
 
     scan_name = serializers.CharField(source='scan_type', read_only=True)
+    read = serializers.BooleanField(source='is_read', read_only=True)
 
     class Meta:
         model = Message
@@ -19,7 +20,8 @@ class MessageSerializer(serializers.ModelSerializer):
             'user_id',
             'title',
             'content',
-            'is_read',
+            'level',
+            'read',
             'created_at',
             'evaluation_id',
             'scan_name',

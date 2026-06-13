@@ -2,7 +2,7 @@
 <!-- MIT License - See LICENSE file in the root directory -->
 <!-- Sebastian Itamari, Santiago Almancy, Alex Villazon -->
 
-<div class="notification-item px-4 pb-2 pt-4" [class.unread]="!notification.read" [class.read]="notification.read" (click)="clickNotification()">
+<div class="notification-item px-4 pb-2 pt-4" [class.unread]="!notification.read" [class.read]="notification.read" [class.error]="notification.level === 'ERROR'" (click)="clickNotification()">
   <p class="notification-title">{{ notification.title }}</p>
   <p class="notification-content">{{ notification.content }}</p>
 </div>
