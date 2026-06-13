@@ -4,11 +4,13 @@
 
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 
 from apps.evaluations.models import Rubric
 from apps.evaluations.services.life_cycle_service import LifecycleService
+from apps.evaluations.services.rag_service import RagService
 
 User = get_user_model()
 COURSE_LINK = "https://time.learnify.se/l/show.html#att/68K7V"
@@ -37,5 +39,7 @@ def make_user(email="user@test.com", password="pass"):
 
 def make_evaluation(user, course_link=COURSE_LINK):
     module = LifecycleService.ensure_module_access(user, course_link)
-    evaluation, _ = LifecycleService.get_or_create_evaluation_structure(module, user)
+    # Stub the content-service call so structure creation doesn't hit Learnify/RAG.
+    with patch.object(RagService, "get_last_modified", return_value="2026-01-01T00:00:00Z"):
+        evaluation, _ = LifecycleService.get_or_create_evaluation_structure(module, user)
     return module, evaluation
