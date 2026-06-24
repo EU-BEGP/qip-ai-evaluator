@@ -11,7 +11,8 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 
-from apps.evaluations.models import Module, Evaluation, UserModule
+from apps.evaluations.models import Module, Evaluation
+from apps.evaluations.security import accessible_evaluations, has_evaluation_access
 from apps.evaluations.serializers.overview_serializers import (
     DashboardModuleSerializer, EvaluationHistorySerializer,
     ScanOverviewSerializer, LinkModuleSerializer, BasicInfoSerializer
@@ -80,7 +81,7 @@ class EvaluationHistoryListView(generics.GenericAPIView):
         clean_link = input_serializer.validated_data['course_link'].split('?')[0]
         clean_key = extract_learnify_code(clean_link)
         queryset = (
-            Evaluation.objects
+            accessible_evaluations(request.user)
             .filter(module__course_key=clean_key)
             .select_related('triggered_by')
             .order_by(F('evaluated_at').desc(nulls_last=True), '-created_at')[:20]
@@ -99,7 +100,7 @@ class EvaluationStatusByIdView(generics.GenericAPIView):
     @extend_schema(operation_id="get_evaluation_status_by_id")
     def get(self, request, pk, *args, **kwargs):
         evaluation = get_object_or_404(
-            Evaluation.objects.select_related('module', 'rubric').prefetch_related('scans'),
+            accessible_evaluations(request.user).select_related('module', 'rubric').prefetch_related('scans'),
             pk=pk
         )
         data = DashboardService.build_overview(evaluation)
@@ -116,10 +117,7 @@ class LinkModuleView(generics.GenericAPIView):
 
     def get(self, request, pk, *args, **kwargs):
         evaluation = get_object_or_404(Evaluation.objects.select_related('module'), pk=pk)
-        has_access = (evaluation.triggered_by == request.user) or UserModule.objects.filter(
-            user=request.user, module=evaluation.module
-        ).exists()
-        if not has_access:
+        if not has_evaluation_access(request.user, evaluation):
             return Response(
                 {"error": "Access denied. You do not have permission to view this module."},
                 status=status.HTTP_403_FORBIDDEN
@@ -135,7 +133,9 @@ class EvaluationBasicInfoView(generics.RetrieveAPIView):
 
     permission_classes = [IsAuthenticated]
     serializer_class = BasicInfoSerializer
-    queryset = Evaluation.objects.select_related('module')
+
+    def get_queryset(self):
+        return accessible_evaluations(self.request.user).select_related('module')
 
     def get_object(self):
         evaluation = super().get_object()

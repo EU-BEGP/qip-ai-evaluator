@@ -11,7 +11,8 @@ import re
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, NotFound, APIException
 
-from apps.evaluations.models import Evaluation, UserModule
+from apps.evaluations.models import Evaluation
+from apps.evaluations.security import has_evaluation_access
 from apps.evaluations.services.life_cycle_service import LifecycleService
 from apps.evaluations.report_utils import ReportManager
 
@@ -26,11 +27,7 @@ class ReportService:
         """Generates a PDF report for a given evaluation, ensuring the user has access and metadata is present."""
 
         evaluation = get_object_or_404(Evaluation.objects.select_related('module'), pk=evaluation_id)
-        has_access = (evaluation.triggered_by == user) or UserModule.objects.filter(
-            user=user, module=evaluation.module
-        ).exists()
-
-        if not has_access:
+        if not has_evaluation_access(user, evaluation):
             raise PermissionDenied("Access denied.")
 
         if not evaluation.result_json:

@@ -11,10 +11,10 @@ from django.db import transaction
 from django.utils.decorators import method_decorator
 from drf_spectacular.utils import extend_schema
 
-from apps.evaluations.models import Evaluation, Scan
+from apps.evaluations.models import Evaluation
 from apps.evaluations.services.life_cycle_service import LifecycleService, ContentServiceUnavailableError
 from apps.evaluations.services.webhooks_service import WebhookHandlerService
-from apps.evaluations.security import verify_rag_callback
+from apps.evaluations.security import verify_rag_callback, accessible_evaluations, accessible_scans
 from apps.evaluations.serializers.evaluation_serializers import (
     EvaluationStatusSerializer,
     ScanStatusSerializer,
@@ -27,20 +27,24 @@ logger = logging.getLogger(__name__)
 
 @extend_schema(tags=["lifecycle"])
 class EvaluationStatusView(generics.RetrieveAPIView):
-    """Retrieves the current status of an Evaluation."""
+    """Retrieves the current status of an Evaluation the user may access."""
 
     permission_classes = [IsAuthenticated]
-    queryset = Evaluation.objects.select_related('module').all()
     serializer_class = EvaluationStatusSerializer
+
+    def get_queryset(self):
+        return accessible_evaluations(self.request.user).select_related('module')
 
 
 @extend_schema(tags=["lifecycle"])
 class ScanStatusView(generics.RetrieveAPIView):
-    """Retrieves the current status of a specific Scan."""
+    """Retrieves the current status of a specific Scan the user may access."""
 
     permission_classes = [IsAuthenticated]
-    queryset = Scan.objects.select_related('evaluation__module').all()
     serializer_class = ScanStatusSerializer
+
+    def get_queryset(self):
+        return accessible_scans(self.request.user).select_related('evaluation__module')
 
 
 @extend_schema(tags=["AI / RAG"])
