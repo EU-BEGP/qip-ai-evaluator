@@ -18,7 +18,13 @@ class RagService:
 
     CACHE_TIMEOUT = 420
     CACHE_TIMEOUT_FAIL = 100
-    
+
+    @staticmethod
+    def _internal_headers():
+        """Auth header attached to every outbound request to rag_api."""
+
+        return {"X-Internal-Secret": settings.RAG_INBOUND_SECRET}
+
     @staticmethod
     def clean_title(title):
         """Cleans the title by removing leading and trailing whitespaces and quotes."""
@@ -119,6 +125,7 @@ class RagService:
             response = requests.post(
                 settings.RAG_API_MODULE_MODIFIED_URL,
                 json={"course_keys": course_keys, "force": force},
+                headers=cls._internal_headers(),
                 timeout=15,
             )
             response.raise_for_status()
@@ -151,7 +158,7 @@ class RagService:
             logger.error("RAG_API_CANCEL_URL is not configured — cannot cancel run")
             return
         try:
-            requests.post(url, json={"run_id": run_id}, timeout=10)
+            requests.post(url, json={"run_id": run_id}, headers=RagService._internal_headers(), timeout=10)
             logger.info(f"Cancel signal sent for run_id {run_id}")
         except Exception as e:
             logger.warning(f"Cancel signal failed for run_id {run_id}: {e}")
@@ -163,7 +170,7 @@ class RagService:
         evaluation_id = payload.get('evaluation_id')
         logger.info(f"Dispatching evaluation task to RAG API for evaluation ID {evaluation_id}")
         try:
-            response = requests.post(settings.RAG_API_EVALUATE_URL, json=payload, timeout=200)
+            response = requests.post(settings.RAG_API_EVALUATE_URL, json=payload, headers=RagService._internal_headers(), timeout=200)
             response.raise_for_status()
             return response.status_code
         except requests.exceptions.RequestException as e:
@@ -181,7 +188,7 @@ class RagService:
                 logger.error("RAG_API_METADATA_URL is not configured")
                 return None
             
-            response = requests.post(url, json={'course_key': course_key}, timeout=300)
+            response = requests.post(url, json={'course_key': course_key}, headers=RagService._internal_headers(), timeout=300)
             response.raise_for_status()
             return response.json()
         except Exception as e:

@@ -15,7 +15,6 @@ from apps.evaluations.services.rag_service import RagService
 User = get_user_model()
 COURSE_LINK = "https://time.learnify.se/l/show.html#att/68K7V"
 COURSE_KEY = "68K7V"
-
 _RUBRIC_PATH = Path(__file__).resolve().parent.parent / "rubrics" / "rubric.json"
 
 

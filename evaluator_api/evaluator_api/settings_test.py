@@ -16,6 +16,7 @@ os.environ.setdefault("EXTERNAL_LOGIN_API_URL", "http://test.invalid/login/")
 os.environ.setdefault("EXTERNAL_AUTH_ME_URL", "http://test.invalid/me/")
 os.environ.setdefault("RAG_BASE_URL", "http://test.invalid/rag")
 os.environ.setdefault("RAG_CALLBACK_SECRET", "test-callback-secret")
+os.environ.setdefault("RAG_INBOUND_SECRET", "test-inbound-secret")
 os.environ.setdefault("ADMIN_EMAIL", "admin@test.invalid")
 
 from .settings import *

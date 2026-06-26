@@ -22,10 +22,11 @@ class EvaluatorConfig(AppConfig):
         Forked workers inherit the loaded singletons via copy-on-write,
         avoiding redundant model loading per worker.
 
-        Skipped during 'runserver' to avoid double-loading on dev autoreload.
+        Skipped during 'runserver' (dev autoreload double-load) and 'test'
+        (unit tests must not pull the heavy AI stack).
         """
-        
-        if "runserver" in sys.argv:
+
+        if "runserver" in sys.argv or "test" in sys.argv:
             return
 
         try:

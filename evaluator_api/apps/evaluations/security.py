@@ -2,6 +2,7 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
+import hmac
 import logging
 import functools
 
@@ -18,9 +19,9 @@ logger = logging.getLogger(__name__)
 def verify_rag_callback(view_func):
     @functools.wraps(view_func)
     def _wrapped_view(request: Request, *args, **kwargs):
-        provided_secret = request.headers.get('X-Callback-Secret')
-        expected_secret = settings.RAG_CALLBACK_SECRET
-        if not provided_secret or provided_secret != expected_secret:
+        provided_secret = request.headers.get('X-Callback-Secret') or ""
+        expected_secret = settings.RAG_CALLBACK_SECRET or ""
+        if not provided_secret or not hmac.compare_digest(provided_secret, expected_secret):
             logger.warning(
                 "Unauthorized RAG callback rejected "
                 f"(secret {'missing' if not provided_secret else 'mismatch'})"

@@ -9,6 +9,8 @@ import requests
 
 from django.conf import settings
 
+from .security import is_allowed_callback_url
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,6 +41,10 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
                            qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
     """Send a SNAPSHOT_CREATED callback with the generated document digest."""
 
+    if not is_allowed_callback_url(callback_url):
+        logger.error(f"[{evaluation_id}] Blocked snapshot callback to a disallowed host.")
+        return
+
     payload = build_unified_payload(
         status="SNAPSHOT_CREATED",
         course_key=course_key,
@@ -53,7 +59,7 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
     }
 
     try:
-        requests.post(callback_url, json=payload, headers=headers, timeout=60)
+        requests.post(callback_url, json=payload, headers=headers, timeout=60, allow_redirects=False)
         logger.info(f"[{evaluation_id}] Snapshot callback sent.")
     except Exception as e:
         logger.warning(f"[{evaluation_id}] Failed to send snapshot callback: {e}")
@@ -62,6 +68,10 @@ def send_snapshot_callback(callback_url: str, snapshot_text: str, course_key: st
 def send_interim_callback(callback_url: str, interim_json: dict, course_key: str, evaluation_id: Optional[str],
                           qip_user_id: Optional[str], run_id: Optional[str] = None) -> None:
     """Send a CRITERION_COMPLETE callback after each criterion is evaluated."""
+
+    if not is_allowed_callback_url(callback_url):
+        logger.error(f"[{evaluation_id}] Blocked interim callback to a disallowed host.")
+        return
 
     payload = build_unified_payload(
         status="CRITERION_COMPLETE",
@@ -77,7 +87,7 @@ def send_interim_callback(callback_url: str, interim_json: dict, course_key: str
     }
 
     try:
-        requests.post(callback_url, json=payload, headers=headers, timeout=60)
+        requests.post(callback_url, json=payload, headers=headers, timeout=60, allow_redirects=False)
         logger.info(f"[{evaluation_id}] Interim callback sent.")
     except requests.exceptions.RequestException as e:
         logger.warning(f"[{evaluation_id}] Failed to send interim callback: {e}")
@@ -106,10 +116,14 @@ def send_callback(callback_url: str, course_key: str, status: str, results: Opti
         "X-Callback-Secret": settings.QIP_CALLBACK_SECRET,
     }
 
+    if not is_allowed_callback_url(callback_url):
+        logger.error(f"[{evaluation_id}] Blocked final callback to a disallowed host.")
+        return
+
     max_retries = 3
     for attempt in range(1, max_retries + 1):
         try:
-            response = requests.post(callback_url, json=payload, headers=headers, timeout=60)
+            response = requests.post(callback_url, json=payload, headers=headers, timeout=60, allow_redirects=False)
             response.raise_for_status()
             logger.info(f"[{evaluation_id}] Final callback sent to {callback_url}.")
             return

@@ -68,12 +68,17 @@ USE_TZ = True
 # --- DRF Configuration ---
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
-    'DEFAULT_PERMISSION_CLASSES': [],
+    'DEFAULT_PERMISSION_CLASSES': ['apps.evaluator.security.HasInternalSecret'],
     'UNAUTHENTICATED_USER': None,
 }
 
 # --- RAG Specific Configuration ---
 QIP_CALLBACK_SECRET = config('QIP_CALLBACK_SECRET')
+RAG_INBOUND_SECRET = config('RAG_INBOUND_SECRET')
+ALLOWED_CALLBACK_HOSTS = config(
+    'ALLOWED_CALLBACK_HOSTS',
+    default='localhost,127.0.0.1,host.docker.internal',
+).split(',')
 
 # --- CORS Configuration ---
 CORS_ALLOW_CREDENTIALS = True

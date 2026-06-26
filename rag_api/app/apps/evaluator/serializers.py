@@ -4,6 +4,8 @@
 
 from rest_framework import serializers
 
+from .security import is_allowed_callback_url
+
 
 class EvaluateModuleSerializer(serializers.Serializer):
     """Validates input for starting an asynchronous module evaluation."""
@@ -16,6 +18,13 @@ class EvaluateModuleSerializer(serializers.Serializer):
     previous_evaluation = serializers.JSONField(required=False, allow_null=True, default=None)
     existing_snapshot = serializers.CharField(required=False, allow_null=True, allow_blank=True, default=None)
     run_id = serializers.CharField(required=False, allow_null=True, allow_blank=True, default=None)
+
+    def validate_callback_url(self, value):
+        """Reject any callback target whose host is not explicitly allowlisted."""
+
+        if not is_allowed_callback_url(value):
+            raise serializers.ValidationError("callback_url host is not allowed.")
+        return value
 
 
 class CancelEvaluationSerializer(serializers.Serializer):

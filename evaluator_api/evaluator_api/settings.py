@@ -147,6 +147,7 @@ RAG_API_METADATA_URL = f"{RAG_BASE_URL}/extract_metadata/"
 RAG_API_CANCEL_URL = f"{RAG_BASE_URL}/cancel/"
 
 RAG_CALLBACK_SECRET = config('RAG_CALLBACK_SECRET')
+RAG_INBOUND_SECRET = config('RAG_INBOUND_SECRET')
 PUBLIC_BASE_URL = config('PUBLIC_BASE_URL', default="http://host.docker.internal:8004/")
 FORCE_SCRIPT_NAME = config('FORCE_SCRIPT_NAME', default=None)
 
