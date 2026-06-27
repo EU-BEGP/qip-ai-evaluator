@@ -70,10 +70,10 @@ class StartEvaluationView(generics.GenericAPIView):
             logger.info(f"Evaluation {'created' if created else 'reused'}: ID {evaluation.id} for module {module.id}")
         except ContentServiceUnavailableError as e:
             logger.warning(f"Content service unavailable for user ID {user_id}: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({"error": "Content service temporarily unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except ValueError as e:
             logger.error(f"Failed to get/create evaluation for user ID {user_id}: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid evaluation request."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             result = LifecycleService.start_evaluation_process(
@@ -84,13 +84,13 @@ class StartEvaluationView(generics.GenericAPIView):
 
         except ContentServiceUnavailableError as e:
             logger.warning(f"Content service unavailable for user ID {user_id}: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response({"error": "Content service temporarily unavailable."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except ValueError as e:
             logger.error(f"Validation error starting evaluation for user ID {user_id}: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid evaluation request."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Unexpected error starting evaluation for user ID {user_id}: {str(e)}")
-            return Response({"error": f"Internal Server Error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Unexpected error starting evaluation for user ID {user_id}: {str(e)}", exc_info=True)
+            return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @extend_schema(tags=["webhooks"])

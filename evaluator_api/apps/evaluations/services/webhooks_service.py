@@ -137,7 +137,7 @@ class WebhookHandlerService:
                         }
                     )
 
-        WebhookHandlerService._merge_scan_results(evaluation, new_content, save=False)
+        WebhookHandlerService._merge_scan_results(evaluation, new_content, save=True)
         LifecycleService.recompute_evaluation_status(evaluation)
         watchdog.disarm(evaluation.id, completed_scan_types)
         return "Completed processed"

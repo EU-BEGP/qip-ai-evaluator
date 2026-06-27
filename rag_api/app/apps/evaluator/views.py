@@ -182,4 +182,4 @@ class ModuleMetadataView(generics.GenericAPIView):
             return Response(metadata_json, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error in ModuleMetadataView: {e}", exc_info=True)
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": "Internal server error."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
