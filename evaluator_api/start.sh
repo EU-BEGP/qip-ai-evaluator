@@ -1,14 +1,10 @@
 #!/bin/bash
 set -e
 
-# 1. Stop running containers
-echo "--> Stopping containers..."
-docker-compose down
-
-# 2. Build images
+# 1. Build images
 echo "--> Building images..."
-docker-compose build
+docker compose build
 
-# 3. Start all services
+# 2. Start all services (recreates only changed containers; no full teardown)
 echo "--> Starting services..."
-docker-compose up
+docker compose up

@@ -15,18 +15,15 @@ class EvaluatorConfig(AppConfig):
     name = "apps.evaluator"
 
     def ready(self):
-        """
-        Pre-load shared AI resources when Django starts.
+        """Pre-load shared AI resources, but only under Gunicorn.
 
-        With Gunicorn --preload, this runs once in the master process.
-        Forked workers inherit the loaded singletons via copy-on-write,
-        avoiding redundant model loading per worker.
-
-        Skipped during 'runserver' (dev autoreload double-load) and 'test'
-        (unit tests must not pull the heavy AI stack).
+        Gunicorn --preload builds the KB once in the master process; forked
+        workers inherit it via copy-on-write. Every other entrypoint is skipped
+        here: the Celery worker loads the KB lazily via tasks.shared, and one-off
+        commands (runserver, shell, test) must not pull the heavy AI stack.
         """
 
-        if "runserver" in sys.argv or "test" in sys.argv:
+        if "gunicorn" not in sys.argv[0]:
             return
 
         try:
