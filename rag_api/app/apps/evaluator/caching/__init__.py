@@ -7,6 +7,5 @@ from .metadata import acquire_metadata
 from .module_data import (
     ModuleCacheEntry,
     acquire_module_data,
-    acquire_snapshot,
 )
 

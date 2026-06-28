@@ -24,11 +24,6 @@ class DashboardService:
         return "Updated"
 
     @staticmethod
-    def _calculate_global_avg(ai, peer):
-        scores = [s for s in [ai, peer] if s is not None]
-        return round(sum(scores) / len(scores), 2) if scores else None
-
-    @staticmethod
     def _rag_date_to_utc_display(rag_date) -> str | None:
         if not rag_date:
             return None

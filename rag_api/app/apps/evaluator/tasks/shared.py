@@ -22,12 +22,6 @@ CANCEL_FLAG_TTL = 3600
 _redis_client = _redis_lib.from_url(settings.CELERY_BROKER_URL)
 
 
-def get_redis_client():
-    """Return the shared Redis client used for the cancel registry."""
-
-    return _redis_client
-
-
 def is_cancelled(run_id: Optional[str]) -> bool:
     """Return True if a cancel flag is set for this run_id."""
 

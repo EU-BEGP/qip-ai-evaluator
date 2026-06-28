@@ -21,9 +21,8 @@ _RUBRIC_PATH = Path(__file__).resolve().parent.parent / "rubrics" / "rubric.json
 def ensure_rubric():
     """Return the active rubric, creating it from rubric.json if the DB is empty.
 
-    The seed migration uses the real model so save() computes content_hash and
-    rubric_map, but in isolated test transactions the migration data may not be
-    present — this function guarantees a usable rubric regardless."""
+    The seed migration creates a rubric, but in isolated test transactions that data
+    may not be present — this function guarantees a usable rubric regardless."""
 
     rubric = Rubric.objects.first()
     if rubric is None:

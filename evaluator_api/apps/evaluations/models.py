@@ -17,7 +17,6 @@ class Rubric(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     content = models.JSONField()
     content_hash = models.CharField(max_length=64, unique=True, editable=False, blank=True)
-    rubric_map = models.JSONField(editable=False, default=dict, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -33,47 +32,10 @@ class Rubric(models.Model):
             return [scan.get("scan") for scan in self.content if isinstance(scan, dict) and scan.get("scan")]
         return []
 
-    def get_criteria_names(self, scan_type):
-        return list(self.rubric_map.get(scan_type, {}).keys())
-
-    def get_criterion(self, scan_type, criterion_name):
-        return self.rubric_map.get(scan_type, {}).get(criterion_name)
-    
-    def build_map(self):
-        data = self.content or []
-        if not isinstance(data, list):
-            return {}
-
-        result = {}
-        for scan in data:
-            if not isinstance(scan, dict):
-                continue
-
-            scan_name = scan.get("scan")
-            if not scan_name:
-                continue
-
-            criteria = scan.get("criteria", [])
-            criteria_map = {}
-            for criterion in criteria:
-                if not isinstance(criterion, dict):
-                    continue
-
-                name = criterion.get("name")
-                if not name:
-                    continue
-
-                criteria_map[name] = criterion
-
-            result[scan_name] = criteria_map
-
-        return result
-    
     def save(self, *args, **kwargs):
         if self.content and not self.content_hash:
             normalized = json.dumps(self.content, sort_keys=True, separators=(",", ":"))
             self.content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
-            self.rubric_map = self.build_map()
         super().save(*args, **kwargs)
 
     def __str__(self):

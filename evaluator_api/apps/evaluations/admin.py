@@ -34,7 +34,7 @@ class ScanAdmin(admin.ModelAdmin):
 class RubricAdmin(admin.ModelAdmin):
     list_display = ('id', 'created_at', 'is_active_display', 'scans_count')
     ordering = ('-created_at',)
-    readonly_fields = ('rubric_map', 'content_hash')
+    readonly_fields = ('content_hash',)
 
     def is_active_display(self, obj):
         return obj.is_active

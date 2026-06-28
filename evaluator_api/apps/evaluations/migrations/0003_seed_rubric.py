@@ -2,6 +2,7 @@
 # MIT License - See LICENSE file in the root directory
 # Sebastian Itamari, Santiago Almancy, Alex Villazon
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -15,9 +16,12 @@ def seed_rubric(apps, schema_editor):
     if Rubric.objects.exists():
         return
     content = json.loads(RUBRIC_PATH.read_text(encoding="utf-8"))
-    # Use the real model (not historical) so save() computes content_hash and rubric_map.
-    from apps.evaluations.models import Rubric as RealRubric
-    RealRubric.objects.create(content=content)
+    # Self-contained on the historical model: compute content_hash here instead of
+    # relying on the live model's save() (which evolves), so this migration keeps
+    # working regardless of later model changes.
+    normalized = json.dumps(content, sort_keys=True, separators=(",", ":"))
+    content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    Rubric.objects.create(content=content, content_hash=content_hash)
 
 
 def unseed_rubric(apps, schema_editor):
