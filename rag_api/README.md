@@ -20,8 +20,10 @@ RESTART_POLICY={no_or_always}
 SECRET_KEY={django_secret_key}
 ALLOWED_HOSTS={*}
 
-# --- CALLBACK ---
+# --- CALLBACK / SERVICE AUTH ---
 QIP_CALLBACK_SECRET={shared_secret_key}
+RAG_INBOUND_SECRET={shared_secret_key}
+ALLOWED_CALLBACK_HOSTS={localhost,127.0.0.1,host.docker.internal}
 
 # --- API KEYS ---
 HF_TOKEN={huggingface_token}
@@ -44,7 +46,9 @@ CORS_ALLOWED_ORIGINS={comma_separated_origins}
 | `RESTART_POLICY` | Docker container restart behavior. **Local**: `no`. **Server**: `always` (to ensure uptime). | `no` (dev), `always` (prod) |
 | `SECRET_KEY` | Django security key. Use a strong, unique key for production servers. | `django-insecure...` (dev), `k^7&...` (prod) |
 | `ALLOWED_HOSTS` | Domains/IPs this API serves. **Local**: `*`. **Server**: The real domain/IP. | `*` |
-| `QIP_CALLBACK_SECRET` | Shared secret key for authenticating requests between APIs, must be the same configured in evaluator api. | `JQvR4Txh...` |
+| `QIP_CALLBACK_SECRET` | Shared secret this service attaches to callbacks it sends **to** evaluator_api. Must match `RAG_CALLBACK_SECRET` in the evaluator_api `.env`. | `JQvR4Txh...` |
+| `RAG_INBOUND_SECRET` | Shared secret required on every **inbound** request to this service (`X-Internal-Secret` header); unauthenticated requests are rejected. Must match `RAG_INBOUND_SECRET` in the evaluator_api `.env`. | `change-me` |
+| `ALLOWED_CALLBACK_HOSTS` | Comma-separated allowlist of hosts the worker may POST callbacks to. Each entry may be a bare host or a full URL (only the host is matched). | `localhost,127.0.0.1,host.docker.internal` |
 | `HF_TOKEN` | Hugging Face Token used to download the embedding model. | `hf_...` |
 | `OPENAI_API_KEY` | OpenAI API key (default provider). Use `OPENAI_API_KEYS` (comma-separated) to rotate multiple keys. | `sk-...` |
 | `GROQ_API_KEY` | Groq API key (used when `wrapper: "groq"`). Use `GROQ_API_KEYS` (comma-separated) for multi-key rotation / worker scaling. | `gsk_...` |
@@ -60,15 +64,19 @@ The project uses a `start.sh` script to automate the entire deployment process.
 ```
 
 This script automatically performs the following:
-1.  Stops and cleans old containers.
-2.  Builds the Docker images.
-3.  Runs database migrations.
-4.  Starts the Database, Redis, Celery Workers, and the Django App.
+1.  Builds the Docker images.
+2.  Pre-builds the vector store (knowledge base) once — skipped if already up to date.
+3.  Starts the services (recreates only the containers that changed — no full teardown): the Redis broker, the Django app, and the Celery worker.
+
+> This service has no relational database — it stores no models and runs no migrations.
 
 >**Note:** Ensure the script is executable:
 >```bash
 >sudo chmod +x start.sh
 >```
+
+### Service Authentication
+Every inbound request must carry the `X-Internal-Secret` header (`RAG_INBOUND_SECRET`); requests without it are rejected. Outbound callbacks carry `QIP_CALLBACK_SECRET` and may only target hosts listed in `ALLOWED_CALLBACK_HOSTS`. In production, terminate TLS in front of this service (e.g. nginx) so these secrets never travel in plaintext.
 
 ### Performance Scaling
 To increase the processing speed of the RAG service, add more keys to the provider's rotation variable (`OPENAI_API_KEYS` or `GROQ_API_KEYS`) in your `.env` file. The system will automatically scale the workers.

@@ -37,6 +37,7 @@ EXTERNAL_AUTH_ME_URL={https://eubbc-digital.upb.edu/booking/api/users/me/}
 # RAG BASE URL
 RAG_BASE_URL={http://host.docker.internal:8005/api}
 RAG_CALLBACK_SECRET={shared_secret_key}
+RAG_INBOUND_SECRET={shared_secret_key}
 
 # --- CORS ---
 CORS_ALLOW_ALL_ORIGINS={True_or_False}
@@ -67,7 +68,8 @@ ADMIN_EMAIL={admin_address}
 | `EXTERNAL_LOGIN_API_URL` | **Fixed URL.** Points to the Book4RLab authentication (token) service. | `https://eubbc-digital.upb.edu/booking/api/users/token/` |
 | `EXTERNAL_AUTH_ME_URL` | **Fixed URL.** Book4RLab current-user endpoint used to resolve the authenticated user. | `https://eubbc-digital.upb.edu/booking/api/users/me/` |
 | `RAG_BASE_URL` | RAG Service URL. **Local**: `http://host.docker.internal:8005/api`. **Server**: `https://eu-begp.upb.edu/qip-rag-api`. | `http://host.docker.internal:8005/api` |
-| `RAG_CALLBACK_SECRET` | Shared secret key for RAG, must be the same configured in RAG api. | `shared key...` |
+| `RAG_CALLBACK_SECRET` | Shared secret authenticating callbacks **from** rag_api into this API. Must match `QIP_CALLBACK_SECRET` in the rag_api `.env`. | `shared key...` |
+| `RAG_INBOUND_SECRET` | Shared secret attached to every outbound request this API sends **to** rag_api (`X-Internal-Secret` header). Must match `RAG_INBOUND_SECRET` in the rag_api `.env`. | `shared key...` |
 | `CORS_ALLOW_ALL_ORIGINS`| CORS Policy. | `True` or `False` |
 | `CORS_ALLOWED_ORIGINS` | Specific allowed origins (used only when `CORS_ALLOW_ALL_ORIGINS` is `False`). | `http://localhost:3000` |
 | `EMAIL_HOST_USER` | Gmail SMTP account. **Required in production only** (dev prints email to the console). | `you@gmail.com` |
@@ -83,11 +85,10 @@ The project uses a `start.sh` script to automate the entire deployment process f
 ```
 
 This script automatically performs the following:
-1.  Stops and cleans old containers.
-2.  Builds the Docker images.
-3.  Starts the Database and runs migrations.
-4.  **Static Files Handling**: The script detects the `ENVIRONMENT` variable. If set to `production`, it automatically runs `collectstatic`.
-5.  Starts the application (`runserver` for Dev, `gunicorn` for Prod).
+1.  Builds the Docker images.
+2.  Starts the services (recreates only the containers that changed — no full teardown).
+
+On container start, the entrypoint waits for the database, runs migrations, collects static files (in `production`), then launches the app (`runserver` for development, `gunicorn` for production).
 
 >**Note:** Ensure the script is executable:
 >```bash
@@ -100,10 +101,19 @@ This script automatically performs the following:
 To access the Django Admin Panel, you must create a superuser inside the running container:
 
 ```bash
-docker-compose run --rm app sh -c "python manage.py createsuperuser"
+docker compose run --rm app sh -c "python manage.py createsuperuser"
 ```
 
 ### Static Files
-No manual action is required. The `start.sh` script automatically collects static files into the `STATIC_VOLUME_PATH` when deploying in production.
+No manual action is required. When `ENVIRONMENT=production`, the container entrypoint automatically collects static files into the `STATIC_VOLUME_PATH`.
+
+### Database Backups
+A helper script dumps the Postgres database (gzip, with rotation):
+
+```bash
+./scripts/backup.sh
+```
+
+Schedule it nightly via `cron`, keep an off-host copy, and test a restore once. Restore instructions are in the script header.
 
 The Evaluator API is accessible at your configured `PUBLIC_BASE_URL`.

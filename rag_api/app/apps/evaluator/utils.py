@@ -35,4 +35,4 @@ def extract_learnify_code(input_str: str) -> Optional[str]:
     if "?" in code_part:
         code_part = code_part.split("?")[0]
 
-    return code_part.strip().strip("/")
+    return code_part.strip().strip("/") or None
