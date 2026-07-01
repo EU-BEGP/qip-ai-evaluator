@@ -23,6 +23,7 @@ class AuthService:
             logger.critical("EXTERNAL_LOGIN_API_URL is missing in settings.")
             return None
         
+        email = email.lower()
         payload = {"email": email, "password": password}
         
         logger.info("Attempting remote login")
@@ -32,6 +33,9 @@ class AuthService:
         if response.status_code == 200:
             logger.info(f"Remote login successful.")
             return response.json().get('token')
+
+        if response.status_code >= 500:
+            response.raise_for_status()
 
         logger.warning(f"Failed remote login for user: {response.status_code}")
         return None
@@ -46,9 +50,11 @@ class AuthService:
             return None
         
         headers = {'Authorization': f'token {external_token}'}
-        
+
         response = requests.get(url, headers=headers, timeout=10)
         if response.status_code != 200:
+            if response.status_code >= 500:
+                response.raise_for_status()
             logger.error(f"Failed to fetch profile. Status: {response.status_code}")
             return None
 
@@ -59,29 +65,19 @@ class AuthService:
             logger.error("External profile response missing 'email'.")
             return None
 
-        user, created = User.objects.get_or_create(email=email)
+        email = email.lower()
 
-        if created:
-            logger.info(f"Created new local user")
+        user, created = User.objects.update_or_create(
+            email=email,
+            defaults={
+                'first_name': data.get('name', ''),
+                'last_name': data.get('last_name', ''),
+                'country': data.get('country', ''),
+                'time_zone': data.get('time_zone', ''),
+                'external_id': data.get('id'),
+            }
+        )
 
-        fields_to_sync = [
-            ('first_name', data.get('name', '')),
-            ('last_name', data.get('last_name', '')),
-            ('country', data.get('country', '')),
-            ('time_zone', data.get('time_zone', '')),
-            ('external_id', data.get('id')),
-        ]
-
-        updated_fields = []
-        for field, value in fields_to_sync:
-            if getattr(user, field) != value:
-                setattr(user, field, value)
-                updated_fields.append(field)
-
-        if updated_fields:
-            user.save(update_fields=updated_fields)
-            logger.info("Synchronized changed fields for user")
-        elif not created:
-            logger.debug(f"No changes detected for user {email}. Skipping database update.")
+        logger.info(f"Created new local user" if created else "Synchronized local user")
 
         return user

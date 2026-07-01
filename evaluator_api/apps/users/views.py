@@ -5,11 +5,12 @@
 import logging
 import requests
 
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from .serializers import RemoteLoginSerializer, UserProfileSerializer
 from .services import AuthService
@@ -18,9 +19,19 @@ from .models import User
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(
+    responses={200: inline_serializer(
+        name='Book4RLabLoginResponse',
+        fields={
+            'access': serializers.CharField(),
+            'refresh': serializers.CharField(),
+        }
+    )},
+    description="Exchanges Book4RLab credentials for a local JWT access/refresh pair.",
+)
 class Book4RLabLoginView(generics.GenericAPIView):
     """Exchanges an Book4RLab token for a local JWT."""
-    
+
     serializer_class = RemoteLoginSerializer
     permission_classes = [AllowAny]
     authentication_classes = []

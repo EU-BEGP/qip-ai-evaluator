@@ -10,14 +10,14 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    # Custom admin configuration for the Email-based User model
+    """Custom admin configuration for the Email-based User model"""
 
     ordering = ['email']
     list_display = ['id', 'email', 'first_name', 'last_name', 'is_staff', 'is_active', 'date_joined']
     list_display_links = ['id', 'email']
     search_fields = ['email', 'first_name', 'last_name']
     list_filter = ['is_staff', 'is_active']
-    readonly_fields = ['date_joined', 'updated_at', 'last_login']
+    readonly_fields = ['date_joined', 'updated_at', 'last_login', 'first_name', 'last_name']
     fieldsets = (
         (None, {'fields': ('email', 'password')}),
         ('Personal Info', {'fields': ('first_name', 'last_name', 'country', 'time_zone', 'external_id')}),
@@ -27,6 +27,6 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('email', 'password1', 'password2', 'first_name', 'last_name', 'is_staff', 'is_active'),
+            'fields': ('email', 'password1', 'password2', 'is_staff', 'is_active'),
         }),
     )
